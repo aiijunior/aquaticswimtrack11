@@ -763,6 +763,7 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
         });
 
         clubData.sort((a, b) => {
+            // FIX: Correctly access medal counts via the `counts` property.
             return b.counts.gold - a.counts.gold ||
                    b.counts.silver - a.counts.silver ||
                    b.counts.bronze - a.counts.bronze ||
@@ -1437,24 +1438,29 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             </div>
             {/* This div is only visible when printing */}
             <div className="printable-area">
-                {/* Header for fixed positioning */}
-                {competitionInfo && (
-                    <div className="print-header-container">
-                        <ReportHeader info={competitionInfo} title={printTitle} />
-                    </div>
-                )}
-                
-                {/* Main content container which will get padding */}
-                <div className="print-content-main">
-                    {renderContent()}
-                </div>
-
-                {/* Footer for fixed positioning */}
-                {competitionInfo && (
-                     <div className="print-footer-container">
-                        <ReportFooter info={competitionInfo} />
-                    </div>
-                )}
+                <table className="print-table">
+                    <thead>
+                        <tr>
+                            <td>
+                                {competitionInfo && <ReportHeader info={competitionInfo} title={printTitle} />}
+                            </td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                {renderContent()}
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>
+                                {competitionInfo && <ReportFooter info={competitionInfo} />}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
         </div>
     );

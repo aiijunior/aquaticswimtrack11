@@ -167,8 +167,7 @@
         
         @page {
           size: A4;
-          /* Margins will be handled by padding on content containers */
-          margin: 0; 
+          margin: 2cm;
         }
 
         /* Reset body for printing */
@@ -177,53 +176,53 @@
           margin: 0 !important;
           padding: 0 !important;
           font-size: 10pt;
-          overflow: visible !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        /* Use a table layout for the whole page to manage repeating headers/footers */
+        .printable-area .print-table {
+          width: 100%;
+          border-collapse: collapse;
         }
         
-        /* Fixed Header for every page */
-        .print-header-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            width: 100%;
-            padding: 1cm 2cm;
-            box-sizing: border-box;
-            background: #fff !important; /* Cover content scrolling underneath */
-            z-index: 10;
+        .printable-area thead {
+          display: table-header-group;
         }
-        /* Remove margins from the original component for print */
-        .print-header-container header {
-            margin-bottom: 0 !important;
-            padding-bottom: 0 !important;
+        
+        .printable-area tfoot {
+          display: table-footer-group;
+        }
+        
+        .printable-area tbody {
+          display: table-row-group;
+        }
+
+        .printable-area thead td,
+        .printable-area tbody td,
+        .printable-area tfoot td {
+          padding: 0;
+          border: none; /* remove borders from layout table cells */
+        }
+        
+        /* Add spacing between header/footer and main content */
+        .printable-area thead td { padding-bottom: 0.5cm; }
+        .printable-area tfoot td { padding-top: 0.5cm; }
+
+        /* Remove margins from the original header/footer components for print */
+        .printable-area header, .printable-area footer {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Add border back to header/footer for separation */
+        .printable-area header {
             border-bottom: 2px solid #ccc !important;
+            padding-bottom: 0.5cm !important;
         }
-
-        /* Fixed Footer for every page */
-        .print-footer-container {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            width: 100%;
-            padding: 1cm 2cm;
-            box-sizing: border-box;
-            background: #fff !important; /* Cover content scrolling underneath */
-            z-index: 10;
-        }
-        /* Remove margins from the original component for print */
-        .print-footer-container footer {
-            margin-top: 0 !important;
-            padding-top: 0 !important;
+        .printable-area footer {
             border-top: 2px solid #ccc !important;
-        }
-
-        /* Main content area that flows across pages */
-        .print-content-main {
-            width: 100%;
-            box-sizing: border-box;
-            /* Generous padding to avoid overlap with fixed header/footer. */
-            padding: 7cm 2cm 5cm 2cm; /* top, right, bottom, left */
+            padding-top: 0.5cm !important;
         }
         
         /* Generic styles to make print output look good */
@@ -245,7 +244,8 @@
             page-break-after: avoid;
             page-break-inside: avoid;
         }
-        table {
+        /* Target tables inside the content, NOT the main layout table */
+        .print-preview-content table {
             width: 100%;
             border-collapse: collapse;
             page-break-inside: auto;
@@ -255,13 +255,13 @@
             page-break-inside: avoid;
             page-break-after: auto;
         }
-        thead {
+        .print-preview-content thead {
             display: table-header-group;
         }
-        tfoot {
+        .print-preview-content tfoot {
             display: table-footer-group;
         }
-        tbody {
+        .print-preview-content tbody {
             display: table-row-group;
         }
         th, td {
