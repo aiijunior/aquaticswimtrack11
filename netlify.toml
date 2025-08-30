@@ -1,0 +1,19 @@
+# netlify.toml
+
+# Bagian ini memberi tahu Netlify cara membangun proyek Anda.
+[build]
+  # Perintah yang akan dijalankan untuk membuat folder output statis.
+  # Ini sesuai dengan skrip 'build' di package.json Anda.
+  command = "npm run build"
+  
+  # Folder yang berisi hasil build yang siap dipublikasikan.
+  # Sesuai dengan output dari perintah build Anda.
+  publish = "dist"
+
+# Bagian ini sangat penting untuk Single Page Application (SPA) seperti React.
+# Ini memastikan semua permintaan URL (misalnya, /hasil atau /peserta)
+# diarahkan ke index.html agar aplikasi React Anda dapat menangani rute tersebut.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
