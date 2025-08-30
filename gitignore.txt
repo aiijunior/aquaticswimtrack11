@@ -1,1 +1,8 @@
-.gitignore
+# Local configuration file with sensitive credentials
+config.ts
+
+# Dependencies
+node_modules/
+
+# Netlify build output and state
+.netlify/
