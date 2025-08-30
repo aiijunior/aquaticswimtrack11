@@ -6,3 +6,6 @@ node_modules/
 
 # Netlify build output and state
 .netlify/
+
+# Build output
+dist/
