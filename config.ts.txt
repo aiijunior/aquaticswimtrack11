@@ -1,0 +1,62 @@
+/**
+ * =================================================================
+ * 🚀 AQUATIC SWIMTRACK CONFIGURATION (TEMPLATE) 🚀
+ * =================================================================
+ * This is a template file. RENAME this file to `config.ts` to activate it.
+ * Fill in the placeholder values below to match your own project setup.
+ *
+ * INSTRUCTIONS:
+ * 1. RENAME this file from `config.ts.txt` to `config.ts`.
+ * 2. Fill in your Supabase URL and Public Anon Key.
+ * 3. Set your Google Gemini API key in your Netlify deployment settings (see README).
+ * 4. (Optional) Customize the application and competition default names.
+ * =================================================================
+ */
+
+export const config = {
+  /**
+   * Supabase Project Credentials
+   * Found in your Supabase project's "Project Settings" > "API"
+   */
+  supabase: {
+    url: "YOUR_SUPABASE_URL_HERE", // 👈 Paste your Supabase URL here. E.g., "https://xyz.supabase.co"
+    anonKey: "YOUR_SUPABASE_ANON_KEY_HERE", // 👈 Paste your Supabase anon key here.
+  },
+
+  /**
+   * Google Gemini API Key
+   * This is now managed securely as an environment variable in your Netlify deployment settings.
+   * See the README.md file for instructions on how to set this up in Netlify.
+   * The client-side application no longer needs access to it directly.
+   */
+  google: {},
+
+  /**
+   * Super Admin Credentials
+   * This account bypasses database authentication and provides full access.
+   * IMPORTANT: Use strong, unique credentials.
+   */
+  superAdmin: {
+    email: "superadmin@example.com", // 👈 Change this to your desired super admin email
+    password: "CHANGE_THIS_SUPER_STRONG_PASSWORD", // 👈 Change this to a secure password
+  },
+
+  /**
+   * Application Display Information
+   * Used in page titles and headers.
+   */
+  app: {
+    name: "Aquatic Swimtrack 11",
+    title: "Aquatic",
+    shortTitle: "Swimtrack 11",
+  },
+
+  /**
+   * Default Competition Settings
+   * Used when initializing the competition for the first time or when clearing data.
+   */
+  competition: {
+    defaultName: "My Swim Meet",
+    defaultLanes: 8,
+  },
+};

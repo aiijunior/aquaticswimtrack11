@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aquatic Swimtrack 11</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+      :root {
+        --color-primary: #0ea5e9;
+        --color-primary-hover: #0284c7;
+        --color-secondary: #64748b;
+        --color-secondary-hover: #475569;
+        --color-background: #f1f5f9;
+        --color-surface: #ffffff;
+        --color-text-primary: #1e293b;
+        --color-text-secondary: #475569;
+        --color-border: #cbd5e1;
+      }
+      html.dark {
+        --color-primary: #0ea5e9;
+        --color-primary-hover: #0284c7;
+        --color-secondary: #475569;
+        --color-secondary-hover: #64748b;
+        --color-background: #1e293b;
+        --color-surface: #334155;
+        --color-text-primary: #f8fafc;
+        --color-text-secondary: #cbd5e1;
+        --color-border: #475569;
+      }
+      body {
+        background-color: var(--color-background);
+        color: var(--color-text-primary);
+      }
+      @keyframes flash {
+        0% { background-color: rgba(14, 165, 233, 0.3); } /* primary with opacity */
+        100% { background-color: transparent; }
+      }
+      .flash-animation {
+        animation: flash 1.5s ease-out;
+      }
+      
+      /* Login screen blob animation */
+      @keyframes blob {
+        0% { transform: translate(0px, 0px) scale(1); }
+        33% { transform: translate(30px, -50px) scale(1.1); }
+        66% { transform: translate(-20px, 20px) scale(0.9); }
+        100% { transform: translate(0px, 0px) scale(1); }
+      }
+      .animate-blob {
+        animation: blob 7s infinite;
+      }
+      .animation-delay-2000 {
+        animation-delay: 2s;
+      }
+      .animation-delay-4000 {
+        animation-delay: 4s;
+      }
+
+      /* Styles for the on-screen print preview to improve readability */
+      .print-preview-content {
+        background-color: var(--color-surface);
+        color: var(--color-text-primary);
+        padding: 1.5rem;
+        margin: 0 auto;
+        max-width: 1024px;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      }
+
+      html.dark .print-preview-content {
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+      }
+      
+      .print-preview-content h1,
+      .print-preview-content h2,
+      .print-preview-content h3,
+      .print-preview-content h4,
+      .print-preview-content h5,
+      .print-preview-content h6 {
+        color: var(--color-text-primary) !important;
+        font-weight: 700 !important;
+      }
+      
+      .print-preview-content p,
+      .print-preview-content span,
+      .print-preview-content td,
+      .print-preview-content li {
+        color: var(--color-text-primary) !important;
+      }
+
+      .print-preview-content table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+
+      .print-preview-content th,
+      .print-preview-content td {
+        border: 1px solid var(--color-border);
+        padding: 8px 12px;
+        text-align: left;
+        vertical-align: top;
+        word-wrap: break-word;
+      }
+
+      .print-preview-content th {
+        background-color: var(--color-background) !important;
+        font-weight: 600 !important;
+      }
+
+      /* Selectively re-apply secondary text color where it's meaningful */
+      .print-preview-content .text-gray-500,
+      .print-preview-content .text-gray-600,
+      .print-preview-content .text-text-secondary {
+        color: var(--color-text-secondary) !important;
+      }
+      
+      /* Make times stand out */
+      .print-preview-content .font-mono {
+        color: var(--color-primary) !important;
+        font-weight: 600;
+        font-size: 1.05em;
+      }
+
+      /* Override hardcoded background colors from components */
+      .print-preview-content .bg-gray-100,
+      .print-preview-content .bg-gray-200 {
+        background-color: var(--color-background) !important;
+      }
+
+      /* Badge for broken records */
+      .record-badge {
+        display: inline-block;
+        padding: 0.125rem 0.5rem;
+        margin-left: 0.5rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        border-radius: 9999px;
+        line-height: 1;
+        vertical-align: middle;
+        color: white !important; /* Important to override print styles */
+        text-shadow: none;
+      }
+      .record-badge.porprov { background-color: #3b82f6; } /* Blue-500 */
+      .record-badge.nasional { background-color: #ef4444; } /* Red-500 */
+
+      /* --- Print Styles --- */
+      
+      /* Hide the printable area on screen by default */
+      .printable-area {
+        display: none;
+      }
+
+      @media print {
+        /* Hide elements that should not be printed */
+        .no-print, .no-print * {
+          display: none !important;
+        }
+        
+        /* Show the printable area */
+        .printable-area {
+            display: block !important;
+        }
+        
+        @page {
+          size: A4;
+          /* Margins will be handled by padding on content containers */
+          margin: 0; 
+        }
+
+        /* Reset body for printing */
+        body {
+          background-color: #fff !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          font-size: 10pt;
+          overflow: visible !important;
+        }
+        
+        /* Fixed Header for every page */
+        .print-header-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            padding: 1cm 2cm;
+            box-sizing: border-box;
+            background: #fff !important; /* Cover content scrolling underneath */
+            z-index: 10;
+        }
+        /* Remove margins from the original component for print */
+        .print-header-container header {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+            border-bottom: 2px solid #ccc !important;
+        }
+
+        /* Fixed Footer for every page */
+        .print-footer-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            padding: 1cm 2cm;
+            box-sizing: border-box;
+            background: #fff !important; /* Cover content scrolling underneath */
+            z-index: 10;
+        }
+        /* Remove margins from the original component for print */
+        .print-footer-container footer {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+            border-top: 2px solid #ccc !important;
+        }
+
+        /* Main content area that flows across pages */
+        .print-content-main {
+            width: 100%;
+            box-sizing: border-box;
+            /* Generous padding to avoid overlap with fixed header/footer. */
+            padding: 7cm 2cm 5cm 2cm; /* top, right, bottom, left */
+        }
+        
+        /* Generic styles to make print output look good */
+        * {
+            background-color: transparent !important;
+            color: #000 !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+
+        /* Page layout and break controls */
+        .page-break {
+          page-break-after: always;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            page-break-after: avoid;
+            page-break-inside: avoid;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            page-break-inside: auto;
+            table-layout: fixed;
+        }
+        tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+        thead {
+            display: table-header-group;
+        }
+        tfoot {
+            display: table-footer-group;
+        }
+        tbody {
+            display: table-row-group;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 2px 4px; /* Reduced padding for more compact and neat tables */
+            word-wrap: break-word;
+        }
+        th {
+            background-color: #f2f2f2 !important;
+        }
+        img {
+          max-width: 100% !important;
+        }
+        
+        /* Record badge print style */
+        .record-badge {
+          background-color: transparent !important;
+          border: 1px solid #000 !important;
+          color: #000 !important;
+          padding: 1px 4px;
+          margin-left: 4px;
+          font-size: 8pt !important;
+        }
+        .record-badge::before {
+          content: "[";
+        }
+        .record-badge::after {
+          content: " REKOR]";
+        }
+      }
+    </style>
+    <script>
+      tailwind.config = {
+        darkMode: 'class', // Enable dark mode based on class
+        theme: {
+          extend: {
+            colors: {
+              'primary': 'var(--color-primary)',
+              'primary-hover': 'var(--color-primary-hover)',
+              'secondary': 'var(--color-secondary)',
+              'secondary-hover': 'var(--color-secondary-hover)',
+              'background': 'var(--color-background)',
+              'surface': 'var(--color-surface)',
+              'text-primary': 'var(--color-text-primary)',
+              'text-secondary': 'var(--color-text-secondary)',
+              'border': 'var(--color-border)',
+            },
+          },
+        },
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react": "https://esm.sh/react@^19.1.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.11.0",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
+    "chart.js/auto": "https://esm.sh/chart.js@4/auto",
+    "chart.js/": "https://esm.sh/chart.js@^4.5.0/"
+  }
+}
+</script>
+</head>
+  <body class="bg-background text-text-primary transition-colors duration-300">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
