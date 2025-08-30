@@ -141,7 +141,7 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                 const firstEvent = sessionEvents[0];
                 const sessionDT = firstEvent?.sessionDateTime ? new Date(firstEvent.sessionDateTime) : null;
                 return (
-                    <div key={sessionName} className="page-break">
+                    <div key={sessionName}>
                         <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md text-center">
                             {sessionName}
                             {sessionDT && (
@@ -160,7 +160,7 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                             const isRelay = event.relayLegs && event.relayLegs > 1;
                             
                             return (
-                                <section key={event.id} className="mb-6">
+                                <section key={event.id} className="mb-6 print-event-section">
                                     <h4 className="text-lg font-semibold bg-gray-100 p-2 rounded-t-md border-b-2 border-gray-400">
                                        {`Nomor Acara ${event.globalEventNumber}: ${formatEventName(event)}`}
                                     </h4>
