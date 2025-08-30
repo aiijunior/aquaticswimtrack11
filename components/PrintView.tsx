@@ -1384,7 +1384,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                          <Button onClick={handleDownloadExcel} disabled={isLoading || isDownloading} variant="secondary">
                             {isDownloading ? <Spinner /> : 'Unduh Excel'}
                         </Button>
-                        <Button onClick={handlePrint} disabled={isLoading}>Unduh Laporan PDF</Button>
+                        <Button onClick={handlePrint} disabled={isLoading}>Cetak Laporan</Button>
                     </div>
                 </div>
 
