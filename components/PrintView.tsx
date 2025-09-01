@@ -240,7 +240,7 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                 const nasionalRecord = records.find(r => r.type.toUpperCase() === RecordType.NASIONAL.toUpperCase() && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
                 
                 return (
-                    <section key={event.id} className="mb-8 print-event-section">
+                    <section key={event.id} className="print-event-section">
                         <h3 className="text-xl font-semibold bg-gray-100 p-2 rounded-t-md border-b-2 border-gray-400">
                             {formatEventName(event)}
                         </h3>
@@ -777,9 +777,9 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
     }
 
     return (
-        <main className="space-y-6">
+        <main>
             {data.map(({ clubName, medals, counts }) => (
-                <section key={clubName} className="page-break print-event-section">
+                <section key={clubName} className="print-event-section mb-8">
                      <div className="my-2 bg-gray-200 text-black p-2 rounded-md flex justify-between items-center">
                         <h3 className="text-xl font-bold">{clubName}</h3>
                         <div className="text-sm font-semibold">
