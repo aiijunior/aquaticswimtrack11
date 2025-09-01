@@ -562,7 +562,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
                     </table>
                     {processedData.maleGroups.length === 0 && <p className="text-center text-gray-500 pt-4">Tidak ada data.</p>}
                 </section>
-                <section className="page-break">
+                <section className="mt-8">
                     <h3 className="text-2xl font-bold text-center my-4">Klasemen Perorangan Putri</h3>
                      <table className="w-full text-left text-sm">
                         <colgroup>
@@ -606,7 +606,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
             </main>
             
             {tieBreakerAnalyses.length > 0 && (
-                <section className="page-break mt-8 pt-4 border-t-2 border-gray-400">
+                <section className="mt-8 pt-4 border-t-2 border-gray-400">
                     <h3 className="text-2xl font-bold my-4 text-center">Detail Analisis Tie-Breaker</h3>
                     {tieBreakerAnalyses}
                 </section>
