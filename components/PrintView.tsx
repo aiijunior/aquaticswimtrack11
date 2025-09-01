@@ -240,7 +240,7 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                 const nasionalRecord = records.find(r => r.type.toUpperCase() === RecordType.NASIONAL.toUpperCase() && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
                 
                 return (
-                    <section key={event.id} className="mb-8 page-break">
+                    <section key={event.id} className="mb-8 page-break print-event-section">
                         <h3 className="text-xl font-semibold bg-gray-100 p-2 rounded-t-md border-b-2 border-gray-400">
                             {formatEventName(event)}
                         </h3>
@@ -320,7 +320,7 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
     if (data.length === 0) return <p className="text-center text-text-secondary py-10">Belum ada medali yang diraih.</p>;
 
     return (
-        <main>
+        <main className="print-event-section">
             <table className="w-full text-left">
                 <colgroup>
                     <col style={{ width: '10%' }} />
@@ -377,7 +377,7 @@ const TieBreakerAnalysisTable: React.FC<{ tiedAthletes: IndividualStandingData[]
     const title = `Analisis Tie-Breaker untuk Peringkat ${rankStart}${rankStart !== rankEnd ? `-${rankEnd}` : ''}`;
 
     return (
-        <div className="my-4 p-4 border-2 border-dashed border-primary/50 bg-primary/10 rounded-lg">
+        <div className="my-4 p-4 border-2 border-dashed border-primary/50 bg-primary/10 rounded-lg print-event-section">
             <h4 className="font-bold text-center text-primary">{title}</h4>
             <p className="text-xs text-center text-text-secondary mb-2">Peringkat ditentukan berdasarkan rata-rata persentase kedekatan waktu hasil dengan Rekor Nasional. Persentase lebih tinggi lebih baik.</p>
             <table className="w-full text-left text-xs mt-2">
@@ -521,7 +521,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
     return (
         <>
             <main className="grid grid-cols-2 gap-8">
-                <section>
+                <section className="print-event-section">
                     <h3 className="text-xl font-bold text-center mb-2">Putra</h3>
                     {processedData.maleGroups.map((group, groupIndex) => {
                         if (group.length > 1) {
@@ -545,7 +545,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
                     })}
                     {processedData.maleGroups.length === 0 && <p className="text-center text-gray-500 pt-4">Tidak ada data.</p>}
                 </section>
-                <section>
+                <section className="print-event-section">
                     <h3 className="text-xl font-bold text-center mb-2">Putri</h3>
                     {processedData.femaleGroups.map((group, groupIndex) => {
                          if (group.length > 1) {
@@ -588,7 +588,7 @@ const BrokenRecordsReport: React.FC<{ brokenRecords: BrokenRecord[], info: Compe
     return (
         <main className="space-y-4">
             {brokenRecords.map(({ record, newEventName, newHolder, newTime }, i) => (
-                <div key={i} className="page-break p-4 border border-gray-300 rounded-lg">
+                <div key={i} className="page-break p-4 border border-gray-300 rounded-lg print-event-section">
                     <p className="font-bold text-lg text-gray-800">{newEventName}</p>
                     <p className="font-semibold text-xl text-black">
                         {newHolder.name} ({newHolder.club}) - 
@@ -609,9 +609,8 @@ const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
         const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
         
         const getCategoryKey = (event: SwimEvent): string => {
-            const gender = translateGender(event.gender);
             const category = event.category?.trim() || 'Umum';
-            return `${category} ${gender}`;
+            return category;
         };
 
         const eventsWithWinners = events
@@ -650,7 +649,7 @@ const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
     return (
         <main>
             {data.map(([categoryKey, categoryEvents]) => (
-                <section key={categoryKey} className="page-break">
+                <section key={categoryKey} className="page-break print-event-section">
                     <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md text-center">{categoryKey}</h3>
                     <div className="space-y-6">
                         {categoryEvents.sort((a,b) => formatEventName(a).localeCompare(formatEventName(b))).map(event => (
@@ -780,7 +779,7 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
     return (
         <main className="space-y-6">
             {data.map(({ clubName, medals, counts }) => (
-                <section key={clubName} className="page-break">
+                <section key={clubName} className="page-break print-event-section">
                      <div className="my-2 bg-gray-200 text-black p-2 rounded-md flex justify-between items-center">
                         <h3 className="text-xl font-bold">{clubName}</h3>
                         <div className="text-sm font-semibold">
@@ -1232,7 +1231,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         if (!competitionInfo) return;
         const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
          const getCategoryKey = (event: SwimEvent): string => {
-            const gender = translateGender(event.gender); const category = event.category?.trim() || 'Umum'; return `${category} ${gender}`;
+            const category = event.category?.trim() || 'Umum'; return category;
         };
         const eventsWithWinners = events
             .filter(e => e.results && e.results.length > 0)
