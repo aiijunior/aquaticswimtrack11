@@ -520,10 +520,10 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
 
     return (
         <>
-            <main className="grid grid-cols-2 gap-x-8">
+            <main>
                 <section>
-                    <h3 className="text-xl font-bold text-center mb-2">Putra</h3>
-                    {processedData.maleGroups.map((group, groupIndex) => {
+                    <h3 className="text-2xl font-bold text-center mb-4">Klasemen Perorangan Putra</h3>
+                    {processedData.maleGroups.length > 0 ? processedData.maleGroups.map((group, groupIndex) => {
                         if (group.length > 1) {
                             tieBreakerAnalyses.push(<TieBreakerAnalysisTable key={`male-tie-${groupIndex}`} tiedAthletes={group} rankStart={maleRankCounter} />);
                         }
@@ -542,12 +542,12 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
                                 </tbody>
                             </table>
                         );
-                    })}
-                    {processedData.maleGroups.length === 0 && <p className="text-center text-gray-500 pt-4">Tidak ada data.</p>}
+                    }) : <p className="text-center text-gray-500 pt-4">Tidak ada data.</p>}
                 </section>
-                <section>
-                    <h3 className="text-xl font-bold text-center mb-2">Putri</h3>
-                    {processedData.femaleGroups.map((group, groupIndex) => {
+                
+                <section className="page-break">
+                    <h3 className="text-2xl font-bold text-center my-4">Klasemen Perorangan Putri</h3>
+                     {processedData.femaleGroups.length > 0 ? processedData.femaleGroups.map((group, groupIndex) => {
                          if (group.length > 1) {
                             tieBreakerAnalyses.push(<TieBreakerAnalysisTable key={`female-tie-${groupIndex}`} tiedAthletes={group} rankStart={femaleRankCounter} />);
                         }
@@ -566,8 +566,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
                                 </tbody>
                             </table>
                         );
-                    })}
-                   {processedData.femaleGroups.length === 0 && <p className="text-center text-gray-500 pt-4">Tidak ada data.</p>}
+                    }) : <p className="text-center text-gray-500 pt-4">Tidak ada data.</p>}
                 </section>
             </main>
             
