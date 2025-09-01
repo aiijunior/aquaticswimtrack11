@@ -185,6 +185,36 @@
         .print-event-section {
             page-break-inside: avoid;
         }
+        
+        /* --- START: Print Color Overrides --- */
+        /* Force black text on white background for readability */
+        .print-preview-content, .print-preview-content * {
+            color: #000000 !important;
+            background-color: transparent !important;
+            text-shadow: none !important;
+            box-shadow: none !important;
+        }
+
+        body, .print-preview-content {
+          background-color: #ffffff !important;
+        }
+
+        /* Ensure table borders are visible and consistent */
+        .print-preview-content th,
+        .print-preview-content td {
+            border: 1px solid #cccccc !important;
+        }
+
+        .print-preview-content th {
+            background-color: #f2f2f2 !important; /* A very light grey for headers */
+        }
+        
+        /* Make record badges print-friendly (border instead of background color) */
+        .print-preview-content .record-badge {
+            border: 1px solid #000000 !important;
+            padding: 0.1rem 0.4rem;
+        }
+        /* --- END: Print Color Overrides --- */
       }
     </style>
     <script>
