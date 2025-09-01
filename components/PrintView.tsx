@@ -240,7 +240,7 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                 const nasionalRecord = records.find(r => r.type.toUpperCase() === RecordType.NASIONAL.toUpperCase() && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
                 
                 return (
-                    <section key={event.id} className="mb-8 page-break print-event-section">
+                    <section key={event.id} className="mb-8 print-event-section">
                         <h3 className="text-xl font-semibold bg-gray-100 p-2 rounded-t-md border-b-2 border-gray-400">
                             {formatEventName(event)}
                         </h3>
@@ -850,19 +850,13 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const [activeTab, setActiveTab] = useState<PrintTab>('programBook');
     const [records, setRecords] = useState<SwimRecord[]>([]);
     const [isDownloading, setIsDownloading] = useState(false);
-    const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
+    const [selectedEventIdForPrint, setSelectedEventIdForPrint] = useState<string>('all');
 
     const eventsWithResults = useMemo(() => events.filter(e => e.results && e.results.length > 0), [events]);
     
     useEffect(() => {
         getRecords().then(setRecords);
     }, []);
-
-    useEffect(() => {
-        if (activeTab === 'eventResults') {
-            setSelectedEventIds(new Set(eventsWithResults.map(e => e.id)));
-        }
-    }, [activeTab, eventsWithResults]);
 
     const brokenRecords = useMemo(() => {
         if (!records.length || !events.length || !swimmers.length) return [];
@@ -904,21 +898,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
          // Deduplicate
         return [...new Map(calculated.map(item => [item.record.id, item])).values()];
     }, [events, swimmers, records]);
-
-    const handleEventSelectionChange = (eventId: string) => {
-        setSelectedEventIds(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(eventId)) {
-                newSet.delete(eventId);
-            } else {
-                newSet.add(eventId);
-            }
-            return newSet;
-        });
-    };
-
-    const handleSelectAll = () => setSelectedEventIds(new Set(eventsWithResults.map(e => e.id)));
-    const handleDeselectAll = () => setSelectedEventIds(new Set());
     
     // --- EXCEL DOWNLOAD LOGIC ---
     const getExcelHeaderAOA = (reportTitle: string, numCols: number): { aoa: any[][], merges: any[], currentRow: number } => {
@@ -1053,7 +1032,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         const merges: any[] = headerInfo.merges;
         let currentRow = headerInfo.currentRow;
 
-        const sortedEvents = events.filter(e => selectedEventIds.has(e.id) && e.results && e.results.length > 0)
+        const sortedEvents = events.filter(e => e.results && e.results.length > 0)
             .sort((a,b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
 
         sortedEvents.forEach(event => {
@@ -1348,7 +1327,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         switch (activeTab) {
             case 'programBook': return <ProgramBook events={events} swimmers={swimmers} info={competitionInfo} records={records} />;
             case 'eventResults': {
-                const filteredEvents = eventsWithResults.filter(e => selectedEventIds.has(e.id));
+                const filteredEvents = selectedEventIdForPrint === 'all'
+                    ? eventsWithResults
+                    : eventsWithResults.filter(e => e.id === selectedEventIdForPrint);
                 const filteredBrokenRecords = brokenRecords.filter(br => 
                     filteredEvents.some(fe => formatEventName(fe) === br.newEventName)
                 );
@@ -1399,29 +1380,22 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     </div>
                     {activeTab === 'eventResults' && eventsWithResults.length > 0 && (
                         <div className="p-4 border-b border-border">
-                            <div className="flex justify-between items-center mb-2">
-                                <h4 className="font-semibold text-text-primary">Pilih Nomor Lomba untuk Dicetak</h4>
-                                <div className="flex space-x-2">
-                                    <Button onClick={handleSelectAll} variant="secondary" className="text-xs px-2 py-1">Pilih Semua</Button>
-                                    <Button onClick={handleDeselectAll} variant="secondary" className="text-xs px-2 py-1">Hapus Pilihan</Button>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2 max-h-40 overflow-y-auto p-2 bg-background rounded">
+                            <label htmlFor="event-print-select" className="block text-sm font-medium text-text-secondary mb-1">
+                                Pilih Nomor Lomba untuk Dicetak
+                            </label>
+                            <select
+                                id="event-print-select"
+                                value={selectedEventIdForPrint}
+                                onChange={(e) => setSelectedEventIdForPrint(e.target.value)}
+                                className="w-full bg-background border border-border rounded-md px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                            >
+                                <option value="all">Semua Nomor Lomba</option>
                                 {eventsWithResults.map(event => (
-                                    <div key={event.id} className="flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            id={`print-select-${event.id}`}
-                                            checked={selectedEventIds.has(event.id)}
-                                            onChange={() => handleEventSelectionChange(event.id)}
-                                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                        />
-                                        <label htmlFor={`print-select-${event.id}`} className="ml-2 text-sm text-text-secondary truncate cursor-pointer">
-                                            {formatEventName(event)}
-                                        </label>
-                                    </div>
+                                    <option key={event.id} value={event.id}>
+                                        {formatEventName(event)}
+                                    </option>
                                 ))}
-                            </div>
+                            </select>
                         </div>
                     )}
                 </Card>
