@@ -239,8 +239,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
                      {individualMedals.length > 0 ? (
                         <div className="overflow-y-auto max-h-96">
                             <table className="w-full text-left">
-                                <thead><tr className="border-b-2 border-border"><th className="p-2 w-12 text-center">#</th><th className="p-2">Nama</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
-                                <tbody>{individualMedals.map((data, index) => (<tr key={data.swimmer.id} className="border-b border-border last:border-b-0 hover:bg-background"><td className="p-2 text-center font-bold">{index + 1}</td><td className="p-2 font-semibold">{data.swimmer.name}<p className="text-xs text-text-secondary font-normal">{data.swimmer.club}</p></td><td className="p-2 text-center">{data.gold}</td><td className="p-2 text-center">{data.silver}</td><td className="p-2 text-center">{data.bronze}</td></tr>))}</tbody>
+                                <thead><tr className="border-b-2 border-border"><th className="p-2 w-12 text-center">#</th><th className="p-2">Nama</th><th className="p-2">Klub</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
+                                <tbody>{individualMedals.map((data, index) => (<tr key={data.swimmer.id} className="border-b border-border last:border-b-0 hover:bg-background"><td className="p-2 text-center font-bold">{index + 1}</td><td className="p-2 font-semibold">{data.swimmer.name}</td><td className="p-2 text-text-secondary">{data.swimmer.club}</td><td className="p-2 text-center">{data.gold}</td><td className="p-2 text-center">{data.silver}</td><td className="p-2 text-center">{data.bronze}</td></tr>))}</tbody>
                             </table>
                         </div>
                     ) : <p className="text-text-secondary text-center py-4">Belum ada medali yang diraih.</p>}
