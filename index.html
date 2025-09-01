@@ -176,7 +176,6 @@
           max-width: 100% !important;
           margin: 0 !important;
           padding: 0 !important;
-          background-color: #ffffff !important; /* Force white surface for content */
         }
         
         /* Ensure page breaks work correctly for long reports */
@@ -188,9 +187,15 @@
         }
         
         /* --- START: High-Contrast Print Styles --- */
-        /* This section overrides theme colors for a classic black-on-white printout, ensuring readability. The layout and content order from the preview are preserved. */
+        /* This section overrides all theme colors for a classic black-on-white printout, ensuring readability in both light and dark modes. */
         
-        /* Force all text to be black and backgrounds to be transparent, inheriting from the body's white background. */
+        /* Set base print colors for the content area. */
+        .print-preview-content {
+            color: #000000 !important;
+            background-color: #ffffff !important;
+        }
+
+        /* Force all child elements to have black text and transparent backgrounds. This creates a solid baseline. */
         .print-preview-content * {
             color: #000000 !important;
             background-color: transparent !important;
@@ -198,10 +203,13 @@
             box-shadow: none !important;
         }
         
-        /* Ensure table headers have a light gray background for distinction and visible borders. */
+        /* Ensure table headers have a light gray background for distinction and black text. */
         .print-preview-content th {
             background-color: #f0f0f0 !important;
+            color: #000000 !important;
         }
+
+        /* Set a standard, visible border color for all table cells. */
         .print-preview-content th,
         .print-preview-content td {
             border-color: #cccccc !important;
@@ -212,6 +220,13 @@
             border: 1px solid #000 !important;
             color: #000 !important;
             background-color: #fff !important;
+        }
+        
+        /* Override Tailwind's hardcoded background colors that might persist. */
+        .print-preview-content .bg-gray-100,
+        .print-preview-content .bg-gray-200,
+        .print-preview-content .bg-background {
+            background-color: transparent !important;
         }
         /* --- END: High-Contrast Print Styles --- */
       }
