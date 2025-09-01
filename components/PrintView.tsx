@@ -523,74 +523,84 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
             <main>
                 <section>
                     <h3 className="text-2xl font-bold text-center mb-4">Klasemen Perorangan Putra</h3>
-                    {processedData.maleGroups.map((group, groupIndex) => {
-                        if (group.length > 1) {
-                            tieBreakerAnalyses.push(<TieBreakerAnalysisTable key={`male-tie-${groupIndex}`} tiedAthletes={group} rankStart={maleRankCounter} />);
-                        }
-                        return (
-                            <table key={groupIndex} className="w-full text-left text-sm mb-4">
-                                <colgroup><col style={{ width: '10%' }} /><col style={{ width: '35%' }} /><col style={{ width: '30%' }} /><col style={{ width: '8%' }} /><col style={{ width: '8%' }} /><col style={{ width: '8%' }} /></colgroup>
-                                <thead>
-                                    <tr>
-                                        <th className="p-2 text-center">#</th>
-                                        <th className="p-2">Nama Atlet</th>
-                                        <th className="p-2">Team/Klub</th>
-                                        <th className="p-2 text-center">🥇</th>
-                                        <th className="p-2 text-center">🥈</th>
-                                        <th className="p-2 text-center">🥉</th>
+                    <table className="w-full text-left text-sm">
+                        <colgroup>
+                            <col style={{ width: '10%' }} />
+                            <col style={{ width: '35%' }} />
+                            <col style={{ width: '30%' }} />
+                            <col style={{ width: '8%' }} />
+                            <col style={{ width: '8%' }} />
+                            <col style={{ width: '8%' }} />
+                        </colgroup>
+                        <thead>
+                            <tr className="border-b border-gray-300">
+                                <th className="p-2 text-center">#</th>
+                                <th className="p-2">Nama Atlet</th>
+                                <th className="p-2">Team/Klub</th>
+                                <th className="p-2 text-center">🥇</th>
+                                <th className="p-2 text-center">🥈</th>
+                                <th className="p-2 text-center">🥉</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {processedData.maleGroups.map((group) => {
+                                if (group.length > 1) {
+                                    tieBreakerAnalyses.push(<TieBreakerAnalysisTable key={`male-tie-${maleRankCounter}`} tiedAthletes={group} rankStart={maleRankCounter} />);
+                                }
+                                return group.map(d => (
+                                    <tr key={d.swimmer.id} className="border-b border-gray-200 last:border-b-0">
+                                        <td className="p-2 text-center font-bold">{maleRankCounter++}</td>
+                                        <td className="p-2 font-semibold">{d.swimmer.name}</td>
+                                        <td className="p-2">{d.swimmer.club}</td>
+                                        <td className="p-2 text-center">{d.gold}</td>
+                                        <td className="p-2 text-center">{d.silver}</td>
+                                        <td className="p-2 text-center">{d.bronze}</td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {group.map(d => (
-                                        <tr key={d.swimmer.id} className="border-b border-gray-200 last:border-b-0">
-                                            <td className="p-2 text-center font-bold">{maleRankCounter++}</td>
-                                            <td className="p-2 font-semibold">{d.swimmer.name}</td>
-                                            <td className="p-2">{d.swimmer.club}</td>
-                                            <td className="p-2 text-center">{d.gold}</td>
-                                            <td className="p-2 text-center">{d.silver}</td>
-                                            <td className="p-2 text-center">{d.bronze}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        );
-                    })}
+                                ));
+                            })}
+                        </tbody>
+                    </table>
                     {processedData.maleGroups.length === 0 && <p className="text-center text-gray-500 pt-4">Tidak ada data.</p>}
                 </section>
                 <section className="page-break">
-                    <h3 className="text-2xl font-bold text-center mb-4">Klasemen Perorangan Putri</h3>
-                    {processedData.femaleGroups.map((group, groupIndex) => {
-                         if (group.length > 1) {
-                            tieBreakerAnalyses.push(<TieBreakerAnalysisTable key={`female-tie-${groupIndex}`} tiedAthletes={group} rankStart={femaleRankCounter} />);
-                        }
-                        return (
-                            <table key={groupIndex} className="w-full text-left text-sm mb-4">
-                                <colgroup><col style={{ width: '10%' }} /><col style={{ width: '35%' }} /><col style={{ width: '30%' }} /><col style={{ width: '8%' }} /><col style={{ width: '8%' }} /><col style={{ width: '8%' }} /></colgroup>
-                                <thead>
-                                    <tr>
-                                        <th className="p-2 text-center">#</th>
-                                        <th className="p-2">Nama Atlet</th>
-                                        <th className="p-2">Team/Klub</th>
-                                        <th className="p-2 text-center">🥇</th>
-                                        <th className="p-2 text-center">🥈</th>
-                                        <th className="p-2 text-center">🥉</th>
+                    <h3 className="text-2xl font-bold text-center my-4">Klasemen Perorangan Putri</h3>
+                     <table className="w-full text-left text-sm">
+                        <colgroup>
+                            <col style={{ width: '10%' }} />
+                            <col style={{ width: '35%' }} />
+                            <col style={{ width: '30%' }} />
+                            <col style={{ width: '8%' }} />
+                            <col style={{ width: '8%' }} />
+                            <col style={{ width: '8%' }} />
+                        </colgroup>
+                        <thead>
+                            <tr className="border-b border-gray-300">
+                                <th className="p-2 text-center">#</th>
+                                <th className="p-2">Nama Atlet</th>
+                                <th className="p-2">Team/Klub</th>
+                                <th className="p-2 text-center">🥇</th>
+                                <th className="p-2 text-center">🥈</th>
+                                <th className="p-2 text-center">🥉</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {processedData.femaleGroups.map((group) => {
+                                 if (group.length > 1) {
+                                    tieBreakerAnalyses.push(<TieBreakerAnalysisTable key={`female-tie-${femaleRankCounter}`} tiedAthletes={group} rankStart={femaleRankCounter} />);
+                                }
+                                return group.map(d => (
+                                    <tr key={d.swimmer.id} className="border-b border-gray-200 last:border-b-0">
+                                        <td className="p-2 text-center font-bold">{femaleRankCounter++}</td>
+                                        <td className="p-2 font-semibold">{d.swimmer.name}</td>
+                                        <td className="p-2">{d.swimmer.club}</td>
+                                        <td className="p-2 text-center">{d.gold}</td>
+                                        <td className="p-2 text-center">{d.silver}</td>
+                                        <td className="p-2 text-center">{d.bronze}</td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {group.map(d => (
-                                        <tr key={d.swimmer.id} className="border-b border-gray-200 last:border-b-0">
-                                            <td className="p-2 text-center font-bold">{femaleRankCounter++}</td>
-                                            <td className="p-2 font-semibold">{d.swimmer.name}</td>
-                                            <td className="p-2">{d.swimmer.club}</td>
-                                            <td className="p-2 text-center">{d.gold}</td>
-                                            <td className="p-2 text-center">{d.silver}</td>
-                                            <td className="p-2 text-center">{d.bronze}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        );
-                    })}
+                                ));
+                            })}
+                        </tbody>
+                    </table>
                    {processedData.femaleGroups.length === 0 && <p className="text-center text-gray-500 pt-4">Tidak ada data.</p>}
                 </section>
             </main>
