@@ -649,9 +649,9 @@ const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
     return (
         <main>
             {data.map(([categoryKey, categoryEvents]) => (
-                <section key={categoryKey} className="page-break print-event-section">
+                <section key={categoryKey} className="print-event-section">
                     <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md text-center">{categoryKey}</h3>
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         {categoryEvents.sort((a,b) => formatEventName(a).localeCompare(formatEventName(b))).map(event => (
                             <div key={event.id}>
                                 <h4 className="text-lg font-semibold">{formatEventName(event)}</h4>
