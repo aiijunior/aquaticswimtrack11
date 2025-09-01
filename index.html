@@ -146,6 +146,46 @@
       }
       .record-badge.porprov { background-color: #3b82f6; } /* Blue-500 */
       .record-badge.nasional { background-color: #ef4444; } /* Red-500 */
+
+      /* PDF & Print Specific Styles */
+      @media print {
+        /* Hide elements marked with no-print class */
+        .no-print {
+          display: none !important;
+        }
+
+        /* Reset body for printing */
+        body {
+          background-color: #ffffff !important;
+          margin: 0;
+          padding: 0;
+        }
+
+        /* Ensure main content container has no extra space */
+        main {
+          padding: 0 !important;
+          overflow: visible !important;
+        }
+
+        /* Make the preview content fill the entire page */
+        .print-preview-content {
+          box-shadow: none !important;
+          border: none !important;
+          border-radius: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        
+        /* Ensure page breaks work correctly for long reports */
+        .page-break {
+            page-break-before: always;
+        }
+        .print-event-section {
+            page-break-inside: avoid;
+        }
+      }
     </style>
     <script>
       tailwind.config = {

@@ -1382,6 +1382,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                          <Button onClick={handleDownloadExcel} disabled={isLoading || isDownloading} variant="secondary">
                             {isDownloading ? <Spinner /> : 'Unduh Excel'}
                         </Button>
+                        <Button onClick={() => window.print()} disabled={isLoading}>
+                            Unduh PDF
+                        </Button>
                     </div>
                 </div>
 
@@ -1422,15 +1425,15 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                             </div>
                         </div>
                     )}
-                    <div className="p-4 bg-background min-h-[60vh] overflow-auto">
-                        {/* This is the on-screen preview. */}
-                         <div className="print-preview-content">
-                             {competitionInfo && <ReportHeader info={competitionInfo} title={printTitle} />}
-                             {renderContent()}
-                             {competitionInfo && <ReportFooter info={competitionInfo} />}
-                        </div>
-                    </div>
                 </Card>
+            </div>
+            {/* The on-screen preview and printable content */}
+            <div className="print-preview-content-wrapper">
+                <div className="print-preview-content">
+                    {competitionInfo && <ReportHeader info={competitionInfo} title={printTitle} />}
+                    {renderContent()}
+                    {competitionInfo && <ReportFooter info={competitionInfo} />}
+                </div>
             </div>
         </div>
     );
