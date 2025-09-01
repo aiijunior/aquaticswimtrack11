@@ -154,9 +154,9 @@
           display: none !important;
         }
 
-        /* Reset body for printing */
+        /* Reset body for printing, but respect the theme's background color. */
         body {
-          background-color: #ffffff !important;
+          background-color: var(--color-background) !important;
           margin: 0;
           padding: 0;
         }
@@ -167,7 +167,7 @@
           overflow: visible !important;
         }
 
-        /* Make the preview content fill the entire page */
+        /* Make the preview content fill the entire page and remove screen-specific styling */
         .print-preview-content {
           box-shadow: none !important;
           border: none !important;
@@ -176,6 +176,7 @@
           max-width: 100% !important;
           margin: 0 !important;
           padding: 0 !important;
+          background-color: var(--color-surface) !important;
         }
         
         /* Ensure page breaks work correctly for long reports */
@@ -186,35 +187,15 @@
             page-break-inside: avoid;
         }
         
-        /* --- START: Print Color Overrides --- */
-        /* Force black text on white background for readability */
-        .print-preview-content, .print-preview-content * {
-            color: #000000 !important;
-            background-color: transparent !important;
-            text-shadow: none !important;
-            box-shadow: none !important;
-        }
-
-        body, .print-preview-content {
-          background-color: #ffffff !important;
-        }
-
-        /* Ensure table borders are visible and consistent */
-        .print-preview-content th,
-        .print-preview-content td {
-            border: 1px solid #cccccc !important;
-        }
-
-        .print-preview-content th {
-            background-color: #f2f2f2 !important; /* A very light grey for headers */
-        }
+        /* --- START: WYSIWYG Print Styles --- */
+        /* This section ensures the printed output matches the on-screen appearance, including colors and backgrounds from the current theme (light/dark). */
         
-        /* Make record badges print-friendly (border instead of background color) */
-        .print-preview-content .record-badge {
-            border: 1px solid #000000 !important;
-            padding: 0.1rem 0.4rem;
+        /* Force browser to render background colors and images */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
-        /* --- END: Print Color Overrides --- */
+        /* --- END: WYSIWYG Print Styles --- */
       }
     </style>
     <script>
