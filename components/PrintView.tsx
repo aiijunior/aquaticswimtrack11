@@ -240,7 +240,7 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                 const nasionalRecord = records.find(r => r.type.toUpperCase() === RecordType.NASIONAL.toUpperCase() && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
                 
                 return (
-                    <section key={event.id} className="print-event-section">
+                    <section key={event.id} className="print-event-section" style={{breakInside: 'avoid-page'}}>
                         <h3 className="text-xl font-semibold bg-gray-100 p-2 rounded-t-md border-b-2 border-gray-400">
                             {formatEventName(event)}
                         </h3>
@@ -520,7 +520,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
 
     return (
         <>
-            <main className="space-y-8">
+            <main className="grid grid-cols-2 gap-x-8">
                 <section>
                     <h3 className="text-xl font-bold text-center mb-2">Putra</h3>
                     {processedData.maleGroups.map((group, groupIndex) => {
@@ -572,7 +572,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
             </main>
             
             {tieBreakerAnalyses.length > 0 && (
-                <section className="mt-8 pt-4 border-t-2 border-gray-400">
+                <section className="mt-8 pt-4 border-t-2 border-gray-400 page-break">
                     <h3 className="text-2xl font-bold my-4 text-center">Detail Analisis Tie-Breaker</h3>
                     {tieBreakerAnalyses}
                 </section>
@@ -650,11 +650,11 @@ const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
     return (
         <main>
             {data.map(([categoryKey, categoryEvents]) => (
-                <section key={categoryKey} className="mb-6">
+                <section key={categoryKey} className="mb-6" style={{ pageBreakInside: 'avoid' }}>
                     <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md text-center">{categoryKey}</h3>
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                         {categoryEvents.sort((a,b) => formatEventName(a).localeCompare(formatEventName(b))).map(event => (
-                            <div key={event.id}>
+                            <div key={event.id} style={{ breakInside: 'avoid-page' }}>
                                 <h4 className="text-lg font-semibold">{formatEventName(event)}</h4>
                                 <table className="w-full text-left text-sm mt-1">
                                     <colgroup>
@@ -784,7 +784,7 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
     return (
         <main>
             {data.map(({ clubName, medals, counts }) => (
-                <section key={clubName} className="mb-8" style={{ pageBreakInside: 'avoid' }}>
+                <section key={clubName} className="mb-4" style={{ pageBreakInside: 'avoid' }}>
                      <div className="my-2 bg-gray-200 text-black p-2 rounded-md flex justify-between items-center">
                         <h3 className="text-xl font-bold">{clubName}</h3>
                         <div className="text-sm font-semibold">
