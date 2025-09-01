@@ -530,16 +530,25 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
                         return (
                             <table key={groupIndex} className="w-full text-left text-sm mb-4">
                                 <colgroup><col style={{ width: '10%' }} /><col style={{ width: '35%' }} /><col style={{ width: '30%' }} /><col style={{ width: '8%' }} /><col style={{ width: '8%' }} /><col style={{ width: '8%' }} /></colgroup>
-                                {groupIndex === 0 && <thead><tr><th className="text-center">#</th><th>Nama Atlet</th><th>Team/Klub</th><th className="text-center">🥇</th><th className="text-center">🥈</th><th className="text-center">🥉</th></tr></thead>}
+                                <thead>
+                                    <tr>
+                                        <th className="p-2 text-center">#</th>
+                                        <th className="p-2">Nama Atlet</th>
+                                        <th className="p-2">Team/Klub</th>
+                                        <th className="p-2 text-center">🥇</th>
+                                        <th className="p-2 text-center">🥈</th>
+                                        <th className="p-2 text-center">🥉</th>
+                                    </tr>
+                                </thead>
                                 <tbody>
                                     {group.map(d => (
-                                        <tr key={d.swimmer.id}>
-                                            <td className="text-center font-bold">{maleRankCounter++}</td>
-                                            <td className="font-semibold">{d.swimmer.name}</td>
-                                            <td>{d.swimmer.club}</td>
-                                            <td className="text-center">{d.gold}</td>
-                                            <td className="text-center">{d.silver}</td>
-                                            <td className="text-center">{d.bronze}</td>
+                                        <tr key={d.swimmer.id} className="border-b border-gray-200 last:border-b-0">
+                                            <td className="p-2 text-center font-bold">{maleRankCounter++}</td>
+                                            <td className="p-2 font-semibold">{d.swimmer.name}</td>
+                                            <td className="p-2">{d.swimmer.club}</td>
+                                            <td className="p-2 text-center">{d.gold}</td>
+                                            <td className="p-2 text-center">{d.silver}</td>
+                                            <td className="p-2 text-center">{d.bronze}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -557,16 +566,25 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
                         return (
                             <table key={groupIndex} className="w-full text-left text-sm mb-4">
                                 <colgroup><col style={{ width: '10%' }} /><col style={{ width: '35%' }} /><col style={{ width: '30%' }} /><col style={{ width: '8%' }} /><col style={{ width: '8%' }} /><col style={{ width: '8%' }} /></colgroup>
-                                {groupIndex === 0 && <thead><tr><th className="text-center">#</th><th>Nama Atlet</th><th>Team/Klub</th><th className="text-center">🥇</th><th className="text-center">🥈</th><th className="text-center">🥉</th></tr></thead>}
+                                <thead>
+                                    <tr>
+                                        <th className="p-2 text-center">#</th>
+                                        <th className="p-2">Nama Atlet</th>
+                                        <th className="p-2">Team/Klub</th>
+                                        <th className="p-2 text-center">🥇</th>
+                                        <th className="p-2 text-center">🥈</th>
+                                        <th className="p-2 text-center">🥉</th>
+                                    </tr>
+                                </thead>
                                 <tbody>
                                     {group.map(d => (
-                                        <tr key={d.swimmer.id}>
-                                            <td className="text-center font-bold">{femaleRankCounter++}</td>
-                                            <td className="font-semibold">{d.swimmer.name}</td>
-                                            <td>{d.swimmer.club}</td>
-                                            <td className="text-center">{d.gold}</td>
-                                            <td className="text-center">{d.silver}</td>
-                                            <td className="text-center">{d.bronze}</td>
+                                        <tr key={d.swimmer.id} className="border-b border-gray-200 last:border-b-0">
+                                            <td className="p-2 text-center font-bold">{femaleRankCounter++}</td>
+                                            <td className="p-2 font-semibold">{d.swimmer.name}</td>
+                                            <td className="p-2">{d.swimmer.club}</td>
+                                            <td className="p-2 text-center">{d.gold}</td>
+                                            <td className="p-2 text-center">{d.silver}</td>
+                                            <td className="p-2 text-center">{d.bronze}</td>
                                         </tr>
                                     ))}
                                 </tbody>
