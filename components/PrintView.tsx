@@ -520,8 +520,8 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
 
     return (
         <>
-            <main className="grid grid-cols-2 gap-8">
-                <section className="print-event-section">
+            <main className="space-y-8">
+                <section>
                     <h3 className="text-xl font-bold text-center mb-2">Putra</h3>
                     {processedData.maleGroups.map((group, groupIndex) => {
                         if (group.length > 1) {
@@ -545,7 +545,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
                     })}
                     {processedData.maleGroups.length === 0 && <p className="text-center text-gray-500 pt-4">Tidak ada data.</p>}
                 </section>
-                <section className="print-event-section">
+                <section>
                     <h3 className="text-xl font-bold text-center mb-2">Putri</h3>
                     {processedData.femaleGroups.map((group, groupIndex) => {
                          if (group.length > 1) {
@@ -572,7 +572,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
             </main>
             
             {tieBreakerAnalyses.length > 0 && (
-                <section className="mt-8 pt-4 border-t-2 border-gray-400 page-break">
+                <section className="mt-8 pt-4 border-t-2 border-gray-400">
                     <h3 className="text-2xl font-bold my-4 text-center">Detail Analisis Tie-Breaker</h3>
                     {tieBreakerAnalyses}
                 </section>
@@ -604,6 +604,7 @@ const BrokenRecordsReport: React.FC<{ brokenRecords: BrokenRecord[], info: Compe
     );
 };
 
+// FIX: Corrected the type of the `swimmers` prop from `SwimEvent[]` to `Swimmer[]`.
 const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo }> = ({ events, swimmers, info }) => {
     const data = useMemo(() => {
         const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
@@ -649,7 +650,7 @@ const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
     return (
         <main>
             {data.map(([categoryKey, categoryEvents]) => (
-                <section key={categoryKey} className="print-event-section">
+                <section key={categoryKey} className="mb-6">
                     <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md text-center">{categoryKey}</h3>
                     <div className="space-y-4">
                         {categoryEvents.sort((a,b) => formatEventName(a).localeCompare(formatEventName(b))).map(event => (
@@ -690,7 +691,7 @@ const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
     )
 };
 
-const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo, brokenRecords: BrokenRecord[] }> = ({ events, swimmers, info, brokenRecords }) => {
+const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo, brokenRecords: BrokenRecord[], selectedClub: string }> = ({ events, swimmers, info, brokenRecords, selectedClub }) => {
     type MedalInfo = {
         club: string;
         event: string;
@@ -742,7 +743,7 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
             return acc;
         }, {} as Record<string, MedalInfo[]>);
 
-        const clubData = Object.entries(groupedByClub).map(([clubName, medals]) => {
+        let clubData = Object.entries(groupedByClub).map(([clubName, medals]) => {
             const counts = medals.reduce((acc, medal) => {
                 if (medal.rank === 1) acc.gold++;
                 else if (medal.rank === 2) acc.silver++;
@@ -767,10 +768,14 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
                    b.counts.bronze - a.counts.bronze ||
                    a.clubName.localeCompare(b.clubName);
         });
+        
+        if (selectedClub !== 'all') {
+            return clubData.filter(d => d.clubName === selectedClub);
+        }
 
         return clubData;
 
-    }, [events, swimmers, brokenRecords]);
+    }, [events, swimmers, brokenRecords, selectedClub]);
 
     if (data.length === 0) {
         return <p className="text-center text-text-secondary py-10">Tidak ada data medali untuk ditampilkan.</p>;
@@ -779,7 +784,7 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
     return (
         <main>
             {data.map(({ clubName, medals, counts }) => (
-                <section key={clubName} className="print-event-section mb-8">
+                <section key={clubName} className="mb-8" style={{ pageBreakInside: 'avoid' }}>
                      <div className="my-2 bg-gray-200 text-black p-2 rounded-md flex justify-between items-center">
                         <h3 className="text-xl font-bold">{clubName}</h3>
                         <div className="text-sm font-semibold">
@@ -851,8 +856,14 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const [records, setRecords] = useState<SwimRecord[]>([]);
     const [isDownloading, setIsDownloading] = useState(false);
     const [selectedEventIdForPrint, setSelectedEventIdForPrint] = useState<string>('all');
+    const [selectedClubForRecap, setSelectedClubForRecap] = useState<string>('all');
 
     const eventsWithResults = useMemo(() => events.filter(e => e.results && e.results.length > 0), [events]);
+    
+    const uniqueClubs = useMemo(() => {
+        const clubs = new Set(swimmers.map(s => s.club));
+        return Array.from(clubs).sort();
+    }, [swimmers]);
     
     useEffect(() => {
         getRecords().then(setRecords);
@@ -1339,7 +1350,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             case 'individualStandings': return <IndividualStandings events={events} swimmers={swimmers} info={competitionInfo} records={records} />;
             case 'brokenRecords': return <BrokenRecordsReport brokenRecords={brokenRecords} info={competitionInfo} />;
             case 'rekapJuaraKategori': return <RekapJuaraPerKategori events={events} swimmers={swimmers} info={competitionInfo} />;
-            case 'clubAthleteRecap': return <ClubAthleteMedalRecap events={events} swimmers={swimmers} info={competitionInfo} brokenRecords={brokenRecords} />;
+            case 'clubAthleteRecap': return <ClubAthleteMedalRecap events={events} swimmers={swimmers} info={competitionInfo} brokenRecords={brokenRecords} selectedClub={selectedClubForRecap} />;
             default: return null;
         }
     };
@@ -1394,6 +1405,24 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                                     <option key={event.id} value={event.id}>
                                         {formatEventName(event)}
                                     </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                    {activeTab === 'clubAthleteRecap' && (
+                        <div className="p-4 border-b border-border">
+                            <label htmlFor="club-recap-select" className="block text-sm font-medium text-text-secondary mb-1">
+                                Pilih Klub
+                            </label>
+                            <select
+                                id="club-recap-select"
+                                value={selectedClubForRecap}
+                                onChange={(e) => setSelectedClubForRecap(e.target.value)}
+                                className="w-full bg-background border border-border rounded-md px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                            >
+                                <option value="all">Semua Klub</option>
+                                {uniqueClubs.map(club => (
+                                    <option key={club} value={club}>{club}</option>
                                 ))}
                             </select>
                         </div>
