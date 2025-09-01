@@ -763,7 +763,6 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
         });
 
         clubData.sort((a, b) => {
-            // FIX: Correctly access medal counts via the `counts` property.
             return b.counts.gold - a.counts.gold ||
                    b.counts.silver - a.counts.silver ||
                    b.counts.bronze - a.counts.bronze ||
@@ -906,8 +905,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
          // Deduplicate
         return [...new Map(calculated.map(item => [item.record.id, item])).values()];
     }, [events, swimmers, records]);
-
-    const handlePrint = () => window.print();
 
     const handleEventSelectionChange = (eventId: string) => {
         setSelectedEventIds(prev => {
@@ -1385,7 +1382,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                          <Button onClick={handleDownloadExcel} disabled={isLoading || isDownloading} variant="secondary">
                             {isDownloading ? <Spinner /> : 'Unduh Excel'}
                         </Button>
-                        <Button onClick={handlePrint} disabled={isLoading}>Cetak Laporan</Button>
                     </div>
                 </div>
 
@@ -1435,32 +1431,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                         </div>
                     </div>
                 </Card>
-            </div>
-            {/* This div is only visible when printing */}
-            <div className="printable-area">
-                <table className="print-table">
-                    <thead>
-                        <tr>
-                            <td>
-                                {competitionInfo && <ReportHeader info={competitionInfo} title={printTitle} />}
-                            </td>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>
-                                {renderContent()}
-                            </td>
-                        </tr>
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td>
-                                {competitionInfo && <ReportFooter info={competitionInfo} />}
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
             </div>
         </div>
     );
