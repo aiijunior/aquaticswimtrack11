@@ -240,7 +240,7 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                 const nasionalRecord = records.find(r => r.type.toUpperCase() === RecordType.NASIONAL.toUpperCase() && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
                 
                 return (
-                    <section key={event.id} className="print-event-section" style={{breakInside: 'avoid-page'}}>
+                    <section key={event.id} className="print-event-section">
                         <h3 className="text-xl font-semibold bg-gray-100 p-2 rounded-t-md border-b-2 border-gray-400">
                             {formatEventName(event)}
                         </h3>
@@ -520,78 +520,59 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
 
     return (
         <>
-            <main>
+            <main className="space-y-8">
                 <section>
-                    <h3 className="text-2xl font-bold text-center mb-4">Klasemen Perorangan Putra</h3>
-                    {processedData.maleGroups.length > 0 ? processedData.maleGroups.map((group, groupIndex) => {
+                    <h3 className="text-xl font-bold text-center mb-2">Putra</h3>
+                    {processedData.maleGroups.map((group, groupIndex) => {
                         if (group.length > 1) {
                             tieBreakerAnalyses.push(<TieBreakerAnalysisTable key={`male-tie-${groupIndex}`} tiedAthletes={group} rankStart={maleRankCounter} />);
                         }
                         return (
                             <table key={groupIndex} className="w-full text-left text-sm mb-4">
-                                <colgroup>
-                                    <col style={{ width: '5%' }} />
-                                    <col style={{ width: '35%' }} />
-                                    <col style={{ width: '30%' }} />
-                                    <col style={{ width: '10%' }} />
-                                    <col style={{ width: '10%' }} />
-                                    <col style={{ width: '10%' }} />
-                                </colgroup>
-                                {groupIndex === 0 && <thead><tr><th className="text-center">Rank</th><th>Nama Atlet</th><th>Team/Klub</th><th className="text-center">Emas</th><th className="text-center">Perak</th><th className="text-center">Perunggu</th></tr></thead>}
+                                <colgroup><col style={{ width: '10%' }} /><col style={{ width: '60%' }} /><col style={{ width: '10%' }} /><col style={{ width: '10%' }} /><col style={{ width: '10%' }} /></colgroup>
+                                {groupIndex === 0 && <thead><tr><th className="text-center">#</th><th>Nama</th><th className="text-center">🥇</th><th className="text-center">🥈</th><th className="text-center">🥉</th></tr></thead>}
                                 <tbody>
                                     {group.map(d => (
                                         <tr key={d.swimmer.id}>
                                             <td className="text-center font-bold">{maleRankCounter++}</td>
-                                            <td>{d.swimmer.name}</td>
-                                            <td>{d.swimmer.club}</td>
-                                            <td className="text-center">{d.gold}</td>
-                                            <td className="text-center">{d.silver}</td>
-                                            <td className="text-center">{d.bronze}</td>
+                                            <td><p className="font-semibold">{d.swimmer.name}</p><p className="text-xs text-gray-500">{d.swimmer.club}</p></td>
+                                            <td className="text-center">{d.gold}</td><td className="text-center">{d.silver}</td><td className="text-center">{d.bronze}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         );
-                    }) : <p className="text-center text-gray-500 pt-4">Tidak ada data.</p>}
+                    })}
+                    {processedData.maleGroups.length === 0 && <p className="text-center text-gray-500 pt-4">Tidak ada data.</p>}
                 </section>
-                
-                <section className="page-break">
-                    <h3 className="text-2xl font-bold text-center my-4">Klasemen Perorangan Putri</h3>
-                     {processedData.femaleGroups.length > 0 ? processedData.femaleGroups.map((group, groupIndex) => {
+                <section>
+                    <h3 className="text-xl font-bold text-center mb-2">Putri</h3>
+                    {processedData.femaleGroups.map((group, groupIndex) => {
                          if (group.length > 1) {
                             tieBreakerAnalyses.push(<TieBreakerAnalysisTable key={`female-tie-${groupIndex}`} tiedAthletes={group} rankStart={femaleRankCounter} />);
                         }
                         return (
                             <table key={groupIndex} className="w-full text-left text-sm mb-4">
-                                <colgroup>
-                                    <col style={{ width: '5%' }} />
-                                    <col style={{ width: '35%' }} />
-                                    <col style={{ width: '30%' }} />
-                                    <col style={{ width: '10%' }} />
-                                    <col style={{ width: '10%' }} />
-                                    <col style={{ width: '10%' }} />
-                                </colgroup>
-                                {groupIndex === 0 && <thead><tr><th className="text-center">Rank</th><th>Nama Atlet</th><th>Team/Klub</th><th className="text-center">Emas</th><th className="text-center">Perak</th><th className="text-center">Perunggu</th></tr></thead>}
+                                <colgroup><col style={{ width: '10%' }} /><col style={{ width: '60%' }} /><col style={{ width: '10%' }} /><col style={{ width: '10%' }} /><col style={{ width: '10%' }} /></colgroup>
+                                {groupIndex === 0 && <thead><tr><th className="text-center">#</th><th>Nama</th><th className="text-center">🥇</th><th className="text-center">🥈</th><th className="text-center">🥉</th></tr></thead>}
                                 <tbody>
                                     {group.map(d => (
                                         <tr key={d.swimmer.id}>
                                             <td className="text-center font-bold">{femaleRankCounter++}</td>
-                                            <td>{d.swimmer.name}</td>
-                                            <td>{d.swimmer.club}</td>
-                                            <td className="text-center">{d.gold}</td>
-                                            <td className="text-center">{d.silver}</td>
-                                            <td className="text-center">{d.bronze}</td>
+                                            <td><p className="font-semibold">{d.swimmer.name}</p><p className="text-xs text-gray-500">{d.swimmer.club}</p></td>
+                                            <td className="text-center">{d.gold}</td><td className="text-center">{d.silver}</td><td className="text-center">{d.bronze}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         );
-                    }) : <p className="text-center text-gray-500 pt-4">Tidak ada data.</p>}
+                    })}
+                   {processedData.femaleGroups.length === 0 && <p className="text-center text-gray-500 pt-4">Tidak ada data.</p>}
                 </section>
             </main>
             
             {tieBreakerAnalyses.length > 0 && (
-                <section className="mt-8 pt-4 border-t-2 border-gray-400 page-break">
+                <section className="mt-8 pt-4 border-t-2 border-gray-400">
                     <h3 className="text-2xl font-bold my-4 text-center">Detail Analisis Tie-Breaker</h3>
                     {tieBreakerAnalyses}
                 </section>
@@ -669,11 +650,11 @@ const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
     return (
         <main>
             {data.map(([categoryKey, categoryEvents]) => (
-                <section key={categoryKey} className="mb-6" style={{ pageBreakInside: 'avoid' }}>
+                <section key={categoryKey} className="mb-6">
                     <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md text-center">{categoryKey}</h3>
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                         {categoryEvents.sort((a,b) => formatEventName(a).localeCompare(formatEventName(b))).map(event => (
-                            <div key={event.id} style={{ breakInside: 'avoid-page' }}>
+                            <div key={event.id}>
                                 <h4 className="text-lg font-semibold">{formatEventName(event)}</h4>
                                 <table className="w-full text-left text-sm mt-1">
                                     <colgroup>
@@ -803,7 +784,7 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
     return (
         <main>
             {data.map(({ clubName, medals, counts }) => (
-                <section key={clubName} className="mb-4" style={{ pageBreakInside: 'avoid' }}>
+                <section key={clubName} className="mb-8" style={{ pageBreakInside: 'avoid' }}>
                      <div className="my-2 bg-gray-200 text-black p-2 rounded-md flex justify-between items-center">
                         <h3 className="text-xl font-bold">{clubName}</h3>
                         <div className="text-sm font-semibold">
