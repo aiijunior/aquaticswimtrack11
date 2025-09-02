@@ -393,7 +393,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         const listsSheetData: any[][] = [
             ["PETUNJUK PENGISIAN"],
             ["1. Isi data rekor pada sheet 'Template Rekor'."],
-            ["2. Kolom 'Tipe Rekor', 'Jarak (m)', 'Gaya', 'Jenis Kelamin', 'Waktu', 'Nama Pemegang', dan 'Tahun' wajib diisi."],
+            ["2. Kolom 'Tipe Rekor', 'Jarak (m)', 'Gaya', 'Jenis Kelamin', 'Waktu (mm:ss.SS)', 'Nama Pemegang Rekor', dan 'Tahun' wajib diisi."],
             ["3. Untuk Tipe Rekor, Gaya, dan Jenis Kelamin, mohon gunakan pilihan yang tersedia di dropdown."],
             ["4. Kolom 'Kategori' bersifat opsional. Kosongkan jika tidak ada (cth: untuk event senior/open)."],
             ["5. Kolom 'Jumlah Perenang (Estafet)' HANYA diisi untuk nomor estafet (relay), contoh: 4."],

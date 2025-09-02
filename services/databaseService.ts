@@ -651,7 +651,80 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
     
     return { success: successCount, errors };
 };
-export const processRecordUpload = async (data: any[]): Promise<{ success: number; errors: string[] }> => { throw new Error("Fungsi unggah belum didukung penuh secara offline. Sinkronkan data terlebih dahulu."); };
+export const processRecordUpload = async (data: any[]): Promise<{ success: number; errors: string[] }> => {
+    const errors: string[] = [];
+    let successCount = 0;
+
+    // As per UI, this process overwrites all existing records.
+    await deleteAllRecords();
+    
+    const styleReverseMap = new Map(Object.entries(SWIM_STYLE_TRANSLATIONS).map(([key, value]) => [value, key as SwimStyle]));
+    const genderReverseMap = new Map(Object.entries(GENDER_TRANSLATIONS).map(([key, value]) => [value, key as Gender]));
+
+    for (const [index, row] of data.entries()) {
+        const rowNum = index + 2; // Excel rows are 1-based, plus header
+
+        try {
+            // --- Field Extraction ---
+            const typeStr = row['Tipe Rekor']?.toString().trim().toUpperCase();
+            const distance = parseInt(row['Jarak (m)'], 10);
+            const styleStr = row['Gaya']?.trim();
+            const genderStr = row['Jenis Kelamin']?.trim();
+            const category = row['Kategori']?.toString().trim() || null;
+            const timeStr = row['Waktu (mm:ss.SS)']?.toString().trim();
+            const holderName = row['Nama Pemegang Rekor']?.toString().trim();
+            const yearSet = parseInt(row['Tahun'], 10);
+            const relayLegsStr = row['Jumlah Perenang (Estafet)']?.toString().trim();
+            const relayLegs = relayLegsStr ? parseInt(relayLegsStr, 10) : null;
+            const locationSet = row['Lokasi']?.toString().trim() || null;
+
+            // --- Validation ---
+            if (!typeStr || !['PORPROV', 'NASIONAL'].includes(typeStr)) throw new Error("'Tipe Rekor' harus 'PORPROV' atau 'Nasional'.");
+            if (!distance || isNaN(distance) || distance <= 0) throw new Error("'Jarak (m)' harus berupa angka positif.");
+            if (!styleStr || !styleReverseMap.has(styleStr)) throw new Error(`'Gaya' tidak valid. Gunakan salah satu dari: ${Object.values(SWIM_STYLE_TRANSLATIONS).join(', ')}.`);
+            if (!genderStr || !genderReverseMap.has(genderStr)) throw new Error(`'Jenis Kelamin' tidak valid. Gunakan salah satu dari: ${Object.values(GENDER_TRANSLATIONS).join(', ')}.`);
+            if (!timeStr) throw new Error("'Waktu (mm:ss.SS)' wajib diisi.");
+            if (!holderName) throw new Error("'Nama Pemegang Rekor' wajib diisi.");
+            if (!yearSet || isNaN(yearSet) || yearSet < 1900 || yearSet > 2100) throw new Error("'Tahun' harus berupa angka yang valid.");
+            if (relayLegs !== null && (isNaN(relayLegs) || relayLegs <= 1)) throw new Error("'Jumlah Perenang (Estafet)' harus berupa angka lebih dari 1.");
+            
+            // --- Time Parsing ---
+            const timeParts = timeStr.match(/^(\d{1,2}):(\d{2})\.(\d{2})$/);
+            if (!timeParts) throw new Error("Format 'Waktu' harus mm:ss.SS (contoh: 01:23.45).");
+            const [, min, sec, ms] = timeParts.map(Number);
+            const timeInMillis = (min * 60 * 1000) + (sec * 1000) + (ms * 10);
+
+            // --- Record Creation ---
+            const gender = genderReverseMap.get(genderStr)!;
+            const style = styleReverseMap.get(styleStr)!;
+            const type = typeStr === 'PORPROV' ? RecordType.PORPROV : RecordType.NASIONAL;
+
+            const recordId = `${type.toUpperCase()}_${gender}_${distance}_${style}` + (category ? `_${category}` : '') + (relayLegs ? `_R${relayLegs}` : '');
+            
+            const newRecord: SwimRecord = {
+                id: recordId,
+                type,
+                gender,
+                distance,
+                style,
+                time: timeInMillis,
+                holderName,
+                yearSet,
+                relayLegs,
+                category,
+                locationSet
+            };
+
+            await addOrUpdateRecord(newRecord);
+            successCount++;
+
+        } catch (error: any) {
+            errors.push(`Baris ${rowNum}: ${error.message}`);
+        }
+    }
+    
+    return { success: successCount, errors };
+};
 export const processParticipantUpload = async (data: any[]): Promise<{ newSwimmers: number; updatedSwimmers: number; errors: string[] }> => { throw new Error("Fungsi unggah belum didukung penuh secara offline. Sinkronkan data terlebih dahulu."); };
 export const processOnlineRegistration = async (
     swimmerData: Omit<Swimmer, 'id'>,
