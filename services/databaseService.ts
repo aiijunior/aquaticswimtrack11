@@ -839,12 +839,13 @@ export const processOnlineRegistration = async (
 ): Promise<{ success: boolean; message: string; swimmer: Swimmer | null }> => {
     try {
         // Step 1: Check if swimmer exists (case-insensitive search for name and club)
-        let { data: existingSwimmers, error: searchError } = await supabase
+        const { data: existingSwimmers, error: searchError } = await supabase
             .from('swimmers')
             .select('*')
             .ilike('name', swimmerData.name.trim())
             .ilike('club', swimmerData.club.trim())
-            .eq('birth_year', swimmerData.birthYear);
+            .eq('birth_year', swimmerData.birthYear)
+            .eq('gender', swimmerData.gender);
         
         if (searchError) throw searchError;
         
@@ -860,10 +861,10 @@ export const processOnlineRegistration = async (
                 .from('swimmers')
                 .insert([{
                     id: newSwimmerData.id,
-                    name: newSwimmerData.name.trim(),
-                    birth_year: newSwimmerData.birthYear,
-                    gender: newSwimmerData.gender,
-                    club: newSwimmerData.club.trim(),
+                    name: swimmerData.name.trim(),
+                    birth_year: swimmerData.birthYear,
+                    gender: swimmerData.gender,
+                    club: swimmerData.club.trim(),
                 }])
                 .select()
                 .single();
@@ -882,8 +883,6 @@ export const processOnlineRegistration = async (
         const { error: entriesError } = await supabase.from('event_entries').upsert(entriesToInsert);
         
         if (entriesError) {
-             // This could happen if they're already registered. Supabase upsert might handle it,
-             // but let's provide a clear message.
             if (entriesError.message.includes('duplicate key value violates unique constraint')) {
                  return { success: false, message: 'Gagal: Salah satu pendaftaran duplikat. Perenang mungkin sudah terdaftar di nomor lomba tersebut.', swimmer: null };
             }
