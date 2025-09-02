@@ -3,7 +3,7 @@
 import type { Swimmer, SwimEvent, Result, CompetitionInfo, EventEntry, SwimRecord, User, FormattableEvent } from '../types';
 import { supabase } from './supabaseClient';
 import { Gender, SwimStyle, RecordType } from '../types';
-import { GENDER_TRANSLATIONS, SWIM_STYLE_TRANSLATIONS, formatEventName } from '../constants';
+import { GENDER_TRANSLATIONS, SWIM_STYLE_TRANSLATIONS, formatEventName, toTitleCase } from '../constants';
 import { config } from '../config';
 import type { Database } from './database.types';
 
@@ -672,11 +672,11 @@ export const processRecordUpload = async (data: any[]): Promise<{ success: numbe
             const genderStr = row['Jenis Kelamin']?.trim();
             const category = row['Kategori']?.toString().trim() || null;
             const timeStr = row['Waktu (mm:ss.SS)']?.toString().trim();
-            const holderName = row['Nama Pemegang Rekor']?.toString().trim();
+            const holderName = toTitleCase(row['Nama Pemegang Rekor']?.toString().trim() || '');
             const yearSet = parseInt(row['Tahun'], 10);
             const relayLegsStr = row['Jumlah Perenang (Estafet)']?.toString().trim();
             const relayLegs = relayLegsStr ? parseInt(relayLegsStr, 10) : null;
-            const locationSet = row['Lokasi']?.toString().trim() || null;
+            const locationSet = toTitleCase(row['Lokasi']?.toString().trim() || '') || null;
 
             // --- Validation ---
             if (!typeStr || !['PORPROV', 'NASIONAL'].includes(typeStr)) throw new Error("'Tipe Rekor' harus 'PORPROV' atau 'Nasional'.");
@@ -748,10 +748,10 @@ export const processParticipantUpload = async (data: any[]): Promise<{ newSwimme
         const rowNum = index + 2;
 
         try {
-            const name = row['Nama Peserta']?.toString().trim();
+            const name = toTitleCase(row['Nama Peserta']?.toString().trim() || '');
             const birthYearStr = row['Tahun Lahir']?.toString().trim();
             const genderStr = row['Jenis Kelamin (L/P)']?.toString().trim().toUpperCase();
-            const club = row['Klub/Tim']?.toString().trim();
+            const club = toTitleCase(row['Klub/Tim']?.toString().trim() || '');
             const eventName = row['Nomor Lomba']?.toString().trim();
             const seedTimeStr = row['Waktu Unggulan (mm:ss.SS)']?.toString().trim();
             

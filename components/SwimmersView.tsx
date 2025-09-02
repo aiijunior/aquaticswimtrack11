@@ -7,7 +7,7 @@ import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
 import { Select } from './ui/Select';
 import { updateSwimmer, deleteSwimmer, deleteAllSwimmers, unregisterSwimmerFromEvent, updateSwimmerSeedTime, registerSwimmerToEvent, addSwimmer } from '../services/databaseService';
-import { formatEventName, formatTime } from '../constants';
+import { formatEventName, formatTime, toTitleCase } from '../constants';
 
 // --- ICONS ---
 const EditIcon = () => (
@@ -208,7 +208,13 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
   // Form Handlers
   const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setEditFormData(prev => ({...prev, [name]: name === 'birthYear' ? parseInt(value) : value}));
+    let finalValue: string | number = value;
+    if (name === 'birthYear') {
+        finalValue = parseInt(value);
+    } else if (name === 'name' || name === 'club') {
+        finalValue = toTitleCase(value);
+    }
+    setEditFormData(prev => ({...prev, [name]: finalValue}));
   };
   
   const handleUpdate = async (e: React.FormEvent) => {
@@ -245,7 +251,14 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
 
   const handleAddFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    const val = name === 'birthYear' ? parseInt(value) || 0 : value;
+    let val;
+    if (name === 'birthYear') {
+        val = parseInt(value) || 0;
+    } else if (name === 'name' || name === 'club') {
+        val = toTitleCase(value);
+    } else {
+        val = value;
+    }
     setAddFormData(prev => ({...prev, [name]: val }));
   };
   

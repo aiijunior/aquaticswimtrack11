@@ -8,7 +8,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Spinner } from './ui/Spinner';
-import { formatEventName } from '../constants';
+import { formatEventName, toTitleCase } from '../constants';
 
 interface OnlineRegistrationViewProps {
     events: SwimEvent[];
@@ -57,7 +57,15 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: name === 'birthYear' ? parseInt(value) : value }));
+        let finalValue: string | number = value;
+
+        if (name === 'birthYear') {
+            finalValue = parseInt(value);
+        } else if (name === 'name' || name === 'club') {
+            finalValue = toTitleCase(value);
+        }
+
+        setFormData(prev => ({ ...prev, [name]: finalValue }));
         setError('');
         setSuccessMessage('');
     };

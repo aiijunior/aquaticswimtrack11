@@ -70,6 +70,14 @@ export const romanize = (num: number): string => {
     return roman;
 };
 
+export const toTitleCase = (str: string): string => {
+    if (!str) return '';
+    // This regex finds words and capitalizes the first letter, lowercasing the rest.
+    return str.replace(/\w\S*/g, (txt) => {
+        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
+};
+
 export const generateHeats = (entries: Entry[], lanesPerHeat: number): Heat[] => {
     if (!entries || entries.length === 0 || lanesPerHeat <= 0) {
         return [];

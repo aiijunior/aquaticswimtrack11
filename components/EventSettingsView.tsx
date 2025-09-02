@@ -11,7 +11,7 @@ import { Spinner } from './ui/Spinner';
 import { ToggleSwitch } from './ui/ToggleSwitch';
 import { Modal } from './ui/Modal';
 import { Select } from './ui/Select';
-import { translateGender, translateSwimStyle, GENDER_TRANSLATIONS, SWIM_STYLE_TRANSLATIONS, formatEventName, formatTime } from '../constants';
+import { translateGender, translateSwimStyle, GENDER_TRANSLATIONS, SWIM_STYLE_TRANSLATIONS, formatEventName, formatTime, toTitleCase } from '../constants';
 
 declare var XLSX: any;
 
@@ -540,7 +540,10 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         const { name, value, type } = e.target;
         const isCheckbox = type === 'checkbox';
         // @ts-ignore
-        const val = isCheckbox ? e.target.checked : value;
+        let val: string | number | boolean = isCheckbox ? e.target.checked : value;
+        if (!isCheckbox && (name === 'holderName' || name === 'locationSet')) {
+            val = toTitleCase(value);
+        }
         setRecordForm(prev => ({...prev, [name]: val}));
     };
     
@@ -830,7 +833,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                             />
                             <p className="text-xs text-text-secondary mt-2">Aktifkan untuk mengizinkan peserta mendaftar melalui halaman pendaftaran publik.</p>
                         </div>
-                        <Input label="Nama Event" id="event-name" type="text" value={info.eventName} onChange={(e) => setInfo({ ...info, eventName: e.target.value })}/>
+                        <Input label="Nama Event" id="event-name" type="text" value={info.eventName} onChange={(e) => setInfo({ ...info, eventName: toTitleCase(e.target.value) })}/>
                         <Input label="Hari dan Tanggal Event" id="event-date" type="date" value={info.eventDate} onChange={(e) => setInfo({ ...info, eventDate: e.target.value })}/>
                         <Select
                             label="Jumlah Lintasan per Seri"
@@ -881,7 +884,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                                     <input 
                                        type="text" 
                                        value={sessionNames[key] || ''}
-                                       onChange={(e) => setSessionNames(prev => ({...prev, [key]: e.target.value}))}
+                                       onChange={(e) => setSessionNames(prev => ({...prev, [key]: toTitleCase(e.target.value)}))}
                                        className="font-bold text-lg bg-transparent focus:outline-none focus:ring-1 focus:ring-primary rounded px-1 w-full"
                                     />
                                     <button onClick={() => removeSession(key)} className="text-red-500 hover:text-red-400 text-xs ml-2">Hapus</button>
