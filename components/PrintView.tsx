@@ -622,7 +622,7 @@ const BrokenRecordsReport: React.FC<{ brokenRecords: BrokenRecord[], info: Compe
     return (
         <main className="space-y-4">
             {brokenRecords.map(({ record, newEventName, newHolder, newTime }, i) => (
-                <div key={i} className="page-break p-4 border border-gray-300 rounded-lg print-event-section">
+                <div key={i} className="p-4 border border-gray-300 rounded-lg print-event-section">
                     <p className="font-bold text-lg text-gray-800">{newEventName}</p>
                     <p className="font-semibold text-xl text-black">
                         {newHolder.name} ({newHolder.club}) - 
