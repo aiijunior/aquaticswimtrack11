@@ -1139,7 +1139,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                     <Card className="border-red-500/50 bg-red-500/5">
                         <h3 className="text-xl font-bold text-red-500">Zona Berbahaya</h3>
                         <p className="text-text-secondary mt-2 mb-4">
-                            Tindakan ini akan menghapus <strong className="font-bold text-red-400">SEMUA</strong> data dari kompetisi ini secara permanen dari database lokal, dan akan dijadwalkan untuk dihapus di server pada sinkronisasi berikutnya.
+                            Tindakan ini akan menghapus <strong className="font-bold text-red-400">SEMUA</strong> data dari kompetisi ini secara permanen dari database lokal dan database pusat di Supabase.
                         </p>
                         <Button variant="danger" onClick={() => setIsClearDataModalOpen(true)}>
                             Hapus Semua Data
@@ -1196,7 +1196,9 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 <form onSubmit={handleConfirmClearData}>
                     <div className="space-y-4">
                         <p className="text-lg font-bold text-red-500">PERINGATAN KERAS!</p>
-                        <p className="text-text-secondary">Anda akan menghapus semua data kompetisi. Ini termasuk:</p>
+                        <p className="text-text-secondary">
+                            Tindakan ini bersifat permanen dan akan menghapus semua data dari <strong className="text-red-500">perangkat lokal DAN database pusat (Supabase)</strong>. Ini termasuk:
+                        </p>
                         <ul className="list-disc list-inside text-red-400">
                             <li>Pengaturan Acara (akan direset)</li>
                             <li>Semua Nomor Lomba</li>

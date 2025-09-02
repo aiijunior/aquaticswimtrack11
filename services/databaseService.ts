@@ -525,14 +525,38 @@ export const restoreDatabase = async (backupData: any): Promise<void> => {
 };
 
 export const clearAllData = async (): Promise<void> => {
+    // Direct Supabase Deletions. Order is important due to foreign keys.
+    // Using a filter that matches all rows since `delete()` without a filter is disabled by default.
+    // 1. Delete data from tables that have foreign keys pointing to others.
+    const { error: resultsError } = await supabase.from('event_results').delete().neq('event_id', '00000000-0000-0000-0000-000000000000');
+    if (resultsError) throw resultsError;
+
+    const { error: entriesError } = await supabase.from('event_entries').delete().neq('event_id', '00000000-0000-0000-0000-000000000000');
+    if (entriesError) throw entriesError;
+
+    // 2. Now delete from the tables that were referenced.
+    const { error: swimmersError } = await supabase.from('swimmers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (swimmersError) throw swimmersError;
+
+    const { error: eventsError } = await supabase.from('events').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (eventsError) throw eventsError;
+
+    // 3. Delete from independent tables.
+    const { error: recordsError } = await supabase.from('records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (recordsError) throw recordsError;
+
+    // 4. Reset competition info to defaults (it has ID=1).
+    const defaultInfo = { id: 1, event_name: config.competition.defaultName, event_date: new Date().toISOString().split('T')[0], event_logo: null, sponsor_logo: null, is_registration_open: false, number_of_lanes: config.competition.defaultLanes };
+    const { error: infoError } = await supabase.from('competition_info').upsert(defaultInfo);
+    if (infoError) throw infoError;
+
+    // 5. If all remote operations were successful, clear local IndexedDB.
     await Promise.all(STORES.map(s => openDB().then(db => db.transaction(s, 'readwrite').objectStore(s).clear())));
-    const defaultInfo = { eventName: config.competition.defaultName, eventDate: new Date().toISOString().split('T')[0], eventLogo: null, sponsorLogo: null, isRegistrationOpen: false, numberOfLanes: config.competition.defaultLanes };
-    await saveLocalCompetitionInfo(defaultInfo);
-    // Queue a full clear for next sync - this needs a server-side function, for now we delete what we know.
-    await deleteAllSwimmers();
-    await deleteAllEvents();
-    await deleteAllRecords();
+
+    // 6. Save default info locally.
+    await saveLocalCompetitionInfo({ eventName: defaultInfo.event_name, eventDate: defaultInfo.event_date, eventLogo: defaultInfo.event_logo, sponsorLogo: defaultInfo.sponsor_logo, isRegistrationOpen: defaultInfo.is_registration_open, numberOfLanes: defaultInfo.number_of_lanes });
 };
+
 
 // ... (Other functions like user management and uploads remain largely unchanged as they are less critical for offline event operation)
 // ... (The original functions for process uploads, user mgmt, etc would go here, slightly modified to use local data for reads)
