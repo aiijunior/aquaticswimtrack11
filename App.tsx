@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View } from './types';
 import type { Swimmer, SwimEvent, CompetitionInfo, User } from './types';
 import { LoginView } from './components/LoginView';
@@ -15,7 +15,7 @@ import { PublicResultsView } from './components/PublicResultsView';
 import { UserManagementView } from './components/UserManagementView';
 import { OnlineRegistrationView } from './components/OnlineRegistrationView';
 import { logout, getCurrentUser } from './services/authService';
-import { getSwimmers, getEvents, getCompetitionInfo, syncWithSupabase } from './services/databaseService';
+import { getSwimmers, getEvents, getCompetitionInfo, syncWithSupabase, getPendingChangeCount } from './services/databaseService';
 import { Button } from './components/ui/Button';
 import { ThemeToggle } from './components/ui/ThemeToggle';
 import { supabase } from './services/supabaseClient';
@@ -63,7 +63,14 @@ const App: React.FC = () => {
   const [events, setEvents] = useState<SwimEvent[]>([]);
   const [competitionInfo, setCompetitionInfo] = useState<CompetitionInfo | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
+  
+  // Centralized sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [pendingChanges, setPendingChanges] = useState(0);
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'offline' | 'error'>('checking');
+  const isSyncingRef = useRef(false);
 
   // Centralized data fetching function - now reads from local DB
   const refreshData = useCallback(async () => {
@@ -79,12 +86,47 @@ const App: React.FC = () => {
       setCompetitionInfo(infoData);
     } catch (error) {
       console.error("Failed to refresh data from local DB:", error);
-      // In a real scenario, you might want to show an error to the user
     } finally {
       setIsDataLoading(false);
     }
   }, []);
   
+  const fetchPendingChanges = useCallback(async () => {
+    const count = await getPendingChangeCount();
+    setPendingChanges(count);
+  }, []);
+
+  const handleSync = useCallback(async (isSilent = false) => {
+    if (isSyncingRef.current || !navigator.onLine) return;
+
+    isSyncingRef.current = true;
+    setIsSyncing(true);
+    if (!isSilent) {
+        setSyncStatus({ message: 'Memulai sinkronisasi...', type: 'success' });
+    }
+    setConnectionStatus('checking');
+
+    const result = await syncWithSupabase();
+    
+    if (!isSilent) {
+        setSyncStatus({ message: result.message, type: result.success ? 'success' : 'error' });
+    }
+
+    if (result.success) {
+        setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
+        await refreshData();
+    }
+    
+    setConnectionStatus(result.success ? 'connected' : 'error');
+    await fetchPendingChanges();
+    setIsSyncing(false);
+    isSyncingRef.current = false;
+    
+    if (!isSilent) {
+        setTimeout(() => setSyncStatus(null), 5000);
+    }
+  }, [refreshData, fetchPendingChanges]);
+
   // Initial data load and user check
   useEffect(() => {
     const checkUserAndLoadData = async () => {
@@ -106,30 +148,26 @@ const App: React.FC = () => {
 
         await refreshData();
         setAppStatus('ready');
+
+        if (navigator.onLine && user) {
+            handleSync(true); // Initial silent sync on load if logged in
+        }
     };
 
     checkUserAndLoadData();
-  }, [refreshData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshData, handleSync]);
 
   // Real-time data subscription
   useEffect(() => {
-    const handleSyncAndRefresh = () => {
-        console.log('Change detected or connection restored. Triggering sync.');
-        syncWithSupabase().then(result => {
-            console.log('Sync result:', result.message);
-            refreshData(); // Refresh UI from local DB after sync
-            setConnectionStatus(result.success ? 'connected' : 'error');
-        });
-    };
-
     const channel = supabase
       .channel('schema-db-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public' },
         (payload) => {
-            console.log('Realtime change received!', payload);
-            handleSyncAndRefresh();
+            console.log('Realtime change received! Triggering silent sync.', payload);
+            handleSync(true);
         }
       )
       .subscribe();
@@ -137,20 +175,12 @@ const App: React.FC = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refreshData]);
+  }, [handleSync]);
   
   // Network status listener
   useEffect(() => {
     const handleOnline = () => {
-        setConnectionStatus('checking');
-        // A short delay to allow network to stabilize before syncing
-        setTimeout(() => {
-             syncWithSupabase().then(result => {
-                console.log('Sync result after coming online:', result.message);
-                refreshData();
-                setConnectionStatus(result.success ? 'connected' : 'error');
-            });
-        }, 3000);
+        handleSync(true);
     };
     const handleOffline = () => setConnectionStatus('offline');
 
@@ -167,16 +197,21 @@ const App: React.FC = () => {
         window.removeEventListener('online', handleOnline);
         window.removeEventListener('offline', handleOffline);
     };
-  }, [refreshData]);
+  }, [handleSync]);
 
+  // Polling for pending changes
+  useEffect(() => {
+    fetchPendingChanges();
+    const interval = setInterval(fetchPendingChanges, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
+  }, [fetchPendingChanges]);
 
   const handleLogin = () => {
     const user = getCurrentUser();
     setCurrentUser(user);
     if(user){
       setCurrentView(View.ADMIN_DASHBOARD);
-      // Trigger a sync on login to get latest data
-      syncWithSupabase().then(() => refreshData());
+      handleSync(true); // Trigger a silent sync on login to get latest data
     }
   };
 
@@ -271,7 +306,16 @@ const App: React.FC = () => {
       case View.ADMIN_DASHBOARD:
         return <AdminDashboard swimmers={swimmers} events={events} competitionInfo={competitionInfo} isLoading={isLoading} />;
       case View.EVENT_SETTINGS:
-        return <EventSettingsView competitionInfo={competitionInfo} events={events} onDataUpdate={refreshData} />;
+        return <EventSettingsView 
+            competitionInfo={competitionInfo} 
+            events={events} 
+            onDataUpdate={refreshData} 
+            isSyncing={isSyncing}
+            syncStatus={syncStatus}
+            lastSyncTime={lastSyncTime ?? 'Belum pernah'}
+            pendingChanges={pendingChanges}
+            onManualSync={() => handleSync(false)}
+        />;
       case View.RACES:
         return <EventsView events={events} isLoading={isLoading} onSelectEvent={handleSelectEvent} onStartTiming={handleStartTiming} onDataUpdate={refreshData} />;
       case View.PARTICIPANTS:

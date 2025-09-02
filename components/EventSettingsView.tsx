@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getRecords, processRecordUpload, updateCompetitionInfo, updateEventSchedule, addOrUpdateRecord, deleteRecord, backupDatabase, clearAllData, restoreDatabase, deleteAllRecords, syncWithSupabase, getPendingChangeCount } from '../services/databaseService';
+import { getRecords, processRecordUpload, updateCompetitionInfo, updateEventSchedule, addOrUpdateRecord, deleteRecord, backupDatabase, clearAllData, restoreDatabase, deleteAllRecords } from '../services/databaseService';
 import { login } from '../services/authService';
 import type { CompetitionInfo, SwimEvent, SwimRecord } from '../types';
 import { RecordType, SwimStyle, Gender } from '../types';
@@ -19,6 +19,12 @@ interface EventSettingsViewProps {
     competitionInfo: CompetitionInfo | null;
     events: SwimEvent[];
     onDataUpdate: () => void;
+    // Props for centralized sync
+    isSyncing: boolean;
+    syncStatus: { message: string; type: 'success' | 'error' } | null;
+    lastSyncTime: string;
+    pendingChanges: number;
+    onManualSync: () => void;
 }
 
 const EditIcon = () => (
@@ -89,7 +95,7 @@ const initialRecordFormState = {
 };
 
 // --- Main Component ---
-export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitionInfo, events, onDataUpdate }) => {
+export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitionInfo, events, onDataUpdate, isSyncing, syncStatus, lastSyncTime, pendingChanges, onManualSync }) => {
     // --- Helper Functions ---
     const romanize = (num: number): string => {
         if (isNaN(num) || num <= 0) return '';
@@ -117,7 +123,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     const [schedule, setSchedule] = useState<{ [key: string]: SwimEvent[] }>({});
     const [sessionNames, setSessionNames] = useState<{ [key: string]: string }>({});
     const [sessionDetails, setSessionDetails] = useState<{ [key: string]: { date: string; time: string } }>({});
-    const [status, setStatus] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+    const [formStatus, setFormStatus] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
     const [unscheduledSearchQuery, setUnscheduledSearchQuery] = useState('');
 
     // Record states
@@ -151,12 +157,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     const [restoreFile, setRestoreFile] = useState<File | null>(null);
     const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
     const [isRestoring, setIsRestoring] = useState(false);
-
-    // Sync states
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [pendingChanges, setPendingChanges] = useState(0);
-    const [lastSyncTime, setLastSyncTime] = useState<string>('Belum pernah');
-
 
     useEffect(() => {
         setInfo(competitionInfo);
@@ -195,17 +195,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         setSessionDetails(newSessionDetails);
     }, [events]);
     
-    const fetchPendingChanges = async () => {
-        const count = await getPendingChangeCount();
-        setPendingChanges(count);
-    };
-
-    useEffect(() => {
-        fetchPendingChanges();
-        const interval = setInterval(fetchPendingChanges, 5000); // Poll every 5 seconds
-        return () => clearInterval(interval);
-    }, []);
-
     const fetchRecords = async () => {
         setIsRecordsLoading(true);
         getRecords().then(data => {
@@ -224,19 +213,19 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     // --- Handlers ---
     const handleSaveInfo = async () => {
         if (!info) return;
-        setStatus({ message: 'Menyimpan perubahan lokal...', type: 'success' });
+        setFormStatus({ message: 'Menyimpan perubahan lokal...', type: 'success' });
         try {
             await updateCompetitionInfo(info);
             onDataUpdate();
-            setStatus({ message: 'Pengaturan umum berhasil disimpan secara lokal!', type: 'success' });
-            setTimeout(() => setStatus(null), 4000);
+            setFormStatus({ message: 'Pengaturan umum berhasil disimpan secara lokal!', type: 'success' });
+            setTimeout(() => setFormStatus(null), 4000);
         } catch (error) {
-             setStatus({ message: `Gagal menyimpan: ${getErrorMessage(error)}`, type: 'error' });
+             setFormStatus({ message: `Gagal menyimpan: ${getErrorMessage(error)}`, type: 'error' });
         }
     };
     
     const handleSaveSchedule = async () => {
-        setStatus({ message: 'Menyimpan jadwal lokal...', type: 'success' });
+        setFormStatus({ message: 'Menyimpan jadwal lokal...', type: 'success' });
         try {
             const finalEvents: SwimEvent[] = [];
             Object.keys(schedule).forEach(key => {
@@ -264,11 +253,11 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             
             await updateEventSchedule(finalEvents);
             onDataUpdate();
-            setStatus({ message: 'Jadwal berhasil disimpan secara lokal!', type: 'success' });
-            setTimeout(() => setStatus(null), 4000);
+            setFormStatus({ message: 'Jadwal berhasil disimpan secara lokal!', type: 'success' });
+            setTimeout(() => setFormStatus(null), 4000);
         } catch (error) {
             console.error("Gagal menyimpan jadwal:", error);
-            setStatus({ message: `Gagal menyimpan jadwal: ${getErrorMessage(error)}`, type: 'error' });
+            setFormStatus({ message: `Gagal menyimpan jadwal: ${getErrorMessage(error)}`, type: 'error' });
         }
     };
 
@@ -369,8 +358,8 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                     onDataUpdate(); 
                     fetchRecords();
                     setRecordFile(null);
-                    setStatus({ message: 'Data rekor berhasil diperbarui via unggahan!', type: 'success' });
-                    setTimeout(() => setStatus(null), 4000);
+                    setFormStatus({ message: 'Data rekor berhasil diperbarui via unggahan!', type: 'success' });
+                    setTimeout(() => setFormStatus(null), 4000);
                 }
             } catch (error) {
                 setUploadResult({ success: 0, errors: ['Gagal membaca atau memproses file.', getErrorMessage(error)] });
@@ -589,10 +578,10 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             setRecordToDelete(null);
             fetchRecords();
             onDataUpdate();
-            setStatus({ message: 'Rekor berhasil dihapus.', type: 'success' });
-            setTimeout(() => setStatus(null), 4000);
+            setFormStatus({ message: 'Rekor berhasil dihapus.', type: 'success' });
+            setTimeout(() => setFormStatus(null), 4000);
         } catch (error) {
-             setStatus({ message: `Gagal menghapus rekor: ${getErrorMessage(error)}`, type: 'error' });
+             setFormStatus({ message: `Gagal menghapus rekor: ${getErrorMessage(error)}`, type: 'error' });
         }
     };
 
@@ -602,10 +591,10 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             setIsDeleteAllRecordsModalOpen(false);
             fetchRecords(); // Refresh the list
             onDataUpdate(); // Refresh global data
-            setStatus({ message: 'Semua rekor berhasil dihapus.', type: 'success' });
-            setTimeout(() => setStatus(null), 4000);
+            setFormStatus({ message: 'Semua rekor berhasil dihapus.', type: 'success' });
+            setTimeout(() => setFormStatus(null), 4000);
         } catch (error) {
-            setStatus({ message: `Gagal menghapus semua rekor: ${getErrorMessage(error)}`, type: 'error' });
+            setFormStatus({ message: `Gagal menghapus semua rekor: ${getErrorMessage(error)}`, type: 'error' });
         }
     };
 
@@ -636,10 +625,10 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             handleCancelEdit();
             fetchRecords();
             onDataUpdate();
-            setStatus({ message: `Rekor berhasil ${editingRecord ? 'diperbarui' : 'ditambahkan'}.`, type: 'success' });
-            setTimeout(() => setStatus(null), 4000);
+            setFormStatus({ message: `Rekor berhasil ${editingRecord ? 'diperbarui' : 'ditambahkan'}.`, type: 'success' });
+            setTimeout(() => setFormStatus(null), 4000);
         } catch (error) {
-            setStatus({ message: `Gagal menyimpan rekor: ${getErrorMessage(error)}`, type: 'error' });
+            setFormStatus({ message: `Gagal menyimpan rekor: ${getErrorMessage(error)}`, type: 'error' });
         }
     };
 
@@ -704,7 +693,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     // --- Data Management Handlers ---
     const handleBackup = async () => {
         setIsBackupLoading(true);
-        setStatus({ message: 'Membuat file backup...', type: 'success' });
+        setFormStatus({ message: 'Membuat file backup...', type: 'success' });
         try {
             const data = await backupDatabase();
             const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, 2))}`;
@@ -712,12 +701,12 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             link.href = jsonString;
             link.download = `swimcomp-backup-${new Date().toISOString().split('T')[0]}.json`;
             link.click();
-            setStatus({ message: 'Backup berhasil diunduh.', type: 'success' });
+            setFormStatus({ message: 'Backup berhasil diunduh.', type: 'success' });
         } catch (error) {
-            setStatus({ message: `Gagal membuat backup: ${getErrorMessage(error)}`, type: 'error' });
+            setFormStatus({ message: `Gagal membuat backup: ${getErrorMessage(error)}`, type: 'error' });
         } finally {
             setIsBackupLoading(false);
-            setTimeout(() => setStatus(null), 4000);
+            setTimeout(() => setFormStatus(null), 4000);
         }
     };
 
@@ -734,8 +723,8 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 setIsClearDataModalOpen(false);
                 setClearDataCredentials({ email: '', password: '' });
                 onDataUpdate(); // Refresh everything
-                setStatus({ message: 'Semua data kompetisi telah berhasil dihapus.', type: 'success' });
-                setTimeout(() => setStatus(null), 5000);
+                setFormStatus({ message: 'Semua data kompetisi telah berhasil dihapus.', type: 'success' });
+                setTimeout(() => setFormStatus(null), 5000);
             } else {
                 // This case shouldn't happen if login throws on failure, but as a fallback.
                 setClearDataError('Kredensial tidak valid.');
@@ -751,9 +740,9 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         if (e.target.files && e.target.files[0]) {
             if (e.target.files[0].type === 'application/json') {
                 setRestoreFile(e.target.files[0]);
-                setStatus(null);
+                setFormStatus(null);
             } else {
-                setStatus({ message: 'Harap pilih file backup .json yang valid.', type: 'error' });
+                setFormStatus({ message: 'Harap pilih file backup .json yang valid.', type: 'error' });
                 setRestoreFile(null);
                 (e.target as HTMLInputElement).value = '';
             }
@@ -764,7 +753,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         if (!restoreFile) return;
 
         setIsRestoring(true);
-        setStatus({ message: 'Memulihkan data dari backup...', type: 'success' });
+        setFormStatus({ message: 'Memulihkan data dari backup...', type: 'success' });
 
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -773,10 +762,10 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 const data = JSON.parse(content);
                 await restoreDatabase(data); 
 
-                setStatus({ message: 'Data berhasil dipulihkan dari backup!', type: 'success' });
+                setFormStatus({ message: 'Data berhasil dipulihkan dari backup!', type: 'success' });
                 onDataUpdate();
             } catch (error) {
-                setStatus({ message: `Gagal memulihkan: ${getErrorMessage(error)}`, type: 'error' });
+                setFormStatus({ message: `Gagal memulihkan: ${getErrorMessage(error)}`, type: 'error' });
             } finally {
                 setIsRestoring(false);
                 setIsRestoreModalOpen(false);
@@ -788,23 +777,12 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         };
         reader.readAsText(restoreFile);
     };
-    
-    const handleSync = async () => {
-        setIsSyncing(true);
-        setStatus({ message: 'Memulai sinkronisasi...', type: 'success' });
-        const result = await syncWithSupabase();
-        setStatus({ message: result.message, type: result.success ? 'success' : 'error' });
-        if (result.success) {
-            setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
-            onDataUpdate();
-        }
-        setIsSyncing(false);
-        setTimeout(() => setStatus(null), 5000);
-    };
 
     // --- Render Logic ---
     if (!info) return <div className="flex justify-center items-center h-full"><Spinner /></div>;
     
+    const displayStatus = syncStatus || formStatus;
+
     const renderTabs = () => (
         <div className="flex border-b border-border mb-6 no-print">
             <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 -mb-px border-b-2 ${activeTab === 'settings' ? 'border-primary text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'}`}>Pengaturan Umum</button>
@@ -817,7 +795,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     return (
         <div>
             <h1 className="text-3xl font-bold mb-2">Pengaturan Acara & Jadwal</h1>
-            {status && <p className={`${status.type === 'success' ? 'text-green-500' : 'text-red-500'} text-sm mb-4 font-semibold`}>{status.message}</p>}
+            {displayStatus && <p className={`${displayStatus.type === 'success' ? 'text-green-500' : 'text-red-500'} text-sm mb-4 font-semibold`}>{displayStatus.message}</p>}
             {renderTabs()}
 
             {activeTab === 'settings' && (
@@ -1107,14 +1085,14 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                         <Card className="mb-6">
                             <h3 className="text-xl font-bold">Sinkronisasi Data</h3>
                             <p className="text-text-secondary mt-2 mb-4">
-                                Simpan perubahan lokal Anda ke server pusat dan dapatkan pembaruan terbaru. Lakukan sinkronisasi secara berkala saat terhubung ke internet.
+                                Aplikasi ini akan sinkronisasi secara otomatis saat terhubung ke internet. Gunakan tombol ini untuk memicu sinkronisasi secara manual.
                             </p>
                             <div className="flex items-center space-x-4">
-                                <Button onClick={handleSync} disabled={isSyncing}>
+                                <Button onClick={onManualSync} disabled={isSyncing}>
                                     {isSyncing ? <Spinner /> : `Sinkronkan Sekarang`}
                                 </Button>
                                 <div className="text-sm text-text-secondary">
-                                    <p>{pendingChanges > 0 ? `${pendingChanges} Perubahan menunggu untuk disinkronkan` : "Data Anda sudah sinkron."}</p>
+                                    <p>{pendingChanges > 0 ? `${pendingChanges} Perubahan menunggu untuk disinkronkan` : "Data lokal sudah yang terbaru."}</p>
                                     <p>Terakhir sinkronisasi: <span className="font-semibold">{lastSyncTime}</span></p>
                                 </div>
                             </div>
