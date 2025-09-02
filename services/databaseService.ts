@@ -605,7 +605,70 @@ export const syncWithSupabase = async (): Promise<{ success: boolean; message: s
 export const processEventUpload = async (data: any[]): Promise<{ success: number; errors:string[] }> => { throw new Error("Fungsi unggah belum didukung penuh secara offline. Sinkronkan data terlebih dahulu."); };
 export const processRecordUpload = async (data: any[]): Promise<{ success: number; errors: string[] }> => { throw new Error("Fungsi unggah belum didukung penuh secara offline. Sinkronkan data terlebih dahulu."); };
 export const processParticipantUpload = async (data: any[]): Promise<{ newSwimmers: number; updatedSwimmers: number; errors: string[] }> => { throw new Error("Fungsi unggah belum didukung penuh secara offline. Sinkronkan data terlebih dahulu."); };
-export const processOnlineRegistration = async (swimmerData: Omit<Swimmer, 'id'>, registrations: { eventId: string, seedTime: number }[]): Promise<{ success: boolean; message: string; swimmer: Swimmer | null }> => { throw new Error("Fungsi ini memerlukan koneksi internet."); };
+export const processOnlineRegistration = async (
+    swimmerData: Omit<Swimmer, 'id'>,
+    registrations: { eventId: string, seedTime: number }[]
+): Promise<{ success: boolean; message: string; swimmer: Swimmer | null }> => {
+    try {
+        // Step 1: Check if swimmer exists (case-insensitive search for name and club)
+        let { data: existingSwimmers, error: searchError } = await supabase
+            .from('swimmers')
+            .select('*')
+            .ilike('name', swimmerData.name.trim())
+            .ilike('club', swimmerData.club.trim())
+            .eq('birth_year', swimmerData.birthYear);
+        
+        if (searchError) throw searchError;
+        
+        let swimmer: Swimmer;
+
+        if (existingSwimmers && existingSwimmers.length > 0) {
+            // Swimmer exists, use the first match
+            swimmer = toSwimmer(existingSwimmers[0]);
+        } else {
+            // Swimmer does not exist, create a new one
+            const newSwimmerData = { ...swimmerData, id: crypto.randomUUID() };
+            const { data: newSwimmerResult, error: insertError } = await supabase
+                .from('swimmers')
+                .insert([{
+                    id: newSwimmerData.id,
+                    name: newSwimmerData.name.trim(),
+                    birth_year: newSwimmerData.birthYear,
+                    gender: newSwimmerData.gender,
+                    club: newSwimmerData.club.trim(),
+                }])
+                .select()
+                .single();
+                
+            if (insertError) throw insertError;
+            swimmer = toSwimmer(newSwimmerResult);
+        }
+        
+        // Step 2: Register swimmer to selected events
+        const entriesToInsert = registrations.map(reg => ({
+            event_id: reg.eventId,
+            swimmer_id: swimmer.id,
+            seed_time: reg.seedTime
+        }));
+        
+        const { error: entriesError } = await supabase.from('event_entries').upsert(entriesToInsert);
+        
+        if (entriesError) {
+             // This could happen if they're already registered. Supabase upsert might handle it,
+             // but let's provide a clear message.
+            if (entriesError.message.includes('duplicate key value violates unique constraint')) {
+                 return { success: false, message: 'Gagal: Salah satu pendaftaran duplikat. Perenang mungkin sudah terdaftar di nomor lomba tersebut.', swimmer: null };
+            }
+            throw entriesError;
+        }
+
+        return { success: true, message: 'Pendaftaran berhasil diterima.', swimmer };
+
+    } catch (error: any) {
+        console.error("Error during online registration:", error);
+        return { success: false, message: `Terjadi kesalahan: ${error.message}`, swimmer: null };
+    }
+};
 export const getUsers = async (): Promise<User[]> => { const { data, error } = await supabase.from('users').select('*'); if (error) throw error; return data.map(toUser); };
 export const addUser = async (user: Omit<User, 'id'>): Promise<User> => { throw new Error("Admin-level user creation from the client is disabled for security. Please use the Supabase dashboard."); };
 export const updateUser = async (userId: string, updatedData: Partial<Omit<User, 'id'>>): Promise<User> => { throw new Error("User updates must be done via Supabase dashboard."); };

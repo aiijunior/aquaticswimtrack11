@@ -49,6 +49,12 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
 
+    const isFormValid = useMemo(() => {
+        const hasPersonalInfo = formData.name.trim() !== '' && formData.club.trim() !== '';
+        const hasSelectedEvent = Object.values(selectedEvents).some(e => e.selected);
+        return hasPersonalInfo && hasSelectedEvent;
+    }, [formData, selectedEvents]);
+
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: name === 'birthYear' ? parseInt(value) : value }));
@@ -262,7 +268,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             <div className="mt-6">
                 {error && <p className="text-red-500 text-center mb-4">{error}</p>}
                 <div className="flex justify-end items-center">
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button type="submit" disabled={isSubmitting || !isFormValid}>
                         {isSubmitting ? <Spinner /> : 'Kirim Pendaftaran'}
                     </Button>
                 </div>
