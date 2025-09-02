@@ -725,7 +725,90 @@ export const processRecordUpload = async (data: any[]): Promise<{ success: numbe
     
     return { success: successCount, errors };
 };
-export const processParticipantUpload = async (data: any[]): Promise<{ newSwimmers: number; updatedSwimmers: number; errors: string[] }> => { throw new Error("Fungsi unggah belum didukung penuh secara offline. Sinkronkan data terlebih dahulu."); };
+export const processParticipantUpload = async (data: any[]): Promise<{ newSwimmers: number; updatedSwimmers: number; errors: string[] }> => {
+    let newSwimmersCount = 0;
+    let successfulRegistrations = 0;
+    const errors: string[] = [];
+
+    const localSwimmers = await getLocalSwimmers();
+    const localEvents = await getLocalEvents();
+    
+    const eventNameMap = new Map<string, SwimEvent>();
+    localEvents.forEach(event => {
+        eventNameMap.set(formatEventName(event), event);
+    });
+
+    const swimmerMap = new Map<string, Swimmer>();
+    localSwimmers.forEach(swimmer => {
+        const key = `${swimmer.name.trim().toLowerCase()}_${swimmer.club.trim().toLowerCase()}_${swimmer.birthYear}_${swimmer.gender}`;
+        swimmerMap.set(key, swimmer);
+    });
+    
+    for (const [index, row] of data.entries()) {
+        const rowNum = index + 2;
+
+        try {
+            const name = row['Nama Peserta']?.toString().trim();
+            const birthYearStr = row['Tahun Lahir']?.toString().trim();
+            const genderStr = row['Jenis Kelamin (L/P)']?.toString().trim().toUpperCase();
+            const club = row['Klub/Tim']?.toString().trim();
+            const eventName = row['Nomor Lomba']?.toString().trim();
+            const seedTimeStr = row['Waktu Unggulan (mm:ss.SS)']?.toString().trim();
+            
+            const isRelayRegistration = !birthYearStr;
+
+            if (!name || !club || !eventName) {
+                throw new Error("Kolom 'Nama Peserta', 'Klub/Tim', dan 'Nomor Lomba' wajib diisi.");
+            }
+            if (!isRelayRegistration && (!birthYearStr || isNaN(parseInt(birthYearStr)))) {
+                throw new Error("'Tahun Lahir' wajib diisi dan harus berupa angka untuk perenang perorangan.");
+            }
+            if (!genderStr || !['L', 'P'].includes(genderStr)) {
+                throw new Error("'Jenis Kelamin (L/P)' harus diisi dengan 'L' atau 'P'.");
+            }
+
+            const birthYear = isRelayRegistration ? 0 : parseInt(birthYearStr, 10);
+            const gender: 'Male' | 'Female' = genderStr === 'L' ? 'Male' : 'Female';
+
+            const targetEvent = eventNameMap.get(eventName);
+            if (!targetEvent) {
+                throw new Error(`Nomor Lomba '${eventName}' tidak ditemukan. Pastikan nama sesuai dengan template.`);
+            }
+            
+            let seedTimeMs = 0;
+            if (seedTimeStr && seedTimeStr.toUpperCase() !== 'NT') {
+                const timeParts = seedTimeStr.match(/^(\d{1,2}):(\d{2})\.(\d{2})$/);
+                if (!timeParts) {
+                    throw new Error("Format 'Waktu Unggulan' harus mm:ss.SS (contoh: 01:23.45).");
+                }
+                const [, min, sec, ms] = timeParts.map(Number);
+                if (sec >= 60) throw new Error("'Detik' pada Waktu Unggulan tidak boleh lebih dari 59.");
+                seedTimeMs = (min * 60 * 1000) + (sec * 1000) + (ms * 10);
+            }
+
+            const swimmerKey = `${name.toLowerCase()}_${club.toLowerCase()}_${birthYear}_${gender}`;
+            let swimmer = swimmerMap.get(swimmerKey);
+            
+            if (!swimmer) {
+                const newSwimmerData: Omit<Swimmer, 'id'> = { name, birthYear, gender, club };
+                swimmer = await addSwimmer(newSwimmerData);
+                swimmerMap.set(swimmerKey, swimmer);
+                newSwimmersCount++;
+            }
+
+            const registrationResult = await registerSwimmerToEvent(targetEvent.id, swimmer.id, seedTimeMs);
+            if (!registrationResult.success) {
+                console.warn(`Baris ${rowNum}: ${registrationResult.message} - Entri ini akan tetap dihitung sebagai sukses.`);
+            }
+            successfulRegistrations++;
+
+        } catch (error: any) {
+            errors.push(`Baris ${rowNum}: ${error.message}`);
+        }
+    }
+    
+    return { newSwimmers: newSwimmersCount, updatedSwimmers: successfulRegistrations, errors };
+};
 export const processOnlineRegistration = async (
     swimmerData: Omit<Swimmer, 'id'>,
     registrations: { eventId: string, seedTime: number }[]

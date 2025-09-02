@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -200,7 +201,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         const header = ["Nama Peserta", "Tahun Lahir", "Jenis Kelamin (L/P)", "Klub/Tim", "Nomor Lomba", "Waktu Unggulan (mm:ss.SS)"];
         XLSX.utils.sheet_add_aoa(wsTemplate, [header], { origin: "A1" });
 
-        const maxRows = 1000;
+        const maxRows = 2000;
         if (!wsTemplate['!dataValidation']) wsTemplate['!dataValidation'] = [];
         // Data validation for Race Name
         wsTemplate['!dataValidation'].push({
