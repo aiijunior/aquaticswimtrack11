@@ -185,23 +185,74 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         alert('Pustaka untuk membuat file Excel belum termuat. Periksa koneksi internet Anda dan muat ulang halaman.');
         return;
     }
-    const templateData = [{
-        "Jarak (m)": 50,
-        "Gaya": "Gaya Bebas",
-        "Jenis Kelamin": "Putra",
-        "Kategori": "KU 1-2",
-        "Jumlah Perenang": ""
-    }];
+    const wb = XLSX.utils.book_new();
 
-    const worksheet = XLSX.utils.json_to_sheet(templateData);
-    if (!worksheet['!dataValidation']) worksheet['!dataValidation'] = [];
-    worksheet['!dataValidation'].push({ sqref: 'B2:B100', opts: { type: 'list', formula1: `"${Object.values(SWIM_STYLE_TRANSLATIONS).join(',')}"` } });
-    worksheet['!dataValidation'].push({ sqref: 'C2:C100', opts: { type: 'list', formula1: `"${Object.values(GENDER_TRANSLATIONS).join(',')}"` } });
-    worksheet['!cols'] = [ { wch: 10 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+    // --- Sheet 2: Petunjuk & Daftar Pilihan ---
+    const listsSheetData: any[][] = [
+        ["PETUNJUK PENGISIAN"],
+        ["1. Isi data nomor lomba pada sheet 'Template Nomor Lomba'."],
+        ["2. Kolom 'Jarak (m)', 'Gaya', dan 'Jenis Kelamin' wajib diisi."],
+        ["3. Untuk Gaya dan Jenis Kelamin, mohon gunakan pilihan yang tersedia di dropdown."],
+        ["4. Kolom 'Kategori' bersifat opsional. Kosongkan jika tidak ada (cth: untuk event senior/open)."],
+        ["5. Kolom 'Jumlah Perenang' HANYA diisi untuk nomor estafet (relay), contoh: 4. Kosongkan untuk perorangan."],
+        [], // Spacer
+        ["DAFTAR PILIHAN VALID"],
+        [],
+        ["Gaya", "Jenis Kelamin"],
+    ];
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Template Nomor Lomba");
-    XLSX.writeFile(workbook, "Template_Nomor_Lomba.xlsx");
+    const styles = Object.values(SWIM_STYLE_TRANSLATIONS);
+    const genders = Object.values(GENDER_TRANSLATIONS);
+    const maxLength = Math.max(styles.length, genders.length);
+
+    for (let i = 0; i < maxLength; i++) {
+        listsSheetData.push([ styles[i] || "", genders[i] || "" ]);
+    }
+    const ws_lists = XLSX.utils.aoa_to_sheet(listsSheetData);
+    ws_lists['!cols'] = [{ wch: 40 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, ws_lists, "Petunjuk & Pilihan");
+
+
+    // --- Sheet 1: Template Nomor Lomba ---
+    const templateData = [
+        {
+            "Jarak (m)": 50,
+            "Gaya": "Gaya Kupu-kupu",
+            "Jenis Kelamin": "Putri",
+            "Kategori": "KU 1-2",
+            "Jumlah Perenang": "" // Individual event
+        },
+        {
+            "Jarak (m)": 200,
+            "Gaya": "Gaya Bebas",
+            "Jenis Kelamin": "Putra",
+            "Kategori": "", // Open/Senior event
+            "Jumlah Perenang": ""
+        },
+        {
+            "Jarak (m)": 100, // Distance per leg
+            "Gaya": "Gaya Ganti",
+            "Jenis Kelamin": "Campuran",
+            "Kategori": "KU-3",
+            "Jumlah Perenang": 4 // Relay event
+        }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    ws['!cols'] = [ { wch: 10 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 20 }];
+
+    // Add Data Validation to Sheet 1
+    const maxRows = 1000;
+    if (!ws['!dataValidation']) ws['!dataValidation'] = [];
+    ws['!dataValidation'].push({ sqref: `B2:B${maxRows}`, opts: { type: 'list', formula1: `'Petunjuk & Pilihan'!$A$11:$A$${10 + styles.length}` } });
+    ws['!dataValidation'].push({ sqref: `C2:C${maxRows}`, opts: { type: 'list', formula1: `'Petunjuk & Pilihan'!$B$11:$B$${10 + genders.length}` } });
+    
+    XLSX.utils.book_append_sheet(wb, ws, "Template Nomor Lomba");
+    
+    // Reorder sheets to have Template first
+    wb.SheetNames.reverse();
+
+    XLSX.writeFile(wb, "Template_Nomor_Lomba.xlsx");
   };
 
 
@@ -454,7 +505,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 <div className="mt-4 text-sm">
                     {uploadResult.errors.length > 0 ? (
                         <div>
-                            <p className="text-red-500 font-bold">Ditemukan {uploadResult.errors.length} galat. Tidak ada nomor lomba yang ditambahkan. Harap perbaiki file dan coba lagi.</p>
+                            <p className="text-red-500 font-bold">Ditemukan {uploadResult.errors.length} galat. {uploadResult.success > 0 ? `${uploadResult.success} nomor lomba berhasil ditambahkan.` : 'Tidak ada nomor lomba yang ditambahkan.'} Harap perbaiki file dan coba lagi.</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
                                 {uploadResult.errors.map((err, i) => <li key={i}>{err}</li>)}
                             </ul>

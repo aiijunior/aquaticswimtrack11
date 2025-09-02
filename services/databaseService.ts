@@ -601,8 +601,56 @@ export const syncWithSupabase = async (): Promise<{ success: boolean; message: s
     }
 };
 
-// Functions below are stubs or need full offline refactoring if used heavily offline
-export const processEventUpload = async (data: any[]): Promise<{ success: number; errors:string[] }> => { throw new Error("Fungsi unggah belum didukung penuh secara offline. Sinkronkan data terlebih dahulu."); };
+export const processEventUpload = async (data: any[]): Promise<{ success: number; errors:string[] }> => {
+    const errors: string[] = [];
+    let successCount = 0;
+    
+    // Create reverse mappings from Indonesian text to enum values
+    const styleReverseMap = new Map(Object.entries(SWIM_STYLE_TRANSLATIONS).map(([key, value]) => [value, key as SwimStyle]));
+    const genderReverseMap = new Map(Object.entries(GENDER_TRANSLATIONS).map(([key, value]) => [value, key as Gender]));
+
+    for (const [index, row] of data.entries()) {
+        const rowNum = index + 2; // Excel rows are 1-based, plus header
+
+        try {
+            const distance = parseInt(row['Jarak (m)'], 10);
+            const styleStr = row['Gaya']?.trim();
+            const genderStr = row['Jenis Kelamin']?.trim();
+            const category = row['Kategori']?.toString().trim() || null;
+            const relayLegsStr = row['Jumlah Perenang']?.toString().trim();
+            const relayLegs = relayLegsStr ? parseInt(relayLegsStr, 10) : null;
+
+            // --- Validation ---
+            if (!distance || isNaN(distance) || distance <= 0) {
+                throw new Error("'Jarak (m)' harus berupa angka positif.");
+            }
+            if (!styleStr || !styleReverseMap.has(styleStr)) {
+                throw new Error(`'Gaya' tidak valid. Gunakan salah satu dari: ${Object.values(SWIM_STYLE_TRANSLATIONS).join(', ')}.`);
+            }
+            if (!genderStr || !genderReverseMap.has(genderStr)) {
+                throw new Error(`'Jenis Kelamin' tidak valid. Gunakan salah satu dari: ${Object.values(GENDER_TRANSLATIONS).join(', ')}.`);
+            }
+            if (relayLegs !== null && (isNaN(relayLegs) || relayLegs <= 1)) {
+                throw new Error("'Jumlah Perenang' harus berupa angka lebih dari 1 untuk estafet.");
+            }
+
+            const newEventData: Omit<SwimEvent, 'id' | 'entries' | 'results'> = {
+                distance,
+                style: styleReverseMap.get(styleStr)!,
+                gender: genderReverseMap.get(genderStr)!,
+                relayLegs: relayLegs,
+                category: category,
+            };
+
+            await addEvent(newEventData);
+            successCount++;
+        } catch (error: any) {
+            errors.push(`Baris ${rowNum}: ${error.message}`);
+        }
+    }
+    
+    return { success: successCount, errors };
+};
 export const processRecordUpload = async (data: any[]): Promise<{ success: number; errors: string[] }> => { throw new Error("Fungsi unggah belum didukung penuh secara offline. Sinkronkan data terlebih dahulu."); };
 export const processParticipantUpload = async (data: any[]): Promise<{ newSwimmers: number; updatedSwimmers: number; errors: string[] }> => { throw new Error("Fungsi unggah belum didukung penuh secara offline. Sinkronkan data terlebih dahulu."); };
 export const processOnlineRegistration = async (
