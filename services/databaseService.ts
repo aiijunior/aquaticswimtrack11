@@ -7,103 +7,6 @@ import { GENDER_TRANSLATIONS, SWIM_STYLE_TRANSLATIONS, formatEventName, toTitleC
 import { config } from '../config';
 import type { Database } from './database.types';
 
-const DB_NAME = 'AquaticSwimtrackDB';
-const DB_VERSION = 1;
-const STORES = ['swimmers', 'events', 'competition_info', 'records', 'sync_queue'];
-
-interface SyncQueueItem {
-    id?: number;
-    type: 'CREATE' | 'UPDATE' | 'DELETE' | 'UPSERT_MANY' | 'DELETE_MANY';
-    table: 'swimmers' | 'events' | 'competition_info' | 'records' | 'event_entries' | 'event_results';
-    payload: any;
-    timestamp: number;
-}
-
-const openDB = (): Promise<IDBDatabase> => {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-        request.onerror = () => reject("Error opening IndexedDB");
-        request.onsuccess = () => resolve(request.result);
-        request.onupgradeneeded = (event) => {
-            const db = (event.target as IDBOpenDBRequest).result;
-            if (!db.objectStoreNames.contains('swimmers')) db.createObjectStore('swimmers', { keyPath: 'id' });
-            if (!db.objectStoreNames.contains('events')) db.createObjectStore('events', { keyPath: 'id' });
-            if (!db.objectStoreNames.contains('competition_info')) db.createObjectStore('competition_info', { keyPath: 'id' });
-            if (!db.objectStoreNames.contains('records')) db.createObjectStore('records', { keyPath: 'id' });
-            if (!db.objectStoreNames.contains('sync_queue')) db.createObjectStore('sync_queue', { keyPath: 'id', autoIncrement: true });
-        };
-    });
-};
-
-const getAll = async <T>(storeName: string): Promise<T[]> => {
-    const db = await openDB();
-    const transaction = db.transaction(storeName, 'readonly');
-    const store = transaction.objectStore(storeName);
-    const request = store.getAll();
-    return new Promise((resolve, reject) => {
-        request.onerror = () => reject(`Error fetching from ${storeName}`);
-        request.onsuccess = () => resolve(request.result);
-    });
-};
-
-const bulkPut = async <T>(storeName: string, data: T[]): Promise<void> => {
-    const db = await openDB();
-    const transaction = db.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    transaction.onerror = () => { throw new Error(`Error writing to ${storeName}`)};
-    store.clear();
-    data.forEach(item => store.put(item));
-    return new Promise(resolve => { transaction.oncomplete = () => resolve() });
-};
-
-const putItem = async <T>(storeName: string, item: T): Promise<void> => {
-    const db = await openDB();
-    const transaction = db.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    store.put(item);
-    return new Promise(resolve => { transaction.oncomplete = () => resolve() });
-};
-
-const deleteItem = async (storeName: string, key: string): Promise<void> => {
-    const db = await openDB();
-    const transaction = db.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    store.delete(key);
-    return new Promise(resolve => { transaction.oncomplete = () => resolve() });
-};
-
-const addChangeToQueue = async (item: Omit<SyncQueueItem, 'id' | 'timestamp'>): Promise<void> => {
-    await putItem<SyncQueueItem>('sync_queue', { ...item, timestamp: Date.now() });
-};
-
-const getPendingChanges = (): Promise<SyncQueueItem[]> => getAll<SyncQueueItem>('sync_queue');
-const deleteChangeFromQueue = async (id: number): Promise<void> => {
-     const db = await openDB();
-    const transaction = db.transaction('sync_queue', 'readwrite');
-    const store = transaction.objectStore('sync_queue');
-    store.delete(id);
-    return new Promise(resolve => { transaction.oncomplete = () => resolve() });
-};
-
-// --- Local DB Accessors ---
-const getLocalSwimmers = (): Promise<Swimmer[]> => getAll<Swimmer>('swimmers');
-const saveLocalSwimmers = (swimmers: Swimmer[]): Promise<void> => bulkPut<Swimmer>('swimmers', swimmers);
-const putLocalSwimmer = (swimmer: Swimmer): Promise<void> => putItem<Swimmer>('swimmers', swimmer);
-const deleteLocalSwimmer = (id: string): Promise<void> => deleteItem('swimmers', id);
-const getLocalEvents = (): Promise<SwimEvent[]> => getAll<SwimEvent>('events');
-const saveLocalEvents = (events: SwimEvent[]): Promise<void> => bulkPut<SwimEvent>('events', events);
-const putLocalEvent = (event: SwimEvent): Promise<void> => putItem<SwimEvent>('events', event);
-const deleteLocalEvent = (id: string): Promise<void> => deleteItem('events', id);
-const getLocalCompetitionInfo = async (): Promise<CompetitionInfo | null> => (await getAll<CompetitionInfo>('competition_info'))[0] || null;
-const saveLocalCompetitionInfo = (info: CompetitionInfo): Promise<void> => bulkPut<CompetitionInfo>('competition_info', [{...info, id: 1}]);
-const getLocalRecords = (): Promise<SwimRecord[]> => getAll<SwimRecord>('records');
-const saveLocalRecords = (records: SwimRecord[]): Promise<void> => bulkPut<SwimRecord>('records', records);
-const putLocalRecord = (record: SwimRecord): Promise<void> => putItem<SwimRecord>('records', record);
-const deleteLocalRecord = (id: string): Promise<void> => deleteItem('records', id);
-
-// --- END: IndexedDB Offline-First Service ---
-
-
 // --- Helper function to map snake_case from DB to camelCase for the app ---
 const toCompetitionInfo = (data: any): CompetitionInfo => ({
     eventName: data.event_name,
@@ -170,8 +73,16 @@ const toUser = (data: any): User => ({
   created_at: data.created_at,
 });
 
-// --- RENAMED: Supabase-direct functions ---
-const supabaseGetCompetitionInfo = async (): Promise<CompetitionInfo> => {
+const toRecordDbFormat = (r: SwimRecord) => ({
+    id: r.id, type: r.type, gender: r.gender, distance: r.distance, style: r.style, time: r.time,
+    holder_name: r.holderName, year_set: r.yearSet, location_set: r.locationSet, relay_legs: r.relayLegs,
+    category: r.category,
+});
+
+// --- Public-facing, Online-only functions ---
+
+// --- Competition Info ---
+export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
     const { data, error } = await supabase.from('competition_info').select('*').eq('id', 1).single();
     if (error || !data) {
         console.error("Error or no data fetching competition info:", error);
@@ -185,9 +96,9 @@ const supabaseGetCompetitionInfo = async (): Promise<CompetitionInfo> => {
         };
     }
     return toCompetitionInfo(data);
-}
+};
 
-const supabaseUpdateCompetitionInfo = async (info: CompetitionInfo): Promise<CompetitionInfo> => {
+export const updateCompetitionInfo = async (info: CompetitionInfo): Promise<CompetitionInfo> => {
     const { data, error } = await supabase
         .from('competition_info')
         .upsert([{
@@ -203,487 +114,250 @@ const supabaseUpdateCompetitionInfo = async (info: CompetitionInfo): Promise<Com
         .single();
     if (error) throw error;
     return toCompetitionInfo(data);
-}
+};
 
-const supabaseGetSwimmers = async (): Promise<Swimmer[]> => {
+// --- Swimmers ---
+export const getSwimmers = async (): Promise<Swimmer[]> => {
   const { data, error } = await supabase.from('swimmers').select('*');
   if (error) throw error;
   return data.map(toSwimmer);
 };
 
-const supabaseAddSwimmer = async (swimmer: Swimmer): Promise<Swimmer> => {
+export const addSwimmer = async (swimmer: Omit<Swimmer, 'id'>): Promise<Swimmer> => {
+  const newSwimmer: Swimmer = { ...swimmer, id: crypto.randomUUID() };
   const payload: Database['public']['Tables']['swimmers']['Insert'] = {
-      id: swimmer.id, // Use client-generated ID
-      name: swimmer.name,
-      birth_year: swimmer.birthYear,
-      gender: swimmer.gender,
-      club: swimmer.club
+      id: newSwimmer.id,
+      name: newSwimmer.name,
+      birth_year: newSwimmer.birthYear,
+      gender: newSwimmer.gender,
+      club: newSwimmer.club
   };
-  const { data, error } = await supabase.from('swimmers').insert([payload]).select();
+  const { data, error } = await supabase.from('swimmers').insert([payload]).select().single();
   if (error) throw error;
-  return toSwimmer(data[0]);
+  return toSwimmer(data);
 };
 
-const supabaseUpdateSwimmer = async (swimmer: Swimmer): Promise<Swimmer> => {
+export const updateSwimmer = async (swimmerId: string, updatedData: Omit<Swimmer, 'id'>): Promise<Swimmer> => {
     const { data, error } = await supabase
         .from('swimmers')
-        .update({ name: swimmer.name, birth_year: swimmer.birthYear, gender: swimmer.gender, club: swimmer.club })
-        .eq('id', swimmer.id)
-        .select();
+        .update({ name: updatedData.name, birth_year: updatedData.birthYear, gender: updatedData.gender, club: updatedData.club })
+        .eq('id', swimmerId)
+        .select()
+        .single();
     if (error) throw error;
-    return toSwimmer(data[0]);
+    return toSwimmer(data);
 };
 
-const supabaseDeleteSwimmer = async (swimmerId: string): Promise<void> => {
+export const deleteSwimmer = async (swimmerId: string): Promise<void> => {
     const { error } = await supabase.from('swimmers').delete().eq('id', swimmerId);
     if (error) throw error;
 };
 
-const supabaseGetEvents = async (): Promise<SwimEvent[]> => {
+export const deleteAllSwimmers = async (): Promise<void> => {
+    const { error } = await supabase.from('swimmers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) throw error;
+};
+
+export const getSwimmerById = async (id: string): Promise<Swimmer | undefined> => {
+    const { data, error } = await supabase.from('swimmers').select('*').eq('id', id).single();
+    if (error || !data) return undefined;
+    return toSwimmer(data);
+};
+
+// --- Events ---
+export const getEvents = async (): Promise<SwimEvent[]> => {
   const { data, error } = await supabase.from('events').select('*, event_entries(*), event_results(*)').order('session_number').order('heat_order');
   if (error) throw error;
   return data.map(toSwimEvent);
 };
 
-const supabaseAddEvent = async (event: SwimEvent): Promise<SwimEvent> => {
+export const addEvent = async (event: Omit<SwimEvent, 'id' | 'entries' | 'results'>): Promise<SwimEvent> => {
+  const newEvent: SwimEvent = { ...event, id: crypto.randomUUID(), entries: [], results: [] };
   const payload: Database['public']['Tables']['events']['Insert'] = {
-        id: event.id,
-        distance: event.distance,
-        style: event.style,
-        gender: event.gender,
-        relay_legs: event.relayLegs,
-        category: event.category,
+        id: newEvent.id,
+        distance: newEvent.distance,
+        style: newEvent.style,
+        gender: newEvent.gender,
+        relay_legs: newEvent.relayLegs,
+        category: newEvent.category,
     };
-  const { data, error } = await supabase.from('events').insert([payload]).select();
+  const { data, error } = await supabase.from('events').insert([payload]).select().single();
   if (error) throw error;
-  return toSwimEvent(data[0]);
+  return toSwimEvent(data);
 };
 
-const supabaseUpdateEvent = async(event: SwimEvent): Promise<SwimEvent> => {
-     const payload: Database['public']['Tables']['events']['Update'] = {
-        id: event.id, distance: event.distance, style: event.style, gender: event.gender, relay_legs: event.relayLegs,
-        category: event.category, session_number: event.sessionNumber, heat_order: event.heatOrder, session_date_time: event.sessionDateTime
-    };
-    const {data, error} = await supabase.from('events').update(payload).eq('id', event.id).select();
-    if(error) throw error;
-    return toSwimEvent(data[0]);
-};
-
-const supabaseDeleteEvent = async (eventId: string): Promise<void> => {
+export const deleteEvent = async (eventId: string): Promise<void> => {
     const { error } = await supabase.from('events').delete().eq('id', eventId);
     if (error) throw error;
 };
 
-const supabaseUpsertEntries = async (entries: {event_id: string, swimmer_id: string, seed_time: number}[]): Promise<void> => {
-    if (entries.length === 0) return;
-    const { error } = await supabase.from('event_entries').upsert(entries);
+export const deleteAllEvents = async (): Promise<void> => {
+    const { error } = await supabase.from('events').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
-}
-const supabaseDeleteEntries = async (entries: {event_id: string, swimmer_id: string}[]): Promise<void> => {
-    if (entries.length === 0) return;
-    // This is tricky. Let's do it one by one for simplicity. A stored procedure would be better.
-    for (const entry of entries) {
-        const { error } = await supabase.from('event_entries').delete().match({ event_id: entry.event_id, swimmer_id: entry.swimmer_id });
-        if (error) console.error("Failed to delete entry during sync", error);
+};
+
+export const getEventById = async (id: string): Promise<SwimEvent | undefined> => {
+    const { data, error } = await supabase.from('events').select('*, event_entries(*), event_results(*)').eq('id', id).single();
+    if (error || !data) return undefined;
+    return toSwimEvent(data);
+};
+
+export const updateEventSchedule = async (updatedSchedule: SwimEvent[]): Promise<void> => {
+    // Only map the properties that are being updated by the scheduling view.
+    // This is safer and more efficient. The primary key `id` is required for upsert to identify rows.
+    const payload = updatedSchedule.map(event => ({
+        id: event.id,
+        session_number: event.sessionNumber,
+        heat_order: event.heatOrder,
+        session_date_time: event.sessionDateTime,
+    }));
+    
+    if (payload.length === 0) return;
+
+    const { error } = await supabase.from('events').upsert(payload);
+    
+    if (error) {
+        console.error("Error updating event schedule in Supabase:", error);
+        throw error;
     }
-}
+};
 
-const supabaseUpsertResults = async (results: {event_id: string, swimmer_id: string, time: number}[]): Promise<void> => {
-    if (results.length === 0) return;
-    const { error } = await supabase.from('event_results').upsert(results);
+// --- Entries & Results ---
+export const registerSwimmerToEvent = async (eventId: string, swimmerId: string, seedTime: number): Promise<{success: boolean, message: string}> => {
+    const { error } = await supabase.from('event_entries').upsert([{ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime }]);
+    if (error) {
+        if (error.message.includes('duplicate key')) {
+            return { success: false, message: 'Perenang sudah terdaftar.' };
+        }
+        return { success: false, message: error.message };
+    }
+    return { success: true, message: 'Pendaftaran berhasil.' };
+};
+
+export const unregisterSwimmerFromEvent = async (eventId: string, swimmerId: string): Promise<void> => {
+    const { error } = await supabase.from('event_entries').delete().match({ event_id: eventId, swimmer_id: swimmerId });
     if (error) throw error;
-}
+};
 
-const supabaseGetRecords = async (): Promise<SwimRecord[]> => {
+export const updateSwimmerSeedTime = async (eventId: string, swimmerId: string, seedTime: number): Promise<void> => {
+    const { error } = await supabase.from('event_entries').upsert([{ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime }]);
+    if (error) throw error;
+};
+
+export const recordEventResults = async (eventId: string, results: Result[]): Promise<SwimEvent> => {
+    const payload = results.map(r => ({ event_id: eventId, swimmer_id: r.swimmerId, time: r.time }));
+    if (payload.length > 0) {
+        const { error } = await supabase.from('event_results').upsert(payload);
+        if (error) throw error;
+    }
+    const event = await getEventById(eventId);
+    if (!event) throw new Error('Event not found after recording results');
+    return event;
+};
+export const addOrUpdateEventResults = recordEventResults;
+
+// --- Records ---
+export const getRecords = async (): Promise<SwimRecord[]> => {
     const { data, error } = await supabase.from('records').select('*');
     if (error) throw error;
     return data.map(toRecord);
 };
 
-const supabaseAddOrUpdateRecord = async (recordData: SwimRecord): Promise<SwimRecord> => {
-    const { data, error } = await supabase.from('records').upsert([toRecordDbFormat(recordData)]).select();
+export const addOrUpdateRecord = async (recordData: Partial<SwimRecord>): Promise<SwimRecord> => {
+    const { data, error } = await supabase.from('records').upsert([toRecordDbFormat(recordData as SwimRecord)]).select().single();
     if (error) throw error;
-    return toRecord(data[0]);
+    return toRecord(data);
 };
 
-const supabaseDeleteRecord = async (recordId: string): Promise<void> => {
+export const deleteRecord = async (recordId: string): Promise<void> => {
     const { error } = await supabase.from('records').delete().eq('id', recordId);
     if (error) throw error;
 };
 
-const toRecordDbFormat = (r: SwimRecord) => ({
-    id: r.id, type: r.type, gender: r.gender, distance: r.distance, style: r.style, time: r.time,
-    holder_name: r.holderName, year_set: r.yearSet, location_set: r.locationSet, relay_legs: r.relayLegs,
-    category: r.category,
-});
-
-
-// --- NEW Public-facing, IndexedDB-first functions ---
-
-// --- Competition Info ---
-export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
-    let info = await getLocalCompetitionInfo();
-    if (!info) {
-        try {
-            info = await supabaseGetCompetitionInfo();
-            await saveLocalCompetitionInfo(info);
-        } catch (e) {
-             console.warn("Could not fetch competition info from server, using defaults.", e);
-             return { eventName: config.competition.defaultName, eventDate: '', eventLogo: null, sponsorLogo: null, isRegistrationOpen: false, numberOfLanes: config.competition.defaultLanes };
-        }
-    }
-    return info;
-};
-
-export const updateCompetitionInfo = async (info: CompetitionInfo): Promise<CompetitionInfo> => {
-    const infoWithId = { ...info, id: 1 };
-    await saveLocalCompetitionInfo(infoWithId);
-    await addChangeToQueue({ type: 'UPDATE', table: 'competition_info', payload: infoWithId });
-    return info;
-};
-
-// --- Swimmers ---
-export const getSwimmers = (): Promise<Swimmer[]> => getLocalSwimmers();
-
-export const addSwimmer = async (swimmer: Omit<Swimmer, 'id'>): Promise<Swimmer> => {
-    const newSwimmer: Swimmer = { ...swimmer, id: crypto.randomUUID() };
-    await putLocalSwimmer(newSwimmer);
-    await addChangeToQueue({ type: 'CREATE', table: 'swimmers', payload: newSwimmer });
-    return newSwimmer;
-};
-
-export const updateSwimmer = async (swimmerId: string, updatedData: Omit<Swimmer, 'id'>): Promise<Swimmer> => {
-    const swimmer: Swimmer = { id: swimmerId, ...updatedData };
-    await putLocalSwimmer(swimmer);
-    await addChangeToQueue({ type: 'UPDATE', table: 'swimmers', payload: swimmer });
-    return swimmer;
-};
-
-export const deleteSwimmer = async (swimmerId: string): Promise<void> => {
-    await deleteLocalSwimmer(swimmerId);
-    await addChangeToQueue({ type: 'DELETE', table: 'swimmers', payload: { id: swimmerId } });
-    // Also remove entries and results locally
-    const events = await getLocalEvents();
-    for(const event of events) {
-        event.entries = event.entries.filter(e => e.swimmerId !== swimmerId);
-        event.results = event.results.filter(r => r.swimmerId !== swimmerId);
-        await putLocalEvent(event);
-    }
-};
-
-export const deleteAllSwimmers = async (): Promise<void> => {
-    const swimmers = await getLocalSwimmers();
-    await saveLocalSwimmers([]);
-    await addChangeToQueue({ type: 'DELETE_MANY', table: 'swimmers', payload: swimmers.map(s => ({id: s.id})) });
-    const events = await getLocalEvents();
-    for (const event of events) {
-        event.entries = [];
-        event.results = [];
-        await putLocalEvent(event);
-    }
-};
-
-export const getSwimmerById = async (id: string): Promise<Swimmer | undefined> => {
-  const swimmers = await getLocalSwimmers();
-  return swimmers.find(s => s.id === id);
-};
-
-// --- Events ---
-export const getEvents = async (): Promise<SwimEvent[]> => {
-    let events = await getLocalEvents();
-    // If the local database is empty, fetch from the server as a one-time hydration.
-    // This is crucial for new users/browsers accessing the public registration page.
-    if (events.length === 0) {
-        try {
-            events = await supabaseGetEvents();
-            await saveLocalEvents(events);
-        } catch (e) {
-            console.warn("Could not fetch events from server on initial load.", e);
-            return []; // Return empty array on failure
-        }
-    }
-    return events;
-};
-
-export const getOnlineEvents = async (): Promise<SwimEvent[]> => {
-    try {
-        const events = await supabaseGetEvents();
-        return events;
-    } catch (e) {
-        console.error("Could not fetch events directly from server for online registration.", e);
-        return [];
-    }
-};
-
-export const getPublicSwimmers = async (): Promise<Swimmer[]> => {
-    try {
-        return await supabaseGetSwimmers();
-    } catch (e) {
-        console.error("Could not fetch swimmers directly from server for public view.", e);
-        return [];
-    }
-};
-
-export const getPublicCompetitionInfo = async (): Promise<CompetitionInfo> => {
-    try {
-        return await supabaseGetCompetitionInfo();
-    } catch (e) {
-        console.error("Could not fetch competition info directly from server for public view. Using defaults.", e);
-        return {
-            eventName: config.competition.defaultName,
-            eventDate: '',
-            eventLogo: null,
-            sponsorLogo: null,
-            isRegistrationOpen: false,
-            numberOfLanes: config.competition.defaultLanes
-        };
-    }
-};
-
-export const addEvent = async (event: Omit<SwimEvent, 'id' | 'entries' | 'results'>): Promise<SwimEvent> => {
-    const newEvent: SwimEvent = { ...event, id: crypto.randomUUID(), entries: [], results: [] };
-    await putLocalEvent(newEvent);
-    await addChangeToQueue({ type: 'CREATE', table: 'events', payload: newEvent });
-    return newEvent;
-};
-
-export const deleteEvent = async (eventId: string): Promise<void> => {
-    await deleteLocalEvent(eventId);
-    await addChangeToQueue({ type: 'DELETE', table: 'events', payload: { id: eventId } });
-};
-
-export const deleteAllEvents = async (): Promise<void> => {
-    const events = await getLocalEvents();
-    await saveLocalEvents([]);
-    await addChangeToQueue({ type: 'DELETE_MANY', table: 'events', payload: events.map(e => ({id: e.id})) });
-};
-
-export const getEventById = async (id: string): Promise<SwimEvent | undefined> => {
-    const events = await getLocalEvents();
-    return events.find(e => e.id === id);
-};
-
-export const updateEventSchedule = async (updatedSchedule: SwimEvent[]): Promise<void> => {
-    const allEvents = await getLocalEvents();
-    const scheduleMap = new Map(updatedSchedule.map(e => [e.id, e]));
-    const eventsToSave = allEvents.map(e => scheduleMap.get(e.id) || e);
-    await saveLocalEvents(eventsToSave);
-    await addChangeToQueue({ type: 'UPSERT_MANY', table: 'events', payload: updatedSchedule });
-};
-
-// --- Entries & Results ---
-const updateLocalEventWith = async (eventId: string, updateFn: (event: SwimEvent) => void) => {
-    const event = await getEventById(eventId);
-    if (event) {
-        updateFn(event);
-        await putLocalEvent(event);
-    }
-};
-
-export const registerSwimmerToEvent = async (eventId: string, swimmerId: string, seedTime: number): Promise<{success: boolean, message: string}> => {
-    const event = await getEventById(eventId);
-    if (!event) return { success: false, message: 'Nomor lomba tidak ditemukan.' };
-    if (event.entries.some(e => e.swimmerId === swimmerId)) return { success: false, message: 'Perenang sudah terdaftar.' };
-    
-    await updateLocalEventWith(eventId, e => e.entries.push({ swimmerId, seedTime }));
-    await addChangeToQueue({ type: 'UPSERT_MANY', table: 'event_entries', payload: [{ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime }] });
-    return { success: true, message: 'Pendaftaran berhasil.' };
-};
-
-export const unregisterSwimmerFromEvent = async (eventId: string, swimmerId: string): Promise<void> => {
-    await updateLocalEventWith(eventId, e => {
-        e.entries = e.entries.filter(en => en.swimmerId !== swimmerId);
-    });
-    await addChangeToQueue({ type: 'DELETE_MANY', table: 'event_entries', payload: [{ event_id: eventId, swimmer_id: swimmerId }] });
-};
-
-export const updateSwimmerSeedTime = async (eventId: string, swimmerId: string, seedTime: number): Promise<void> => {
-    await updateLocalEventWith(eventId, e => {
-        const entry = e.entries.find(en => en.swimmerId === swimmerId);
-        if (entry) entry.seedTime = seedTime;
-    });
-    await addChangeToQueue({ type: 'UPSERT_MANY', table: 'event_entries', payload: [{ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime }] });
-};
-
-export const recordEventResults = async (eventId: string, results: Result[]): Promise<SwimEvent> => {
-    const event = await getEventById(eventId);
-    if (!event) throw new Error('Event not found');
-    event.results = results;
-    await putLocalEvent(event);
-    await addChangeToQueue({
-        type: 'UPSERT_MANY',
-        table: 'event_results',
-        payload: results.map(r => ({ event_id: eventId, swimmer_id: r.swimmerId, time: r.time }))
-    });
-    return event;
-};
-export const addOrUpdateEventResults = recordEventResults;
-
-
-// --- Records ---
-export const getRecords = (): Promise<SwimRecord[]> => getLocalRecords();
-
-export const addOrUpdateRecord = async (recordData: Partial<SwimRecord>): Promise<SwimRecord> => {
-    const record = recordData as SwimRecord; // Assume complete
-    await putLocalRecord(record);
-    await addChangeToQueue({ type: 'UPDATE', table: 'records', payload: record });
-    return record;
-};
-
-export const deleteRecord = async (recordId: string): Promise<void> => {
-    await deleteLocalRecord(recordId);
-    await addChangeToQueue({ type: 'DELETE', table: 'records', payload: { id: recordId } });
-};
-
 export const deleteAllRecords = async (): Promise<void> => {
-    const records = await getLocalRecords();
-    await saveLocalRecords([]);
-    await addChangeToQueue({ type: 'DELETE_MANY', table: 'records', payload: records.map(r => ({id: r.id})) });
+    const { error } = await supabase.from('records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) throw error;
 };
 
-// --- Data Management & Uploads (Online-first for simplicity of implementation) ---
+// --- Data Management & Uploads ---
 export const backupDatabase = async (): Promise<any> => {
     const [info, swimmers, events, records] = await Promise.all([
-        getLocalCompetitionInfo(), getLocalSwimmers(), getLocalEvents(), getLocalRecords()
+        getCompetitionInfo(), getSwimmers(), getEvents(), getRecords()
     ]);
-    return { backupDate: new Date().toISOString(), version: "1.1.0-offline", competitionInfo: info, swimmers, events, records };
+    return { backupDate: new Date().toISOString(), version: "1.1.0-online", competitionInfo: info, swimmers, events, records };
 };
 
 export const restoreDatabase = async (backupData: any): Promise<void> => {
     if (!backupData.competitionInfo || !backupData.swimmers || !backupData.events || !backupData.records) {
         throw new Error("File backup tidak valid atau rusak.");
     }
-    // Clear local data
-    await Promise.all(STORES.map(s => openDB().then(db => db.transaction(s, 'readwrite').objectStore(s).clear())));
+    // Clear existing data
+    await clearAllData();
 
-    // Save to local DB
-    await saveLocalCompetitionInfo(backupData.competitionInfo);
-    await saveLocalSwimmers(backupData.swimmers);
-    await saveLocalEvents(backupData.events);
-    await saveLocalRecords(backupData.records);
-    
-    // Queue everything for sync
-    await addChangeToQueue({ type: 'UPDATE', table: 'competition_info', payload: backupData.competitionInfo });
-    await addChangeToQueue({ type: 'UPSERT_MANY', table: 'swimmers', payload: backupData.swimmers });
-    await addChangeToQueue({ type: 'UPSERT_MANY', table: 'events', payload: backupData.events.map((e: any) => ({...e, entries: [], results: []})) }); // Events without entries/results
-    const allEntries = backupData.events.flatMap((e: SwimEvent) => e.entries.map(en => ({event_id: e.id, ...en})));
-    const allResults = backupData.events.flatMap((e: SwimEvent) => e.results.map(r => ({event_id: e.id, ...r})));
-    await addChangeToQueue({ type: 'UPSERT_MANY', table: 'event_entries', payload: allEntries });
-    await addChangeToQueue({ type: 'UPSERT_MANY', table: 'event_results', payload: allResults });
-    await addChangeToQueue({ type: 'UPSERT_MANY', table: 'records', payload: backupData.records });
+    // Insert new data
+    await updateCompetitionInfo(backupData.competitionInfo);
+
+    if (backupData.swimmers.length > 0) {
+        const swimmerPayloads = backupData.swimmers.map((s: Swimmer) => ({ id: s.id, name: s.name, birth_year: s.birthYear, gender: s.gender, club: s.club }));
+        const { error } = await supabase.from('swimmers').insert(swimmerPayloads);
+        if (error) throw error;
+    }
+
+    if (backupData.events.length > 0) {
+        const eventPayloads = backupData.events.map((e: SwimEvent) => ({ id: e.id, distance: e.distance, style: e.style, gender: e.gender, session_number: e.sessionNumber, heat_order: e.heatOrder, session_date_time: e.sessionDateTime, relay_legs: e.relayLegs, category: e.category }));
+        const { error } = await supabase.from('events').insert(eventPayloads);
+        if (error) throw error;
+    }
+
+    const allEntries = backupData.events.flatMap((e: SwimEvent) => e.entries.map((en: EventEntry) => ({event_id: e.id, swimmer_id: en.swimmerId, seed_time: en.seedTime})));
+    if (allEntries.length > 0) {
+        const { error } = await supabase.from('event_entries').insert(allEntries);
+        if (error) throw error;
+    }
+
+    const allResults = backupData.events.flatMap((e: SwimEvent) => e.results.map((r: Result) => ({event_id: e.id, swimmer_id: r.swimmerId, time: r.time})));
+    if (allResults.length > 0) {
+        const { error } = await supabase.from('event_results').insert(allResults);
+        if (error) throw error;
+    }
+
+    if (backupData.records.length > 0) {
+        const recordPayloads = backupData.records.map(toRecordDbFormat);
+        const { error } = await supabase.from('records').insert(recordPayloads);
+        if (error) throw error;
+    }
 };
 
 export const clearAllData = async (): Promise<void> => {
-    // Direct Supabase Deletions. Order is important due to foreign keys.
-    // Using a filter that matches all rows since `delete()` without a filter is disabled by default.
-    // 1. Delete data from tables that have foreign keys pointing to others.
     const { error: resultsError } = await supabase.from('event_results').delete().neq('event_id', '00000000-0000-0000-0000-000000000000');
     if (resultsError) throw resultsError;
 
     const { error: entriesError } = await supabase.from('event_entries').delete().neq('event_id', '00000000-0000-0000-0000-000000000000');
     if (entriesError) throw entriesError;
 
-    // 2. Now delete from the tables that were referenced.
     const { error: swimmersError } = await supabase.from('swimmers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (swimmersError) throw swimmersError;
 
     const { error: eventsError } = await supabase.from('events').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (eventsError) throw eventsError;
 
-    // 3. Delete from independent tables.
     const { error: recordsError } = await supabase.from('records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (recordsError) throw recordsError;
 
-    // 4. Reset competition info to defaults (it has ID=1).
     const defaultInfo = { id: 1, event_name: config.competition.defaultName, event_date: new Date().toISOString().split('T')[0], event_logo: null, sponsor_logo: null, is_registration_open: false, number_of_lanes: config.competition.defaultLanes };
     const { error: infoError } = await supabase.from('competition_info').upsert(defaultInfo);
     if (infoError) throw infoError;
-
-    // 5. If all remote operations were successful, clear local IndexedDB.
-    await Promise.all(STORES.map(s => openDB().then(db => db.transaction(s, 'readwrite').objectStore(s).clear())));
-
-    // 6. Save default info locally.
-    await saveLocalCompetitionInfo({ eventName: defaultInfo.event_name, eventDate: defaultInfo.event_date, eventLogo: defaultInfo.event_logo, sponsorLogo: defaultInfo.sponsor_logo, isRegistrationOpen: defaultInfo.is_registration_open, numberOfLanes: defaultInfo.number_of_lanes });
-};
-
-
-// ... (Other functions like user management and uploads remain largely unchanged as they are less critical for offline event operation)
-// ... (The original functions for process uploads, user mgmt, etc would go here, slightly modified to use local data for reads)
-// For brevity, these less critical functions are omitted but would need similar offline treatment for full functionality.
-
-// --- SYNC FUNCTIONALITY ---
-export const getPendingChangeCount = async (): Promise<number> => {
-    const changes = await getPendingChanges();
-    return changes.length;
-};
-
-export const syncWithSupabase = async (): Promise<{ success: boolean; message: string }> => {
-    if (!navigator.onLine) {
-        return { success: false, message: "Tidak ada koneksi internet." };
-    }
-
-    const changes = await getPendingChanges();
-    if (changes.length === 0) {
-        // Still fetch latest data even if no local changes
-        try {
-            const [info, swimmers, events, records] = await Promise.all([supabaseGetCompetitionInfo(), supabaseGetSwimmers(), supabaseGetEvents(), supabaseGetRecords()]);
-            await saveLocalCompetitionInfo(info);
-            await saveLocalSwimmers(swimmers);
-            await saveLocalEvents(events);
-            await saveLocalRecords(records);
-            return { success: true, message: "Data sudah yang terbaru." };
-        } catch (error: any) {
-            return { success: false, message: `Gagal mengambil data terbaru: ${error.message}` };
-        }
-    }
-    
-    // Process queue
-    for (const change of changes) {
-        try {
-            switch (`${change.type}_${change.table}`) {
-                case 'CREATE_swimmers': await supabaseAddSwimmer(change.payload); break;
-                case 'UPDATE_swimmers': await supabaseUpdateSwimmer(change.payload); break;
-                case 'DELETE_swimmers': await supabaseDeleteSwimmer(change.payload.id); break;
-                case 'CREATE_events': await supabaseAddEvent(change.payload); break;
-                case 'DELETE_events': await supabaseDeleteEvent(change.payload.id); break;
-                case 'UPDATE_records': await supabaseAddOrUpdateRecord(change.payload); break;
-                case 'DELETE_records': await supabaseDeleteRecord(change.payload.id); break;
-                case 'UPDATE_competition_info': await supabaseUpdateCompetitionInfo(change.payload); break;
-                case 'UPSERT_MANY_events': await supabase.from('events').upsert(change.payload.map((p:any) => ({...p, event_entries: undefined, event_results: undefined}))); break;
-                case 'UPSERT_MANY_event_entries': await supabaseUpsertEntries(change.payload); break;
-                case 'DELETE_MANY_event_entries': await supabaseDeleteEntries(change.payload); break;
-                case 'UPSERT_MANY_event_results': await supabaseUpsertResults(change.payload); break;
-            }
-            await deleteChangeFromQueue(change.id!);
-        } catch (error: any) {
-            console.error("Sync error for change:", change, error);
-            return { success: false, message: `Gagal menyinkronkan perubahan: ${error.message}` };
-        }
-    }
-
-    // After pushing changes, pull latest state from server to resolve conflicts
-    try {
-        const [info, swimmers, events, records] = await Promise.all([supabaseGetCompetitionInfo(), supabaseGetSwimmers(), supabaseGetEvents(), supabaseGetRecords()]);
-        await saveLocalCompetitionInfo(info);
-        await saveLocalSwimmers(swimmers);
-        await saveLocalEvents(events);
-        await saveLocalRecords(records);
-        return { success: true, message: `Sinkronisasi berhasil! ${changes.length} perubahan diunggah.` };
-    } catch (error: any) {
-        return { success: false, message: `Gagal mengambil data terbaru setelah sinkronisasi: ${error.message}` };
-    }
 };
 
 export const processEventUpload = async (data: any[]): Promise<{ success: number; errors:string[] }> => {
     const errors: string[] = [];
     let successCount = 0;
     
-    // Create reverse mappings from Indonesian text to enum values
     const styleReverseMap = new Map(Object.entries(SWIM_STYLE_TRANSLATIONS).map(([key, value]) => [value, key as SwimStyle]));
     const genderReverseMap = new Map(Object.entries(GENDER_TRANSLATIONS).map(([key, value]) => [value, key as Gender]));
 
     for (const [index, row] of data.entries()) {
-        const rowNum = index + 2; // Excel rows are 1-based, plus header
+        const rowNum = index + 2;
 
         try {
             const distance = parseInt(row['Jarak (m)'], 10);
@@ -693,29 +367,18 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
             const relayLegsStr = row['Jumlah Perenang']?.toString().trim();
             const relayLegs = relayLegsStr ? parseInt(relayLegsStr, 10) : null;
 
-            // --- Validation ---
-            if (!distance || isNaN(distance) || distance <= 0) {
-                throw new Error("'Jarak (m)' harus berupa angka positif.");
-            }
-            if (!styleStr || !styleReverseMap.has(styleStr)) {
-                throw new Error(`'Gaya' tidak valid. Gunakan salah satu dari: ${Object.values(SWIM_STYLE_TRANSLATIONS).join(', ')}.`);
-            }
-            if (!genderStr || !genderReverseMap.has(genderStr)) {
-                throw new Error(`'Jenis Kelamin' tidak valid. Gunakan salah satu dari: ${Object.values(GENDER_TRANSLATIONS).join(', ')}.`);
-            }
-            if (relayLegs !== null && (isNaN(relayLegs) || relayLegs <= 1)) {
-                throw new Error("'Jumlah Perenang' harus berupa angka lebih dari 1 untuk estafet.");
-            }
+            if (!distance || isNaN(distance) || distance <= 0) throw new Error("'Jarak (m)' harus berupa angka positif.");
+            if (!styleStr || !styleReverseMap.has(styleStr)) throw new Error(`'Gaya' tidak valid. Gunakan salah satu dari: ${Object.values(SWIM_STYLE_TRANSLATIONS).join(', ')}.`);
+            if (!genderStr || !genderReverseMap.has(genderStr)) throw new Error(`'Jenis Kelamin' tidak valid. Gunakan salah satu dari: ${Object.values(GENDER_TRANSLATIONS).join(', ')}.`);
+            if (relayLegs !== null && (isNaN(relayLegs) || relayLegs <= 1)) throw new Error("'Jumlah Perenang' harus berupa angka lebih dari 1 untuk estafet.");
 
-            const newEventData: Omit<SwimEvent, 'id' | 'entries' | 'results'> = {
+            await addEvent({
                 distance,
                 style: styleReverseMap.get(styleStr)!,
                 gender: genderReverseMap.get(genderStr)!,
                 relayLegs: relayLegs,
                 category: category,
-            };
-
-            await addEvent(newEventData);
+            });
             successCount++;
         } catch (error: any) {
             errors.push(`Baris ${rowNum}: ${error.message}`);
@@ -724,21 +387,20 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
     
     return { success: successCount, errors };
 };
+
 export const processRecordUpload = async (data: any[]): Promise<{ success: number; errors: string[] }> => {
     const errors: string[] = [];
     let successCount = 0;
 
-    // As per UI, this process overwrites all existing records.
     await deleteAllRecords();
     
     const styleReverseMap = new Map(Object.entries(SWIM_STYLE_TRANSLATIONS).map(([key, value]) => [value, key as SwimStyle]));
     const genderReverseMap = new Map(Object.entries(GENDER_TRANSLATIONS).map(([key, value]) => [value, key as Gender]));
 
     for (const [index, row] of data.entries()) {
-        const rowNum = index + 2; // Excel rows are 1-based, plus header
+        const rowNum = index + 2;
 
         try {
-            // --- Field Extraction ---
             const typeStr = row['Tipe Rekor']?.toString().trim().toUpperCase();
             const distance = parseInt(row['Jarak (m)'], 10);
             const styleStr = row['Gaya']?.trim();
@@ -751,44 +413,28 @@ export const processRecordUpload = async (data: any[]): Promise<{ success: numbe
             const relayLegs = relayLegsStr ? parseInt(relayLegsStr, 10) : null;
             const locationSet = toTitleCase(row['Lokasi']?.toString().trim() || '') || null;
 
-            // --- Validation ---
             if (!typeStr || !['PORPROV', 'NASIONAL'].includes(typeStr)) throw new Error("'Tipe Rekor' harus 'PORPROV' atau 'Nasional'.");
             if (!distance || isNaN(distance) || distance <= 0) throw new Error("'Jarak (m)' harus berupa angka positif.");
-            if (!styleStr || !styleReverseMap.has(styleStr)) throw new Error(`'Gaya' tidak valid. Gunakan salah satu dari: ${Object.values(SWIM_STYLE_TRANSLATIONS).join(', ')}.`);
-            if (!genderStr || !genderReverseMap.has(genderStr)) throw new Error(`'Jenis Kelamin' tidak valid. Gunakan salah satu dari: ${Object.values(GENDER_TRANSLATIONS).join(', ')}.`);
+            if (!styleStr || !styleReverseMap.has(styleStr)) throw new Error(`'Gaya' tidak valid.`);
+            if (!genderStr || !genderReverseMap.has(genderStr)) throw new Error(`'Jenis Kelamin' tidak valid.`);
             if (!timeStr) throw new Error("'Waktu (mm:ss.SS)' wajib diisi.");
             if (!holderName) throw new Error("'Nama Pemegang Rekor' wajib diisi.");
             if (!yearSet || isNaN(yearSet) || yearSet < 1900 || yearSet > 2100) throw new Error("'Tahun' harus berupa angka yang valid.");
-            if (relayLegs !== null && (isNaN(relayLegs) || relayLegs <= 1)) throw new Error("'Jumlah Perenang (Estafet)' harus berupa angka lebih dari 1.");
             
-            // --- Time Parsing ---
             const timeParts = timeStr.match(/^(\d{1,2}):(\d{2})\.(\d{2})$/);
             if (!timeParts) throw new Error("Format 'Waktu' harus mm:ss.SS (contoh: 01:23.45).");
             const [, min, sec, ms] = timeParts.map(Number);
             const timeInMillis = (min * 60 * 1000) + (sec * 1000) + (ms * 10);
 
-            // --- Record Creation ---
             const gender = genderReverseMap.get(genderStr)!;
             const style = styleReverseMap.get(styleStr)!;
             const type = typeStr === 'PORPROV' ? RecordType.PORPROV : RecordType.NASIONAL;
-
             const recordId = `${type.toUpperCase()}_${gender}_${distance}_${style}` + (category ? `_${category}` : '') + (relayLegs ? `_R${relayLegs}` : '');
             
-            const newRecord: SwimRecord = {
-                id: recordId,
-                type,
-                gender,
-                distance,
-                style,
-                time: timeInMillis,
-                holderName,
-                yearSet,
-                relayLegs,
-                category,
-                locationSet
-            };
-
-            await addOrUpdateRecord(newRecord);
+            await addOrUpdateRecord({
+                id: recordId, type, gender, distance, style, time: timeInMillis, holderName, yearSet,
+                relayLegs, category, locationSet
+            });
             successCount++;
 
         } catch (error: any) {
@@ -803,19 +449,11 @@ export const processParticipantUpload = async (data: any[]): Promise<{ newSwimme
     let successfulRegistrations = 0;
     const errors: string[] = [];
 
-    const localSwimmers = await getLocalSwimmers();
-    const localEvents = await getLocalEvents();
+    const existingSwimmers = await getSwimmers();
+    const existingEvents = await getEvents();
     
-    const eventNameMap = new Map<string, SwimEvent>();
-    localEvents.forEach(event => {
-        eventNameMap.set(formatEventName(event), event);
-    });
-
-    const swimmerMap = new Map<string, Swimmer>();
-    localSwimmers.forEach(swimmer => {
-        const key = `${swimmer.name.trim().toLowerCase()}_${swimmer.club.trim().toLowerCase()}_${swimmer.birthYear}_${swimmer.gender}`;
-        swimmerMap.set(key, swimmer);
-    });
+    const eventNameMap = new Map<string, SwimEvent>(existingEvents.map(event => [formatEventName(event), event]));
+    const swimmerMap = new Map<string, Swimmer>(existingSwimmers.map(swimmer => [`${swimmer.name.trim().toLowerCase()}_${swimmer.club.trim().toLowerCase()}_${swimmer.birthYear}_${swimmer.gender}`, swimmer]));
     
     for (const [index, row] of data.entries()) {
         const rowNum = index + 2;
@@ -829,31 +467,20 @@ export const processParticipantUpload = async (data: any[]): Promise<{ newSwimme
             const seedTimeStr = row['Waktu Unggulan (mm:ss.SS)']?.toString().trim();
             
             const isRelayRegistration = !birthYearStr;
-
-            if (!name || !club || !eventName) {
-                throw new Error("Kolom 'Nama Peserta', 'Klub/Tim', dan 'Nomor Lomba' wajib diisi.");
-            }
-            if (!isRelayRegistration && (!birthYearStr || isNaN(parseInt(birthYearStr)))) {
-                throw new Error("'Tahun Lahir' wajib diisi dan harus berupa angka untuk perenang perorangan.");
-            }
-            if (!genderStr || !['L', 'P'].includes(genderStr)) {
-                throw new Error("'Jenis Kelamin (L/P)' harus diisi dengan 'L' atau 'P'.");
-            }
+            if (!name || !club || !eventName) throw new Error("Kolom 'Nama Peserta', 'Klub/Tim', dan 'Nomor Lomba' wajib diisi.");
+            if (!isRelayRegistration && (!birthYearStr || isNaN(parseInt(birthYearStr)))) throw new Error("'Tahun Lahir' wajib diisi dan harus berupa angka.");
+            if (!genderStr || !['L', 'P'].includes(genderStr)) throw new Error("'Jenis Kelamin (L/P)' harus diisi dengan 'L' atau 'P'.");
 
             const birthYear = isRelayRegistration ? 0 : parseInt(birthYearStr, 10);
             const gender: 'Male' | 'Female' = genderStr === 'L' ? 'Male' : 'Female';
 
             const targetEvent = eventNameMap.get(eventName);
-            if (!targetEvent) {
-                throw new Error(`Nomor Lomba '${eventName}' tidak ditemukan. Pastikan nama sesuai dengan template.`);
-            }
+            if (!targetEvent) throw new Error(`Nomor Lomba '${eventName}' tidak ditemukan.`);
             
             let seedTimeMs = 0;
             if (seedTimeStr && seedTimeStr.toUpperCase() !== 'NT') {
                 const timeParts = seedTimeStr.match(/^(\d{1,2}):(\d{2})\.(\d{2})$/);
-                if (!timeParts) {
-                    throw new Error("Format 'Waktu Unggulan' harus mm:ss.SS (contoh: 01:23.45).");
-                }
+                if (!timeParts) throw new Error("Format 'Waktu Unggulan' harus mm:ss.SS (contoh: 01:23.45).");
                 const [, min, sec, ms] = timeParts.map(Number);
                 if (sec >= 60) throw new Error("'Detik' pada Waktu Unggulan tidak boleh lebih dari 59.");
                 seedTimeMs = (min * 60 * 1000) + (sec * 1000) + (ms * 10);
@@ -863,16 +490,12 @@ export const processParticipantUpload = async (data: any[]): Promise<{ newSwimme
             let swimmer = swimmerMap.get(swimmerKey);
             
             if (!swimmer) {
-                const newSwimmerData: Omit<Swimmer, 'id'> = { name, birthYear, gender, club };
-                swimmer = await addSwimmer(newSwimmerData);
-                swimmerMap.set(swimmerKey, swimmer);
+                swimmer = await addSwimmer({ name, birthYear, gender, club });
+                swimmerMap.set(swimmerKey, swimmer); // Add to local map to avoid re-adding
                 newSwimmersCount++;
             }
 
-            const registrationResult = await registerSwimmerToEvent(targetEvent.id, swimmer.id, seedTimeMs);
-            if (!registrationResult.success) {
-                console.warn(`Baris ${rowNum}: ${registrationResult.message} - Entri ini akan tetap dihitung sebagai sukses.`);
-            }
+            await registerSwimmerToEvent(targetEvent.id, swimmer.id, seedTimeMs);
             successfulRegistrations++;
 
         } catch (error: any) {
@@ -887,7 +510,6 @@ export const processOnlineRegistration = async (
     registrations: { eventId: string, seedTime: number }[]
 ): Promise<{ success: boolean; message: string; swimmer: Swimmer | null }> => {
     try {
-        // Step 1: Check if swimmer exists (case-insensitive search for name and club)
         const { data: existingSwimmers, error: searchError } = await supabase
             .from('swimmers')
             .select('*')
@@ -899,30 +521,12 @@ export const processOnlineRegistration = async (
         if (searchError) throw searchError;
         
         let swimmer: Swimmer;
-
         if (existingSwimmers && existingSwimmers.length > 0) {
-            // Swimmer exists, use the first match
             swimmer = toSwimmer(existingSwimmers[0]);
         } else {
-            // Swimmer does not exist, create a new one
-            const newSwimmerData = { ...swimmerData, id: crypto.randomUUID() };
-            const { data: newSwimmerResult, error: insertError } = await supabase
-                .from('swimmers')
-                .insert([{
-                    id: newSwimmerData.id,
-                    name: swimmerData.name.trim(),
-                    birth_year: swimmerData.birthYear,
-                    gender: swimmerData.gender,
-                    club: swimmerData.club.trim(),
-                }])
-                .select()
-                .single();
-                
-            if (insertError) throw insertError;
-            swimmer = toSwimmer(newSwimmerResult);
+            swimmer = await addSwimmer(swimmerData);
         }
         
-        // Step 2: Register swimmer to selected events
         const entriesToInsert = registrations.map(reg => ({
             event_id: reg.eventId,
             swimmer_id: swimmer.id,

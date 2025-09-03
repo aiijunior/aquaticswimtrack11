@@ -15,12 +15,11 @@ import { PublicResultsView } from './components/PublicResultsView';
 import { UserManagementView } from './components/UserManagementView';
 import { OnlineRegistrationView } from './components/OnlineRegistrationView';
 import { logout, getCurrentUser } from './services/authService';
-import { getSwimmers, getEvents, getCompetitionInfo, syncWithSupabase, getPendingChangeCount } from './services/databaseService';
+import { getSwimmers, getEvents, getCompetitionInfo } from './services/databaseService';
 import { Button } from './components/ui/Button';
 import { ThemeToggle } from './components/ui/ThemeToggle';
 import { supabase } from './services/supabaseClient';
 import { Spinner } from './components/ui/Spinner';
-import { ConnectionStatusIndicator } from './components/ui/ConnectionStatusIndicator';
 
 const NavLink: React.FC<{
   label: string;
@@ -64,15 +63,7 @@ const App: React.FC = () => {
   const [competitionInfo, setCompetitionInfo] = useState<CompetitionInfo | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
   
-  // Centralized sync state
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
-  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
-  const [pendingChanges, setPendingChanges] = useState(0);
-  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'offline' | 'error'>('checking');
-  const isSyncingRef = useRef(false);
-
-  // Centralized data fetching function - now reads from local DB
+  // Centralized data fetching function
   const refreshData = useCallback(async () => {
     setIsDataLoading(true);
     try {
@@ -85,47 +76,11 @@ const App: React.FC = () => {
       setEvents(eventsData);
       setCompetitionInfo(infoData);
     } catch (error) {
-      console.error("Failed to refresh data from local DB:", error);
+      console.error("Failed to refresh data from Supabase:", error);
     } finally {
       setIsDataLoading(false);
     }
   }, []);
-  
-  const fetchPendingChanges = useCallback(async () => {
-    const count = await getPendingChangeCount();
-    setPendingChanges(count);
-  }, []);
-
-  const handleSync = useCallback(async (isSilent = false) => {
-    if (isSyncingRef.current || !navigator.onLine) return;
-
-    isSyncingRef.current = true;
-    setIsSyncing(true);
-    if (!isSilent) {
-        setSyncStatus({ message: 'Memulai sinkronisasi...', type: 'success' });
-    }
-    setConnectionStatus('checking');
-
-    const result = await syncWithSupabase();
-    
-    if (!isSilent) {
-        setSyncStatus({ message: result.message, type: result.success ? 'success' : 'error' });
-    }
-
-    if (result.success) {
-        setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
-        await refreshData();
-    }
-    
-    setConnectionStatus(result.success ? 'connected' : 'error');
-    await fetchPendingChanges();
-    setIsSyncing(false);
-    isSyncingRef.current = false;
-    
-    if (!isSilent) {
-        setTimeout(() => setSyncStatus(null), 5000);
-    }
-  }, [refreshData, fetchPendingChanges]);
 
   // Initial data load and user check
   useEffect(() => {
@@ -148,15 +103,10 @@ const App: React.FC = () => {
 
         await refreshData();
         setAppStatus('ready');
-
-        if (navigator.onLine && user) {
-            handleSync(true); // Initial silent sync on load if logged in
-        }
     };
 
     checkUserAndLoadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshData, handleSync]);
+  }, [refreshData]);
 
   // Real-time data subscription
   useEffect(() => {
@@ -166,8 +116,8 @@ const App: React.FC = () => {
         'postgres_changes',
         { event: '*', schema: 'public' },
         (payload) => {
-            console.log('Realtime change received! Triggering silent sync.', payload);
-            handleSync(true);
+            console.log('Realtime change received! Refreshing data.', payload);
+            refreshData();
         }
       )
       .subscribe();
@@ -175,43 +125,15 @@ const App: React.FC = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [handleSync]);
+  }, [refreshData]);
   
-  // Network status listener
-  useEffect(() => {
-    const handleOnline = () => {
-        handleSync(true);
-    };
-    const handleOffline = () => setConnectionStatus('offline');
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    if (navigator.onLine) {
-        setConnectionStatus('connected');
-    } else {
-        handleOffline();
-    }
-
-    return () => {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-    };
-  }, [handleSync]);
-
-  // Polling for pending changes
-  useEffect(() => {
-    fetchPendingChanges();
-    const interval = setInterval(fetchPendingChanges, 10000); // Poll every 10 seconds
-    return () => clearInterval(interval);
-  }, [fetchPendingChanges]);
 
   const handleLogin = () => {
     const user = getCurrentUser();
     setCurrentUser(user);
     if(user){
       setCurrentView(View.ADMIN_DASHBOARD);
-      handleSync(true); // Trigger a silent sync on login to get latest data
+      refreshData();
     }
   };
 
@@ -304,11 +226,6 @@ const App: React.FC = () => {
             competitionInfo={competitionInfo} 
             events={events} 
             onDataUpdate={refreshData} 
-            isSyncing={isSyncing}
-            syncStatus={syncStatus}
-            lastSyncTime={lastSyncTime ?? 'Belum pernah'}
-            pendingChanges={pendingChanges}
-            onManualSync={() => handleSync(false)}
         />;
       case View.RACES:
         return <EventsView events={events} isLoading={isLoading} onSelectEvent={handleSelectEvent} onStartTiming={handleStartTiming} onDataUpdate={refreshData} />;
@@ -365,7 +282,6 @@ const App: React.FC = () => {
             </nav>
         </div>
         <div className="space-y-2">
-            <ConnectionStatusIndicator status={connectionStatus} />
             <ThemeToggle />
             <Button onClick={handleLogout} variant="secondary" className="w-full flex items-center justify-center space-x-2">
                 <LogoutIcon />

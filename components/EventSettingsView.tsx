@@ -19,12 +19,6 @@ interface EventSettingsViewProps {
     competitionInfo: CompetitionInfo | null;
     events: SwimEvent[];
     onDataUpdate: () => void;
-    // Props for centralized sync
-    isSyncing: boolean;
-    syncStatus: { message: string; type: 'success' | 'error' } | null;
-    lastSyncTime: string;
-    pendingChanges: number;
-    onManualSync: () => void;
 }
 
 const EditIcon = () => (
@@ -37,6 +31,9 @@ const TrashIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
     </svg>
 );
+const ArrowUpIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>);
+const ArrowDownIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>);
+
 
 // --- Helper Components ---
 const ImageUpload: React.FC<{ label: string; image: string | null; onImageSelect: (file: File) => void; onImageClear: () => void; }> = ({ label, image, onImageSelect, onImageClear }) => {
@@ -59,17 +56,6 @@ const ImageUpload: React.FC<{ label: string; image: string | null; onImageSelect
         </div>
     );
 };
-
-const DraggableEvent: React.FC<{ event: SwimEvent; onDragStart: (e: React.DragEvent<HTMLDivElement>, eventId: string) => void }> = ({ event, onDragStart }) => (
-    <div
-        draggable
-        onDragStart={(e) => onDragStart(e, event.id)}
-        className="bg-background p-2 rounded-md border border-border cursor-grab mb-2 shadow"
-    >
-        <p className="font-semibold text-text-primary text-sm">{formatEventName(event)}</p>
-        <p className="text-xs text-text-secondary">{event.entries.length} peserta</p>
-    </div>
-);
 
 const SmallInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { label: string }> = ({ label, id, ...props }) => (
     <div className="flex-1">
@@ -95,7 +81,7 @@ const initialRecordFormState = {
 };
 
 // --- Main Component ---
-export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitionInfo, events, onDataUpdate, isSyncing, syncStatus, lastSyncTime, pendingChanges, onManualSync }) => {
+export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitionInfo, events, onDataUpdate }) => {
     // --- Helper Functions ---
     const romanize = (num: number): string => {
         if (isNaN(num) || num <= 0) return '';
@@ -166,14 +152,20 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         const newSchedule: { [key: string]: SwimEvent[] } = { 'unscheduled': [] };
         const newSessionNames: { [key: string]: string } = {};
         const newSessionDetails: { [key: string]: { date: string; time: string } } = {};
-        const sortedEvents = [...events].sort((a,b) => (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
-
-        sortedEvents.forEach(event => {
+        
+        // The `events` prop is already sorted by the database query (session_number, then heat_order).
+        // Using the prop directly is the correct approach.
+        events.forEach(event => {
             const sessionKey = `session-${event.sessionNumber}`;
             if (event.sessionNumber && event.sessionNumber > 0) {
-                if (!newSchedule[sessionKey]) newSchedule[sessionKey] = [];
+                if (!newSchedule[sessionKey]) {
+                    newSchedule[sessionKey] = [];
+                }
                 newSchedule[sessionKey].push(event);
-                if (!newSessionNames[sessionKey]) newSessionNames[sessionKey] = `Sesi ${romanize(event.sessionNumber)}`;
+
+                if (!newSessionNames[sessionKey]) {
+                    newSessionNames[sessionKey] = `Sesi ${romanize(event.sessionNumber)}`;
+                }
 
                 if (!newSessionDetails[sessionKey] && event.sessionDateTime) {
                     try {
@@ -213,11 +205,11 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     // --- Handlers ---
     const handleSaveInfo = async () => {
         if (!info) return;
-        setFormStatus({ message: 'Menyimpan perubahan lokal...', type: 'success' });
+        setFormStatus({ message: 'Menyimpan perubahan...', type: 'success' });
         try {
             await updateCompetitionInfo(info);
             onDataUpdate();
-            setFormStatus({ message: 'Pengaturan umum berhasil disimpan secara lokal!', type: 'success' });
+            setFormStatus({ message: 'Pengaturan umum berhasil disimpan!', type: 'success' });
             setTimeout(() => setFormStatus(null), 4000);
         } catch (error) {
              setFormStatus({ message: `Gagal menyimpan: ${getErrorMessage(error)}`, type: 'error' });
@@ -225,7 +217,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     };
     
     const handleSaveSchedule = async () => {
-        setFormStatus({ message: 'Menyimpan jadwal lokal...', type: 'success' });
+        setFormStatus({ message: 'Menyimpan jadwal...', type: 'success' });
         try {
             const finalEvents: SwimEvent[] = [];
             Object.keys(schedule).forEach(key => {
@@ -253,7 +245,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             
             await updateEventSchedule(finalEvents);
             onDataUpdate();
-            setFormStatus({ message: 'Jadwal berhasil disimpan secara lokal!', type: 'success' });
+            setFormStatus({ message: 'Jadwal berhasil disimpan!', type: 'success' });
             setTimeout(() => setFormStatus(null), 4000);
         } catch (error) {
             console.error("Gagal menyimpan jadwal:", error);
@@ -633,52 +625,51 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     };
 
 
-    // --- Drag and Drop Handlers ---
-    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, eventId: string) => {
-        e.dataTransfer.setData('application/swimcomp-event-id', eventId);
+    // --- Scheduling Handlers ---
+    const handleMoveEvent = (eventId: string, sourceSessionKey: string, targetSessionKey: string) => {
+        if (sourceSessionKey === targetSessionKey) return;
+
+        setSchedule(currentSchedule => {
+            const sourceEvents = [...(currentSchedule[sourceSessionKey] || [])];
+            const targetEvents = [...(currentSchedule[targetSessionKey] || [])];
+            const eventIndex = sourceEvents.findIndex(e => e.id === eventId);
+            
+            if (eventIndex === -1) return currentSchedule;
+
+            const [eventToMove] = sourceEvents.splice(eventIndex, 1);
+            targetEvents.push(eventToMove);
+
+            return {
+                ...currentSchedule,
+                [sourceSessionKey]: sourceEvents,
+                [targetSessionKey]: targetEvents,
+            };
+        });
     };
-    
-    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => e.preventDefault();
-    
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetListKey: string) => {
-        e.preventDefault();
-        const eventId = e.dataTransfer.getData('application/swimcomp-event-id');
-        if (!eventId) return;
 
-        let sourceListKey = '';
-        let eventToMove: SwimEvent | undefined;
-        
-        for (const key in schedule) {
-            const foundEvent = schedule[key].find(ev => ev.id === eventId);
-            if (foundEvent) {
-                sourceListKey = key;
-                eventToMove = foundEvent;
-                break;
-            }
-        }
+    const handleReorderEvent = (eventId: string, sessionKey: string, direction: 'up' | 'down') => {
+        setSchedule(currentSchedule => {
+            const sessionEvents = [...currentSchedule[sessionKey]];
+            const currentIndex = sessionEvents.findIndex(e => e.id === eventId);
+            if (currentIndex === -1) return currentSchedule;
 
-        if (!eventToMove || !sourceListKey || sourceListKey === targetListKey) return;
+            const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+            if (newIndex < 0 || newIndex >= sessionEvents.length) return currentSchedule;
 
-        const dropZone = e.currentTarget;
-        const dropY = e.clientY;
-        const children = Array.from(dropZone.children).filter(c => c.getAttribute('draggable'));
-        let insertAtIndex = children.length;
+            // Swap elements
+            [sessionEvents[currentIndex], sessionEvents[newIndex]] = [sessionEvents[newIndex], sessionEvents[currentIndex]];
 
-        for (let i = 0; i < children.length; i++) {
-            const childRect = children[i].getBoundingClientRect();
-            if (dropY < childRect.top + childRect.height / 2) {
-                insertAtIndex = i;
-                break;
-            }
-        }
-
-        const newSchedule = { ...schedule };
-        newSchedule[sourceListKey] = newSchedule[sourceListKey].filter(ev => ev.id !== eventId);
-        if (!newSchedule[targetListKey]) newSchedule[targetListKey] = [];
-        newSchedule[targetListKey].splice(insertAtIndex, 0, eventToMove);
-
-        setSchedule(newSchedule);
+            return { ...currentSchedule, [sessionKey]: sessionEvents };
+        });
     };
+
+    const sessionOptions = useMemo(() => [
+        { value: 'unscheduled', label: 'Belum Terjadwal' },
+        ...Object.keys(schedule)
+            .filter(k => k.startsWith('session'))
+            .sort((a,b) => parseInt(a.split('-')[1]) - parseInt(b.split('-')[1]))
+            .map(key => ({ value: key, label: sessionNames[key] || `Sesi ${romanize(parseInt(key.split('-')[1]))}` }))
+    ], [schedule, sessionNames]);
     
     const filteredUnscheduledEvents = useMemo(() => {
         if (!unscheduledSearchQuery) {
@@ -717,16 +708,14 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         try {
             const user = await login(clearDataCredentials.email, clearDataCredentials.password);
             if (user) {
-                // Re-authenticated successfully
                 await clearAllData();
                 setIsClearingData(false);
                 setIsClearDataModalOpen(false);
                 setClearDataCredentials({ email: '', password: '' });
-                onDataUpdate(); // Refresh everything
+                onDataUpdate();
                 setFormStatus({ message: 'Semua data kompetisi telah berhasil dihapus.', type: 'success' });
                 setTimeout(() => setFormStatus(null), 5000);
             } else {
-                // This case shouldn't happen if login throws on failure, but as a fallback.
                 setClearDataError('Kredensial tidak valid.');
                 setIsClearingData(false);
             }
@@ -770,7 +759,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 setIsRestoring(false);
                 setIsRestoreModalOpen(false);
                 setRestoreFile(null);
-                 // Find the file input and reset it
                 const fileInput = document.getElementById('restore-upload') as HTMLInputElement;
                 if(fileInput) fileInput.value = '';
             }
@@ -781,7 +769,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     // --- Render Logic ---
     if (!info) return <div className="flex justify-center items-center h-full"><Spinner /></div>;
     
-    const displayStatus = syncStatus || formStatus;
+    const displayStatus = formStatus;
 
     const renderTabs = () => (
         <div className="flex border-b border-border mb-6 no-print">
@@ -832,54 +820,85 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
 
             {activeTab === 'schedule' && (
                  <Card>
-                    <div className="flex justify-between items-center mb-4">
-                        <p className="text-text-secondary">Seret dan lepas nomor lomba untuk mengatur jadwal.</p>
+                    <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                        <p className="text-text-secondary">Atur nomor lomba ke dalam sesi dan tentukan urutannya.</p>
                         <div className="flex items-center space-x-4">
                             <Button variant="secondary" onClick={addSession}>Tambah Sesi</Button>
                             <Button onClick={handleSaveSchedule}>Simpan Jadwal</Button>
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        <div className="col-span-1 bg-surface p-4 rounded-lg flex flex-col">
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Scheduled Events column */}
+                        <div className="space-y-6">
+                            {Object.keys(schedule).filter(k => k.startsWith('session')).sort((a,b) => parseInt(a.split('-')[1]) - parseInt(b.split('-')[1])).map(key => (
+                                <div key={key} className="bg-background p-4 rounded-lg border border-border">
+                                    {/* Session header */}
+                                    <div className="flex justify-between items-center mb-2 border-b border-border pb-2 flex-wrap gap-2">
+                                        <input type="text" value={sessionNames[key] || ''} onChange={(e) => setSessionNames(prev => ({...prev, [key]: toTitleCase(e.target.value)}))} className="font-bold text-lg bg-transparent focus:outline-none focus:ring-1 focus:ring-primary rounded px-1 flex-grow" />
+                                        <button onClick={() => removeSession(key)} className="text-red-500 hover:text-red-400 text-xs ml-2 flex-shrink-0">Hapus Sesi</button>
+                                    </div>
+                                    <div className="flex space-x-2 mb-4">
+                                        <SmallInput label="Tanggal" type="date" id={`date-${key}`} value={sessionDetails[key]?.date || ''} onChange={(e) => handleSessionDetailChange(key, 'date', e.target.value)} />
+                                        <SmallInput label="Waktu Mulai" type="time" id={`time-${key}`} value={sessionDetails[key]?.time || ''} onChange={(e) => handleSessionDetailChange(key, 'time', e.target.value)} />
+                                    </div>
+                                    
+                                    {/* Events list in this session */}
+                                    <div className="space-y-2">
+                                        {schedule[key]?.length > 0 ? schedule[key].map((event, index) => (
+                                            <div key={event.id} className="flex items-center justify-between bg-surface p-2 rounded-md shadow-sm">
+                                                <div className="flex items-center space-x-2">
+                                                    <div className="flex flex-col">
+                                                        <button onClick={() => handleReorderEvent(event.id, key, 'up')} disabled={index === 0} className="disabled:opacity-20 text-text-secondary hover:text-text-primary"><ArrowUpIcon /></button>
+                                                        <button onClick={() => handleReorderEvent(event.id, key, 'down')} disabled={index === schedule[key].length - 1} className="disabled:opacity-20 text-text-secondary hover:text-text-primary"><ArrowDownIcon /></button>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-text-primary text-sm">{formatEventName(event)}</p>
+                                                        <p className="text-xs text-text-secondary">{event.entries.length} peserta</p>
+                                                    </div>
+                                                </div>
+                                                <div className="w-40">
+                                                    <select
+                                                        value={key}
+                                                        onChange={(e) => handleMoveEvent(event.id, key, e.target.value)}
+                                                        className="w-full bg-background border border-border rounded-md px-2 py-1 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                                    >
+                                                        {sessionOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )) : <p className="text-sm text-text-secondary text-center py-4">Belum ada nomor lomba di sesi ini.</p>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        
+                        {/* Unscheduled Events column */}
+                        <div className="bg-surface p-4 rounded-lg">
                             <h3 className="font-bold text-lg mb-4 border-b border-border pb-2">Lomba Belum Terjadwal</h3>
-                             <div className="mb-4">
-                                <Input
-                                    label="Cari nomor lomba"
-                                    id="unscheduled-search"
-                                    type="text"
-                                    placeholder="Cth: 50m Gaya Bebas..."
-                                    value={unscheduledSearchQuery}
-                                    onChange={(e) => setUnscheduledSearchQuery(e.target.value)}
-                                />
+                            <div className="mb-4">
+                                <Input label="Cari nomor lomba" id="unscheduled-search" type="text" placeholder="Ketik untuk mencari..." value={unscheduledSearchQuery} onChange={(e) => setUnscheduledSearchQuery(e.target.value)} />
                             </div>
-                            <div onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'unscheduled')} className="min-h-[200px] space-y-2 flex-grow max-h-[60vh] overflow-y-auto pr-2">
-                                {filteredUnscheduledEvents.map(event => <DraggableEvent key={event.id} event={event} onDragStart={handleDragStart} />)}
+                            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+                                {filteredUnscheduledEvents.length > 0 ? filteredUnscheduledEvents.map(event => (
+                                    <div key={event.id} className="flex items-center justify-between bg-background p-2 rounded-md">
+                                        <div>
+                                            <p className="font-semibold text-text-primary text-sm">{formatEventName(event)}</p>
+                                            <p className="text-xs text-text-secondary">{event.entries.length} peserta</p>
+                                        </div>
+                                        <div className="w-40">
+                                            <select
+                                                value="unscheduled"
+                                                onChange={(e) => handleMoveEvent(event.id, 'unscheduled', e.target.value)}
+                                                className="w-full bg-background border border-border rounded-md px-2 py-1 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                            >
+                                                {sessionOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )) : <p className="text-sm text-text-secondary text-center py-4">Semua nomor lomba sudah terjadwal.</p>}
                             </div>
                         </div>
-                        {Object.keys(schedule).filter(k => k.startsWith('session')).sort().map(key => (
-                            <div key={key} className="col-span-1 bg-surface p-4 rounded-lg flex flex-col">
-                                <div className="flex justify-between items-center mb-2 border-b border-border pb-2 flex-shrink-0">
-                                    <input 
-                                       type="text" 
-                                       value={sessionNames[key] || ''}
-                                       onChange={(e) => setSessionNames(prev => ({...prev, [key]: toTitleCase(e.target.value)}))}
-                                       className="font-bold text-lg bg-transparent focus:outline-none focus:ring-1 focus:ring-primary rounded px-1 w-full"
-                                    />
-                                    <button onClick={() => removeSession(key)} className="text-red-500 hover:text-red-400 text-xs ml-2">Hapus</button>
-                                </div>
-                                <div className="flex space-x-2 mb-2">
-                                    <SmallInput label="Tanggal" type="date" id={`date-${key}`} value={sessionDetails[key]?.date || ''} onChange={(e) => handleSessionDetailChange(key, 'date', e.target.value)} />
-                                    <SmallInput label="Waktu" type="time" id={`time-${key}`} value={sessionDetails[key]?.time || ''} onChange={(e) => handleSessionDetailChange(key, 'time', e.target.value)} />
-                                </div>
-                                <div 
-                                    onDragOver={handleDragOver} 
-                                    onDrop={(e) => handleDrop(e, key)}
-                                    className="min-h-[200px] space-y-2 flex-grow bg-background/50 p-2 rounded-md"
-                                >
-                                    {schedule[key]?.map(event => <DraggableEvent key={event.id} event={event} onDragStart={handleDragStart} />)}
-                                </div>
-                            </div>
-                        ))}
                     </div>
                 </Card>
             )}
@@ -1081,65 +1100,48 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
 
             {activeTab === 'data' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div>
-                        <Card className="mb-6">
-                            <h3 className="text-xl font-bold">Sinkronisasi Data</h3>
-                            <p className="text-text-secondary mt-2 mb-4">
-                                Aplikasi ini akan sinkronisasi secara otomatis saat terhubung ke internet. Gunakan tombol ini untuk memicu sinkronisasi secara manual.
-                            </p>
-                            <div className="flex items-center space-x-4">
-                                <Button onClick={onManualSync} disabled={isSyncing}>
-                                    {isSyncing ? <Spinner /> : `Sinkronkan Sekarang`}
+                    <Card>
+                        <h3 className="text-xl font-bold">Backup & Restore</h3>
+                        <p className="text-text-secondary mt-2 mb-4">
+                            Simpan atau pulihkan semua data kompetisi dari file backup JSON.
+                        </p>
+                        
+                        <div className="space-y-4">
+                            {/* Backup */}
+                            <div>
+                                <h4 className="font-semibold">Backup Data</h4>
+                                <p className="text-sm text-text-secondary mb-2">Unduh semua data saat ini dari database ke dalam satu file.</p>
+                                <Button onClick={handleBackup} disabled={isBackupLoading}>
+                                    {isBackupLoading ? <Spinner /> : 'Backup Semua Data'}
                                 </Button>
-                                <div className="text-sm text-text-secondary">
-                                    <p>{pendingChanges > 0 ? `${pendingChanges} Perubahan menunggu untuk disinkronkan` : "Data lokal sudah yang terbaru."}</p>
-                                    <p>Terakhir sinkronisasi: <span className="font-semibold">{lastSyncTime}</span></p>
-                                </div>
                             </div>
-                        </Card>
-                        <Card>
-                            <h3 className="text-xl font-bold">Backup & Restore</h3>
-                            <p className="text-text-secondary mt-2 mb-4">
-                                Simpan atau pulihkan semua data kompetisi dari file backup JSON.
-                            </p>
-                            
-                            <div className="space-y-4">
-                                {/* Backup */}
-                                <div>
-                                    <h4 className="font-semibold">Backup Data</h4>
-                                    <p className="text-sm text-text-secondary mb-2">Unduh semua data lokal saat ini ke dalam satu file.</p>
-                                    <Button onClick={handleBackup} disabled={isBackupLoading}>
-                                        {isBackupLoading ? <Spinner /> : 'Backup Semua Data'}
-                                    </Button>
-                                </div>
 
-                                {/* Restore */}
-                                <div className="pt-4 border-t border-border">
-                                    <h4 className="font-semibold">Pulihkan dari Backup</h4>
-                                    <p className="text-sm text-text-secondary mb-2">
-                                        Memulihkan data akan <strong className="font-bold text-yellow-500">MENGGANTI SEMUA DATA LOKAL SAAT INI</strong> dan mengantrekannya untuk sinkronisasi.
-                                    </p>
-                                    <div className="flex items-center space-x-4">
-                                        <input type="file" id="restore-upload" accept=".json" className="hidden" onChange={handleRestoreFileChange} />
-                                        <Button type="button" variant="secondary" onClick={() => document.getElementById('restore-upload')?.click()}>Pilih File Backup</Button>
-                                        {restoreFile && <span className="text-text-secondary text-sm">{restoreFile.name}</span>}
-                                    </div>
-                                    <Button 
-                                        onClick={() => setIsRestoreModalOpen(true)} 
-                                        disabled={!restoreFile || isRestoring}
-                                        className="mt-2"
-                                    >
-                                        {isRestoring ? <Spinner/> : 'Pulihkan Data'}
-                                    </Button>
+                            {/* Restore */}
+                            <div className="pt-4 border-t border-border">
+                                <h4 className="font-semibold">Pulihkan dari Backup</h4>
+                                <p className="text-sm text-text-secondary mb-2">
+                                    Memulihkan data akan <strong className="font-bold text-yellow-500">MENGGANTI SEMUA DATA DI DATABASE</strong> dengan isi dari file backup.
+                                </p>
+                                <div className="flex items-center space-x-4">
+                                    <input type="file" id="restore-upload" accept=".json" className="hidden" onChange={handleRestoreFileChange} />
+                                    <Button type="button" variant="secondary" onClick={() => document.getElementById('restore-upload')?.click()}>Pilih File Backup</Button>
+                                    {restoreFile && <span className="text-text-secondary text-sm">{restoreFile.name}</span>}
                                 </div>
+                                <Button 
+                                    onClick={() => setIsRestoreModalOpen(true)} 
+                                    disabled={!restoreFile || isRestoring}
+                                    className="mt-2"
+                                >
+                                    {isRestoring ? <Spinner/> : 'Pulihkan Data'}
+                                </Button>
                             </div>
-                        </Card>
-                    </div>
+                        </div>
+                    </Card>
 
                     <Card className="border-red-500/50 bg-red-500/5">
                         <h3 className="text-xl font-bold text-red-500">Zona Berbahaya</h3>
                         <p className="text-text-secondary mt-2 mb-4">
-                            Tindakan ini akan menghapus <strong className="font-bold text-red-400">SEMUA</strong> data dari kompetisi ini secara permanen dari database lokal dan database pusat di Supabase.
+                            Tindakan ini akan menghapus <strong className="font-bold text-red-400">SEMUA</strong> data dari kompetisi ini secara permanen dari database pusat di Supabase.
                         </p>
                         <Button variant="danger" onClick={() => setIsClearDataModalOpen(true)}>
                             Hapus Semua Data
@@ -1197,7 +1199,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                     <div className="space-y-4">
                         <p className="text-lg font-bold text-red-500">PERINGATAN KERAS!</p>
                         <p className="text-text-secondary">
-                            Tindakan ini bersifat permanen dan akan menghapus semua data dari <strong className="text-red-500">perangkat lokal DAN database pusat (Supabase)</strong>. Ini termasuk:
+                            Tindakan ini bersifat permanen dan akan menghapus semua data dari <strong className="text-red-500">database pusat (Supabase)</strong>. Ini termasuk:
                         </p>
                         <ul className="list-disc list-inside text-red-400">
                             <li>Pengaturan Acara (akan direset)</li>
