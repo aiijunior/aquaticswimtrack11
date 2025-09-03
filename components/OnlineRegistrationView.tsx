@@ -205,7 +205,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         return renderLayout(
              <Card>
                 <div className="text-center p-10">
-                     <h2 className="text-2xl font-bold mb-4">Pendaftaran Belum Dibuka</h2>
+                     <h2 className="text-2xl font-bold mb-4">Belum Ada Nomor Lomba Tersedia</h2>
                     <p className="text-text-secondary">Saat ini belum ada nomor lomba yang tersedia untuk pendaftaran. Silakan kembali lagi nanti.</p>
                 </div>
             </Card>
