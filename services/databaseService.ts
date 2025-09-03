@@ -203,15 +203,22 @@ export const getEventById = async (id: string): Promise<SwimEvent | undefined> =
 };
 
 export const updateEventSchedule = async (updatedSchedule: SwimEvent[]): Promise<void> => {
-    // Only map the properties that are being updated by the scheduling view.
-    // This is safer and more efficient. The primary key `id` is required for upsert to identify rows.
+    // The payload needs to include all required fields for the 'events' table
+    // to prevent 'not-null constraint' violations during the upsert operation.
+    // We explicitly map all non-relational properties from the SwimEvent object
+    // to the snake_case format expected by the database.
     const payload = updatedSchedule.map(event => ({
         id: event.id,
+        distance: event.distance,
+        style: event.style,
+        gender: event.gender,
         session_number: event.sessionNumber,
         heat_order: event.heatOrder,
         session_date_time: event.sessionDateTime,
+        relay_legs: event.relayLegs,
+        category: event.category
     }));
-    
+
     if (payload.length === 0) return;
 
     const { error } = await supabase.from('events').upsert(payload);

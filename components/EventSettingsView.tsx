@@ -153,8 +153,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         const newSessionNames: { [key: string]: string } = {};
         const newSessionDetails: { [key: string]: { date: string; time: string } } = {};
         
-        // The `events` prop is already sorted by the database query (session_number, then heat_order).
-        // Using the prop directly is the correct approach.
         events.forEach(event => {
             const sessionKey = `session-${event.sessionNumber}`;
             if (event.sessionNumber && event.sessionNumber > 0) {
@@ -182,6 +180,17 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 newSchedule['unscheduled'].push(event);
             }
         });
+
+        // After populating the schedule, we sort each session's event list
+        // based on its `heatOrder`. This ensures that the display order is always
+        // correct and consistent with the saved data, fixing the issue where
+        // the order might appear incorrect after a refresh.
+        for (const sessionKey in newSchedule) {
+            if (sessionKey.startsWith('session-')) {
+                newSchedule[sessionKey].sort((a, b) => (a.heatOrder ?? 999) - (b.heatOrder ?? 999));
+            }
+        }
+        
         setSchedule(newSchedule);
         setSessionNames(newSessionNames);
         setSessionDetails(newSessionDetails);
