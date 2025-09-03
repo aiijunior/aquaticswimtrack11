@@ -7,13 +7,9 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { formatEventName } from '../constants';
 import { useTheme } from '../contexts/ThemeContext';
-import { getRecords } from '../services/databaseService';
+import { getRecords, getOnlineEvents, getPublicSwimmers, getPublicCompetitionInfo } from '../services/databaseService';
 
 interface PublicResultsViewProps {
-  events: SwimEvent[];
-  swimmers: Swimmer[];
-  competitionInfo: CompetitionInfo | null;
-  isLoading: boolean;
   onAdminLogin: () => void;
 }
 
@@ -57,7 +53,12 @@ const TabButton: React.FC<{ label: string, isActive: boolean, onClick: () => voi
     </button>
 );
 
-export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ events, swimmers, competitionInfo, isLoading, onAdminLogin }) => {
+export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ onAdminLogin }) => {
+    const [localEvents, setLocalEvents] = useState<SwimEvent[]>([]);
+    const [localSwimmers, setLocalSwimmers] = useState<Swimmer[]>([]);
+    const [localCompetitionInfo, setLocalCompetitionInfo] = useState<CompetitionInfo | null>(null);
+    const [isDataLoading, setIsDataLoading] = useState(true);
+
     const [activeTab, setActiveTab] = useState<Tab>('results');
     const [lastUpdated, setLastUpdated] = useState(new Date());
     const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null);
@@ -65,38 +66,61 @@ export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ events, sw
     const [records, setRecords] = useState<SwimRecord[]>([]);
     
     const { theme } = useTheme();
-    const prevEvents = usePrevious(events);
-    
-    useEffect(() => {
-        const fetchRecords = async () => {
-            setRecords(await getRecords());
-        };
-        fetchRecords();
-    }, []);
+    const prevEvents = usePrevious(localEvents);
 
+    // Effect to fetch all data directly from Supabase on mount and poll for changes
+    useEffect(() => {
+        const fetchData = async (isInitialLoad = false) => {
+            if (isInitialLoad) setIsDataLoading(true);
+            
+            const [eventsData, swimmersData, infoData, recordsData] = await Promise.all([
+                getOnlineEvents(),
+                getPublicSwimmers(),
+                getPublicCompetitionInfo(),
+                getRecords()
+            ]);
+            
+            setLocalEvents(eventsData);
+            setLocalSwimmers(swimmersData);
+            setLocalCompetitionInfo(infoData);
+            setRecords(recordsData); // Also fetch records
+            
+            if (isInitialLoad) setIsDataLoading(false);
+            setLastUpdated(new Date());
+        };
+
+        fetchData(true); // Initial load
+        const intervalId = setInterval(() => fetchData(false), 30000); // Poll every 30 seconds
+
+        return () => clearInterval(intervalId); // Cleanup on unmount
+    }, []);
+    
     // Effect to detect changes and set highlight
     useEffect(() => {
-        setLastUpdated(new Date());
-        if (prevEvents && prevEvents.length > 0 && events.length > 0) {
+        if (prevEvents && prevEvents.length > 0 && localEvents.length > 0) {
             const prevResultsCount = new Map(prevEvents.map(e => [e.id, e.results.length]));
-            for (const event of events) {
+            for (const event of localEvents) {
                 if ((prevResultsCount.get(event.id) ?? 0) < event.results.length) {
                     setHighlightedEventId(event.id);
+                    // Scroll to the new result if it's in view
+                    const element = document.getElementById(`event-card-${event.id}`);
+                    element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
                     setTimeout(() => setHighlightedEventId(null), 2000); // Highlight lasts 2 seconds
                     break;
                 }
             }
         }
-    }, [events, prevEvents]);
+    }, [localEvents, prevEvents]);
 
 
     const { clubMedals, eventsWithResults } = useMemo(() => {
         const clubMedals: Record<string, MedalCounts> = {};
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        const swimmersMap = new Map(localSwimmers.map(s => [s.id, s]));
 
         // Calculate broken records first
         const brokenRecordsList: (BrokenRecord & { record: SwimRecord })[] = [];
-        events.forEach(event => {
+        localEvents.forEach(event => {
             if (event.results && event.results.length > 0) {
                 const winner = [...event.results].filter(r => r.time > 0).sort((a, b) => a.time - b.time)[0];
                 const winnerSwimmer = winner ? swimmersMap.get(winner.swimmerId) : undefined;
@@ -126,7 +150,7 @@ export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ events, sw
         });
 
         // Calculate medals first, from ALL events with results.
-        events.forEach(event => {
+        localEvents.forEach(event => {
             if (event.results && event.results.length > 0) {
                 [...event.results]
                     .filter(r => r.time > 0) // Only process valid times for medals
@@ -145,7 +169,7 @@ export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ events, sw
             }
         });
 
-        const processedEvents = events
+        const processedEvents = localEvents
             .filter(event => {
                  if (!event.results || event.results.length === 0) return false;
                  return !searchQuery || formatEventName(event).toLowerCase().includes(searchQuery.toLowerCase());
@@ -186,19 +210,19 @@ export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ events, sw
             .sort(([, a], [, b]) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
             
         return { clubMedals: sortedClubMedals, eventsWithResults: processedEvents };
-    }, [events, swimmers, searchQuery, records]);
+    }, [localEvents, localSwimmers, searchQuery, records]);
 
     const renderHeader = () => (
         <header className="relative text-center p-4 md:p-6">
-            {competitionInfo?.eventLogo && (
+            {localCompetitionInfo?.eventLogo && (
                 <img 
-                    src={competitionInfo.eventLogo} 
+                    src={localCompetitionInfo.eventLogo} 
                     alt="Logo Acara" 
                     className={`mx-auto h-20 md:h-24 object-contain mb-4 ${theme === 'dark' ? 'bg-white p-2 rounded' : ''}`}
                 />
             )}
-            <h1 className="text-3xl md:text-5xl font-extrabold text-primary tracking-tight">{competitionInfo?.eventName || 'Hasil Lomba'}</h1>
-            <p className="text-md md:text-xl text-text-secondary mt-2">{competitionInfo?.eventDate ? new Date(competitionInfo.eventDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''}</p>
+            <h1 className="text-3xl md:text-5xl font-extrabold text-primary tracking-tight">{localCompetitionInfo?.eventName || 'Hasil Lomba'}</h1>
+            <p className="text-md md:text-xl text-text-secondary mt-2">{localCompetitionInfo?.eventDate ? new Date(localCompetitionInfo.eventDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''}</p>
         </header>
     );
 
@@ -225,7 +249,7 @@ export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ events, sw
                     </div>
                 </div>
 
-                {isLoading && events.length === 0 ? (
+                {isDataLoading && localEvents.length === 0 ? (
                     <div className="flex justify-center items-center py-20"><Spinner /></div>
                 ) : activeTab === 'results' ? (
                      <div className="space-y-4">
@@ -240,7 +264,7 @@ export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ events, sw
                            />
                         </div>
                         {eventsWithResults.length > 0 ? eventsWithResults.map(event => (
-                            <div key={event.id} className={highlightedEventId === event.id ? 'flash-animation' : ''}>
+                            <div key={event.id} id={`event-card-${event.id}`} className={highlightedEventId === event.id ? 'flash-animation' : ''}>
                                 <Card>
                                     <h3 className="text-xl md:text-2xl font-bold text-primary">{formatEventName(event)}</h3>
                                     <div className="mt-2 overflow-x-auto">

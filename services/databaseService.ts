@@ -389,7 +389,56 @@ export const getSwimmerById = async (id: string): Promise<Swimmer | undefined> =
 };
 
 // --- Events ---
-export const getEvents = (): Promise<SwimEvent[]> => getLocalEvents();
+export const getEvents = async (): Promise<SwimEvent[]> => {
+    let events = await getLocalEvents();
+    // If the local database is empty, fetch from the server as a one-time hydration.
+    // This is crucial for new users/browsers accessing the public registration page.
+    if (events.length === 0) {
+        try {
+            events = await supabaseGetEvents();
+            await saveLocalEvents(events);
+        } catch (e) {
+            console.warn("Could not fetch events from server on initial load.", e);
+            return []; // Return empty array on failure
+        }
+    }
+    return events;
+};
+
+export const getOnlineEvents = async (): Promise<SwimEvent[]> => {
+    try {
+        const events = await supabaseGetEvents();
+        return events;
+    } catch (e) {
+        console.error("Could not fetch events directly from server for online registration.", e);
+        return [];
+    }
+};
+
+export const getPublicSwimmers = async (): Promise<Swimmer[]> => {
+    try {
+        return await supabaseGetSwimmers();
+    } catch (e) {
+        console.error("Could not fetch swimmers directly from server for public view.", e);
+        return [];
+    }
+};
+
+export const getPublicCompetitionInfo = async (): Promise<CompetitionInfo> => {
+    try {
+        return await supabaseGetCompetitionInfo();
+    } catch (e) {
+        console.error("Could not fetch competition info directly from server for public view. Using defaults.", e);
+        return {
+            eventName: config.competition.defaultName,
+            eventDate: '',
+            eventLogo: null,
+            sponsorLogo: null,
+            isRegistrationOpen: false,
+            numberOfLanes: config.competition.defaultLanes
+        };
+    }
+};
 
 export const addEvent = async (event: Omit<SwimEvent, 'id' | 'entries' | 'results'>): Promise<SwimEvent> => {
     const newEvent: SwimEvent = { ...event, id: crypto.randomUUID(), entries: [], results: [] };

@@ -1,8 +1,8 @@
 
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent } from '../types';
-import { processOnlineRegistration } from '../services/databaseService';
+import { getOnlineEvents, processOnlineRegistration } from '../services/databaseService';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -11,9 +11,7 @@ import { Spinner } from './ui/Spinner';
 import { formatEventName, toTitleCase } from '../constants';
 
 interface OnlineRegistrationViewProps {
-    events: SwimEvent[];
     competitionInfo: CompetitionInfo | null;
-    isLoading: boolean;
     onBackToLogin: () => void;
     onRegistrationSuccess: () => void;
 }
@@ -32,12 +30,12 @@ const parseTimeToMs = (time: RegistrationTime): number => {
 };
 
 export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
-    events,
     competitionInfo,
-    isLoading,
     onBackToLogin,
     onRegistrationSuccess,
 }) => {
+    const [localEvents, setLocalEvents] = useState<SwimEvent[]>([]);
+    const [isDataLoading, setIsDataLoading] = useState(true);
     const [formData, setFormData] = useState({
         name: '',
         birthYear: new Date().getFullYear() - 10,
@@ -48,6 +46,17 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+
+    useEffect(() => {
+        const fetchEvents = async () => {
+            setIsDataLoading(true);
+            const onlineEvents = await getOnlineEvents();
+            setLocalEvents(onlineEvents);
+            setIsDataLoading(false);
+        };
+
+        fetchEvents();
+    }, []);
 
     const isFormValid = useMemo(() => {
         const hasPersonalInfo = formData.name.trim() !== '' && formData.club.trim() !== '';
@@ -91,10 +100,10 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     };
     
     const availableEvents = useMemo(() => {
-        return events
+        return localEvents
         .filter(event => event.gender === "Mixed" || (formData.gender === "Male" && event.gender === "Men's") || (formData.gender === "Female" && event.gender === "Women's"))
         .sort((a,b) => a.distance - b.distance || a.style.localeCompare(b.style));
-    }, [events, formData.gender]);
+    }, [localEvents, formData.gender]);
     
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -180,7 +189,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         </div>
     );
 
-    if (isLoading) {
+    if (isDataLoading) {
         return <div className="flex justify-center items-center h-screen"><Spinner /></div>;
     }
     
@@ -201,7 +210,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         );
     }
 
-    if (!successMessage && events.length === 0) {
+    if (!successMessage && localEvents.length === 0) {
         return renderLayout(
              <Card>
                 <div className="text-center p-10">
