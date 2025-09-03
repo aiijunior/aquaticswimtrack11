@@ -20,6 +20,7 @@ import { Button } from './components/ui/Button';
 import { ThemeToggle } from './components/ui/ThemeToggle';
 import { supabase } from './services/supabaseClient';
 import { Spinner } from './components/ui/Spinner';
+import { ConnectionStatusIndicator } from './components/ui/ConnectionStatusIndicator';
 
 const NavLink: React.FC<{
   label: string;
@@ -63,6 +64,11 @@ const App: React.FC = () => {
   const [competitionInfo, setCompetitionInfo] = useState<CompetitionInfo | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
   
+  // State for connection status
+  const [internetStatus, setInternetStatus] = useState<'online' | 'offline'>('online');
+  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error' | 'offline'>('checking');
+  const checkIntervalRef = useRef<number | null>(null);
+
   // Centralized data fetching function
   const refreshData = useCallback(async () => {
     setIsDataLoading(true);
@@ -127,6 +133,56 @@ const App: React.FC = () => {
     };
   }, [refreshData]);
   
+  // Connection Status Effect
+  useEffect(() => {
+    const checkSupabaseConnection = async () => {
+        try {
+            const { error } = await supabase.from('competition_info').select('id').limit(1);
+            if (error) {
+                if (error.message.includes('Auth session missing') || error.message.includes('JWT expired')) {
+                    setDbStatus('connected');
+                } else {
+                    throw error;
+                }
+            } else {
+               setDbStatus('connected');
+            }
+        } catch (e) {
+            console.error("Supabase connection check failed:", e);
+            setDbStatus('error');
+        }
+    };
+
+    const runChecks = () => {
+        if (!navigator.onLine) {
+            setInternetStatus('offline');
+            setDbStatus('offline');
+            return;
+        }
+        setInternetStatus('online');
+        setDbStatus('checking');
+        checkSupabaseConnection();
+    };
+
+    runChecks();
+    
+    const handleOffline = () => {
+        setInternetStatus('offline');
+        setDbStatus('offline');
+    };
+
+    window.addEventListener('online', runChecks);
+    window.addEventListener('offline', handleOffline);
+    
+    if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
+    checkIntervalRef.current = window.setInterval(runChecks, 30000);
+
+    return () => {
+        window.removeEventListener('online', runChecks);
+        window.removeEventListener('offline', handleOffline);
+        if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
+    };
+  }, []);
 
   const handleLogin = () => {
     const user = getCurrentUser();
@@ -282,6 +338,7 @@ const App: React.FC = () => {
             </nav>
         </div>
         <div className="space-y-2">
+            <ConnectionStatusIndicator internetStatus={internetStatus} dbStatus={dbStatus} />
             <ThemeToggle />
             <Button onClick={handleLogout} variant="secondary" className="w-full flex items-center justify-center space-x-2">
                 <LogoutIcon />

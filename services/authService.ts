@@ -40,7 +40,7 @@ export const login = async (email?: string, password?: string): Promise<User | n
       // This is what Supabase returns for both wrong passwords and unconfirmed emails during sign-in
       // to avoid leaking information about which emails are registered.
       if (authError.message.includes("Invalid login credentials")) {
-        throw new Error("Kredensial tidak valid. Periksa kembali email dan kata sandi. Jika ini akun baru, pastikan email telah dikonfirmasi (atau nonaktifkan konfirmasi email di pengaturan Supabase Anda, sesuai petunjuk di README).");
+        throw new Error("Login Gagal: Kredensial tidak valid. PENYEBAB PALING UMUM: Jika ini akun Admin baru, Anda harus menonaktifkan 'Confirm email' di pengaturan Authentication Supabase Anda. Lihat petunjuk di README. Jika sudah, periksa kembali email dan kata sandi.");
       }
       
       // Check for a more specific email confirmation error, which might be returned in other scenarios.

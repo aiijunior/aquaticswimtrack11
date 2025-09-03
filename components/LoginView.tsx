@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { CompetitionInfo } from '../types';
 import { Button } from './ui/Button';
@@ -25,12 +26,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onShowPubl
     setError('');
     setIsLoading(true);
     try {
-      const user = await login(username, password);
-      if (user) {
-        onLoginSuccess();
-      } else {
-        setError('Nama pengguna atau sandi salah.');
-      }
+      await login(username, password);
+      onLoginSuccess();
     } catch(err: any) {
         setError(err.message || 'Terjadi kesalahan saat login.');
     } finally {

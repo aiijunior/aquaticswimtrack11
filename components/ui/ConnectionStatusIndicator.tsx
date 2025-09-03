@@ -1,35 +1,49 @@
-
 import React from 'react';
 
-type Status = 'checking' | 'connected' | 'offline' | 'error';
+type InternetStatus = 'online' | 'offline';
+type DbStatus = 'checking' | 'connected' | 'error' | 'offline';
 
 interface ConnectionStatusIndicatorProps {
-  status: Status;
+  internetStatus: InternetStatus;
+  dbStatus: DbStatus;
 }
 
-const statusConfig: Record<Status, { color: string, text: string, aria: string }> = {
-  checking: { color: 'bg-yellow-400', text: 'Mengecek...', aria: 'Mengecek koneksi ke database' },
-  connected: { color: 'bg-green-500', text: 'Terhubung', aria: 'Terhubung ke database' },
-  offline: { color: 'bg-gray-400', text: 'Offline', aria: 'Tidak ada koneksi internet' },
-  error: { color: 'bg-red-500', text: 'Gagal', aria: 'Gagal terhubung ke database' },
+const internetStatusConfig: Record<InternetStatus, { color: string, text: string }> = {
+  online: { color: 'bg-green-500', text: 'Online' },
+  offline: { color: 'bg-gray-400', text: 'Offline' },
 };
 
-const Dot: React.FC<{ color: string }> = ({ color }) => (
-  <span className={`inline-block w-3 h-3 rounded-full ${color} animate-pulse`}></span>
+const dbStatusConfig: Record<DbStatus, { color: string, text: string }> = {
+  checking: { color: 'bg-yellow-400', text: 'Mengecek...' },
+  connected: { color: 'bg-green-500', text: 'Terhubung' },
+  error: { color: 'bg-red-500', text: 'Gagal' },
+  offline: { color: 'bg-gray-400', text: 'Offline' },
+};
+
+const Dot: React.FC<{ color: string, pulse: boolean }> = ({ color, pulse }) => (
+  <span className={`inline-block w-2 h-2 rounded-full ${color} ${pulse ? 'animate-pulse' : ''}`}></span>
 );
 
-const StaticDot: React.FC<{ color: string }> = ({ color }) => (
-    <span className={`inline-block w-3 h-3 rounded-full ${color}`}></span>
-);
-
-
-export const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps> = ({ status }) => {
-  const config = statusConfig[status];
+export const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps> = ({ internetStatus, dbStatus }) => {
+  const internetConfig = internetStatusConfig[internetStatus];
+  const dbConfig = dbStatusConfig[dbStatus];
 
   return (
-    <div className="flex items-center space-x-2 text-sm text-text-secondary px-3 py-2 bg-background rounded-md" aria-live="polite" aria-atomic="true">
-      {status === 'checking' ? <Dot color={config.color} /> : <StaticDot color={config.color} />}
-      <span aria-label={config.aria}>{config.text}</span>
+    <div className="text-xs text-text-secondary px-3 py-2 bg-background rounded-md space-y-1" aria-live="polite" aria-atomic="true">
+      <div className="flex items-center justify-between">
+        <span className="font-medium">Internet</span>
+        <div className="flex items-center space-x-2">
+          <Dot color={internetConfig.color} pulse={false} />
+          <span>{internetConfig.text}</span>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="font-medium">Database</span>
+        <div className="flex items-center space-x-2">
+          <Dot color={dbConfig.color} pulse={dbStatus === 'checking'} />
+          <span>{dbConfig.text}</span>
+        </div>
+      </div>
     </div>
   );
 };
