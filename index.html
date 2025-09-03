@@ -149,25 +149,26 @@
 
       /* PDF & Print Specific Styles */
       @media print {
-        /* Hide elements marked with no-print class */
         .no-print {
           display: none !important;
         }
 
-        /* Reset body for printing to a clean white background. */
         body {
           background-color: #ffffff !important;
           margin: 0;
           padding: 0;
         }
+        
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
 
-        /* Ensure main content container has no extra space */
         main {
           padding: 0 !important;
           overflow: visible !important;
         }
 
-        /* Make the preview content fill the entire page and remove screen-specific styling */
         .print-preview-content {
           box-shadow: none !important;
           border: none !important;
@@ -176,59 +177,65 @@
           max-width: 100% !important;
           margin: 0 !important;
           padding: 0 !important;
+          color: #000000 !important;
+          background-color: #ffffff !important;
         }
         
-        /* Ensure page breaks work correctly for long reports */
-        .page-break {
-            page-break-before: always;
-        }
-        .print-event-section {
-            page-break-inside: avoid;
-        }
-        
-        /* --- START: High-Contrast Print Styles --- */
-        /* This section overrides all theme colors for a classic black-on-white printout, ensuring readability in both light and dark modes. */
-        
-        /* Set base print colors for the content area. */
-        .print-preview-content {
-            color: #000000 !important;
-            background-color: #ffffff !important;
-        }
-
-        /* Force all child elements to have black text and transparent backgrounds. This creates a solid baseline. */
-        .print-preview-content * {
+        .print-preview-content *,
+        .print-preview-content *:before,
+        .print-preview-content *:after {
             color: #000000 !important;
             background-color: transparent !important;
             text-shadow: none !important;
             box-shadow: none !important;
-        }
-        
-        /* Ensure table headers have a light gray background for distinction and black text. */
-        .print-preview-content th {
-            background-color: #f0f0f0 !important;
-            color: #000000 !important;
+            border-color: transparent !important;
         }
 
-        /* Set a standard, visible border color for all table cells. */
-        .print-preview-content th,
-        .print-preview-content td {
-            border-color: #cccccc !important;
+        .print-preview-content table {
+            width: 100%;
+            border-collapse: collapse;
+            page-break-inside: auto;
+        }
+
+        .print-preview-content tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
         }
         
-        /* Special handling for record badges to make them visible on a white background. */
+        .print-preview-content th,
+        .print-preview-content td {
+            border: 1px solid #cccccc !important;
+            padding: 6px 8px;
+        }
+        
+        .print-preview-content th {
+            background-color: #f0f0f0 !important;
+            font-weight: bold !important;
+        }
+
+        .print-event-section {
+            page-break-inside: avoid;
+            padding-top: 1rem;
+        }
+        .print-event-section:first-child {
+            padding-top: 0;
+        }
+        
+        .print-preview-content a {
+            text-decoration: underline !important;
+        }
+        
         .record-badge {
+            display: inline-block !important;
             border: 1px solid #000 !important;
             color: #000 !important;
             background-color: #fff !important;
+            padding: 0.1rem 0.4rem !important;
+            font-size: 0.65rem !important;
+            margin-left: 0.5rem !important;
+            border-radius: 4px !important;
+            vertical-align: middle !important;
         }
-        
-        /* Override Tailwind's hardcoded background colors that might persist. */
-        .print-preview-content .bg-gray-100,
-        .print-preview-content .bg-gray-200,
-        .print-preview-content .bg-background {
-            background-color: transparent !important;
-        }
-        /* --- END: High-Contrast Print Styles --- */
       }
     </style>
     <script>
