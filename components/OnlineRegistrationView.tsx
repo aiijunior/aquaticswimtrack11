@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { CompetitionInfo, SwimEvent } from '../types';
+import type { CompetitionInfo, SwimEvent, Swimmer } from '../types';
 import { getEvents, processOnlineRegistration, findSwimmerByName } from '../services/databaseService';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -47,7 +47,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     
     // State for auto-fill feature
     const [isCheckingName, setIsCheckingName] = useState(false);
-    const [existingSwimmerFound, setExistingSwimmerFound] = useState(false);
+    const [existingSwimmer, setExistingSwimmer] = useState<Swimmer | null>(null);
 
 
     useEffect(() => {
@@ -103,16 +103,32 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     };
     
     const availableEvents = useMemo(() => {
+        const registeredEventIds = new Set<string>();
+        if (existingSwimmer) {
+            localEvents.forEach(event => {
+                if (event.entries.some(entry => entry.swimmerId === existingSwimmer.id)) {
+                    registeredEventIds.add(event.id);
+                }
+            });
+        }
+
         return localEvents
-        .filter(event => event.gender === "Mixed" || (formData.gender === "Male" && event.gender === "Men's") || (formData.gender === "Female" && event.gender === "Women's"))
-        .sort((a,b) => a.distance - b.distance || a.style.localeCompare(b.style));
-    }, [localEvents, formData.gender]);
+            .filter(event => {
+                // Check if already registered
+                if (registeredEventIds.has(event.id)) {
+                    return false;
+                }
+                // Check gender compatibility
+                return event.gender === "Mixed" || (formData.gender === "Male" && event.gender === "Men's") || (formData.gender === "Female" && event.gender === "Women's");
+            })
+            .sort((a,b) => a.distance - b.distance || a.style.localeCompare(b.style));
+    }, [localEvents, formData.gender, existingSwimmer]);
 
     const handleNameBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
         const swimmerName = e.target.value.trim();
         if (swimmerName.length < 3) {
-            if (existingSwimmerFound) {
-                setExistingSwimmerFound(false);
+            if (existingSwimmer) {
+                setExistingSwimmer(null);
                 setFormData(prev => ({ ...prev, club: '', birthYear: new Date().getFullYear() - 10, gender: 'Male' }));
             }
             return;
@@ -127,14 +143,14 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 birthYear: foundSwimmer.birthYear,
                 gender: foundSwimmer.gender,
             });
-            setExistingSwimmerFound(true);
-        } else if (existingSwimmerFound) {
+            setExistingSwimmer(foundSwimmer);
+        } else if (existingSwimmer) {
             clearAutoFilledData();
         }
     };
     
     const clearAutoFilledData = () => {
-        setExistingSwimmerFound(false);
+        setExistingSwimmer(null);
         setFormData(prev => ({ ...prev, club: '', birthYear: new Date().getFullYear() - 10, gender: 'Male' }));
         setTimeout(() => document.getElementById('club')?.focus(), 0);
     };
@@ -199,11 +215,13 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             // Reset form
             setFormData({ name: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', club: '' });
             setSelectedEvents({});
+            setExistingSwimmer(null);
         } else if (result.success) { // Fallback just in case
             setSuccessMessage(`${result.message} Selamat! Anda telah terdaftar. Silakan hubungi panitia untuk konfirmasi.`);
             onRegistrationSuccess();
             setFormData({ name: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', club: '' });
             setSelectedEvents({});
+            setExistingSwimmer(null);
         } else {
             setError(result.message);
         }
@@ -305,7 +323,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
                             </div>
                         )}
-                        {existingSwimmerFound && !isCheckingName && (
+                        {existingSwimmer && !isCheckingName && (
                             <button 
                                 type="button" 
                                 onClick={clearAutoFilledData} 
@@ -316,13 +334,13 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                             </button>
                         )}
                     </div>
-                    <Input label="Klub / Tim" id="club" name="club" value={formData.club} onChange={handleFormChange} required disabled={existingSwimmerFound} />
-                    <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={formData.birthYear} onChange={handleFormChange} required disabled={existingSwimmerFound} />
-                    <Select label="Jenis Kelamin" id="gender" name="gender" value={formData.gender} onChange={handleFormChange} disabled={existingSwimmerFound}>
+                    <Input label="Klub / Tim" id="club" name="club" value={formData.club} onChange={handleFormChange} required disabled={!!existingSwimmer} />
+                    <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={formData.birthYear} onChange={handleFormChange} required disabled={!!existingSwimmer} />
+                    <Select label="Jenis Kelamin" id="gender" name="gender" value={formData.gender} onChange={handleFormChange} disabled={!!existingSwimmer}>
                         <option value="Male">Laki-laki (Male)</option>
                         <option value="Female">Perempuan (Female)</option>
                     </Select>
-                     {existingSwimmerFound && (
+                     {existingSwimmer && (
                         <div className="md:col-span-2 text-sm text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/40 p-3 rounded-md border border-green-200 dark:border-green-700">
                             <p className="font-semibold">Data perenang ditemukan!</p>
                             <p>Data klub, tahun lahir, dan jenis kelamin telah diisi otomatis. Jika ini bukan perenang yang benar, klik 'Ganti' di atas.</p>
@@ -335,7 +353,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 <h2 className="text-2xl font-bold mb-4 border-b border-border pb-2">Pilih Nomor Lomba</h2>
                 <p className="text-sm text-text-secondary mb-4">Pilih nomor lomba yang akan diikuti dan masukkan waktu unggulan (seed time) Anda. Jika tidak punya, biarkan maka akan terisi otomatis 99:99.99.</p>
                 <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
-                   {availableEvents.map(event => (
+                   {availableEvents.length > 0 ? availableEvents.map(event => (
                         <div key={event.id} className="bg-background p-4 rounded-lg border border-border">
                             <div className="flex items-start">
                                 <input
@@ -359,7 +377,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 </div>
                             </div>
                         </div>
-                    ))}
+                    )) : (
+                         <p className="text-center text-text-secondary py-4">Tidak ada nomor lomba yang tersedia untuk jenis kelamin ini, atau semua nomor lomba yang tersedia sudah Anda ikuti.</p>
+                    )}
                 </div>
             </Card>
 
