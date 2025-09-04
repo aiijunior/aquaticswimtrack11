@@ -531,7 +531,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         const isCheckbox = type === 'checkbox';
         // @ts-ignore
         let val: string | number | boolean = isCheckbox ? e.target.checked : value;
-        if (!isCheckbox && (name === 'holderName' || name === 'locationSet')) {
+        if (!isCheckbox && (name === 'holderName' || name === 'locationSet' || name === 'category')) {
             val = toTitleCase(value);
         }
         setRecordForm(prev => ({...prev, [name]: val}));

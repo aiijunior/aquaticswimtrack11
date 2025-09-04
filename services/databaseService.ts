@@ -370,7 +370,7 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
             const distance = parseInt(row['Jarak (m)'], 10);
             const styleStr = row['Gaya']?.trim();
             const genderStr = row['Jenis Kelamin']?.trim();
-            const category = row['Kategori']?.toString().trim() || null;
+            const category = toTitleCase(row['Kategori']?.toString().trim() || '') || null;
             const relayLegsStr = row['Jumlah Perenang']?.toString().trim();
             const relayLegs = relayLegsStr ? parseInt(relayLegsStr, 10) : null;
 
@@ -412,7 +412,7 @@ export const processRecordUpload = async (data: any[]): Promise<{ success: numbe
             const distance = parseInt(row['Jarak (m)'], 10);
             const styleStr = row['Gaya']?.trim();
             const genderStr = row['Jenis Kelamin']?.trim();
-            const category = row['Kategori']?.toString().trim() || null;
+            const category = toTitleCase(row['Kategori']?.toString().trim() || '') || null;
             const timeStr = row['Waktu (mm:ss.SS)']?.toString().trim();
             const holderName = toTitleCase(row['Nama Pemegang Rekor']?.toString().trim() || '');
             const yearSet = parseInt(row['Tahun'], 10);

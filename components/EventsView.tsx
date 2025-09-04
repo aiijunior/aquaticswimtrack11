@@ -382,7 +382,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 id="event-category"
                 type="text"
                 value={newEvent.category}
-                onChange={(e) => setNewEvent({ ...newEvent, category: e.target.value })}
+                onChange={(e) => setNewEvent({ ...newEvent, category: e.target.value.toUpperCase() })}
             />
             <Select
                 label="Gaya"
