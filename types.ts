@@ -7,6 +7,7 @@ export enum SwimStyle {
   BREASTSTROKE = 'Breaststroke',
   BUTTERFLY = 'Butterfly',
   MEDLEY = 'Medley',
+  PAPAN_LUNCUR = 'Papan Luncur',
 }
 
 export enum Gender {

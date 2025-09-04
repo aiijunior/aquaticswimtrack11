@@ -445,6 +445,18 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 "Tahun": 2022,
                 "Jumlah Perenang (Estafet)": 4,
                 "Lokasi": "Surabaya"
+            },
+            {
+                "Tipe Rekor": "PORPROV",
+                "Jarak (m)": 25,
+                "Gaya": "Papan Luncur",
+                "Jenis Kelamin": "Putri",
+                "Kategori": "KU-4",
+                "Waktu (mm:ss.SS)": "00:20.15",
+                "Nama Pemegang Rekor": "Atlet Papan Luncur",
+                "Tahun": 2024,
+                "Jumlah Perenang (Estafet)": "",
+                "Lokasi": "Makassar"
             }
         ];
     

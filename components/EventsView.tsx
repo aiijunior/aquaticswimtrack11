@@ -235,6 +235,13 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
             "Jenis Kelamin": "Campuran",
             "Kategori": "KU-3",
             "Jumlah Perenang": 4 // Relay event
+        },
+        {
+            "Jarak (m)": 25,
+            "Gaya": "Papan Luncur",
+            "Jenis Kelamin": "Putra",
+            "Kategori": "KU-4",
+            "Jumlah Perenang": ""
         }
     ];
 
