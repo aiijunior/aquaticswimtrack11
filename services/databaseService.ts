@@ -79,13 +79,46 @@ const toRecordDbFormat = (r: SwimRecord) => ({
     category: r.category,
 });
 
+
+// --- NEW: Public-facing, serverless data fetching function ---
+export const getPublicData = async (): Promise<{ competitionInfo: CompetitionInfo, swimmers: Swimmer[], events: SwimEvent[], records: SwimRecord[] }> => {
+    try {
+        const response = await fetch('/.netlify/functions/getPublicData');
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response from server.' }));
+            throw new Error(errorData.message || `Server error: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return data;
+    } catch (error: any) {
+        console.error("Error fetching public data via serverless function:", error.message || error);
+        // Provide a fallback structure to prevent the app from crashing on a failed load.
+        return {
+            competitionInfo: { 
+                eventName: config.competition.defaultName, 
+                eventDate: '', 
+                eventLogo: null, 
+                sponsorLogo: null, 
+                isRegistrationOpen: false, 
+                numberOfLanes: config.competition.defaultLanes 
+            },
+            swimmers: [],
+            events: [],
+            records: []
+        };
+    }
+};
+
+
 // --- Public-facing, Online-only functions ---
 
 // --- Competition Info ---
 export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
     const { data, error } = await supabase.from('competition_info').select('*').eq('id', 1).single();
-    if (error || !data) {
-        console.error("Error or no data fetching competition info:", error);
+    
+    // Explicitly handle "No rows found" as a non-critical case, returning defaults.
+    if (error && error.code === 'PGRST116') {
+        console.warn("No competition info found in database, using defaults.");
         return { 
             eventName: config.competition.defaultName, 
             eventDate: '', 
@@ -95,6 +128,25 @@ export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
             numberOfLanes: config.competition.defaultLanes 
         };
     }
+
+    if (error) {
+        console.error("Error fetching competition info:", error.message || JSON.stringify(error));
+        throw error;
+    }
+    
+    // This case can happen with RLS issues where no error is returned, but data is null.
+    if (!data) {
+        console.error("No data returned for competition info, possibly due to RLS. Returning defaults.");
+        return { 
+            eventName: config.competition.defaultName, 
+            eventDate: '', 
+            eventLogo: null, 
+            sponsorLogo: null, 
+            isRegistrationOpen: false, 
+            numberOfLanes: config.competition.defaultLanes 
+        };
+    }
+
     return toCompetitionInfo(data);
 };
 
@@ -178,7 +230,7 @@ export const findSwimmerByName = async (name: string): Promise<Swimmer | null> =
 
     // PGRST116 is the code for "No rows found", which is not an actual error in this case.
     if (error && error.code !== 'PGRST116') {
-        console.error("Error fetching swimmer by name:", error);
+        console.error("Error fetching swimmer by name:", error.message || error);
         return null;
     }
 
@@ -246,7 +298,7 @@ export const updateEventSchedule = async (updatedSchedule: SwimEvent[]): Promise
     const { error } = await supabase.from('events').upsert(payload);
     
     if (error) {
-        console.error("Error updating event schedule in Supabase:", error);
+        console.error("Error updating event schedule in Supabase:", error.message || error);
         throw error;
     }
 };
@@ -539,42 +591,24 @@ export const processOnlineRegistration = async (
     registrations: { eventId: string, seedTime: number }[]
 ): Promise<{ success: boolean; message: string; swimmer: Swimmer | null }> => {
     try {
-        const { data: existingSwimmers, error: searchError } = await supabase
-            .from('swimmers')
-            .select('*')
-            .ilike('name', swimmerData.name.trim())
-            .ilike('club', swimmerData.club.trim())
-            .eq('birth_year', swimmerData.birthYear)
-            .eq('gender', swimmerData.gender);
-        
-        if (searchError) throw searchError;
-        
-        let swimmer: Swimmer;
-        if (existingSwimmers && existingSwimmers.length > 0) {
-            swimmer = toSwimmer(existingSwimmers[0]);
-        } else {
-            swimmer = await addSwimmer(swimmerData);
-        }
-        
-        const entriesToInsert = registrations.map(reg => ({
-            event_id: reg.eventId,
-            swimmer_id: swimmer.id,
-            seed_time: reg.seedTime
-        }));
-        
-        const { error: entriesError } = await supabase.from('event_entries').upsert(entriesToInsert);
-        
-        if (entriesError) {
-            if (entriesError.message.includes('duplicate key value violates unique constraint')) {
-                 return { success: false, message: 'Gagal: Salah satu pendaftaran duplikat. Perenang mungkin sudah terdaftar di nomor lomba tersebut.', swimmer: null };
-            }
-            throw entriesError;
+        const response = await fetch('/.netlify/functions/submitRegistration', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ swimmerData, registrations }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            // Use the message from the serverless function's response if available
+            throw new Error(data.message || `Server error: ${response.statusText}`);
         }
 
-        return { success: true, message: 'Pendaftaran berhasil diterima.', swimmer };
-
+        return data; // The serverless function now returns the same structure
     } catch (error: any) {
-        console.error("Error during online registration:", error);
+        console.error("Error submitting online registration:", error.message || error);
         return { success: false, message: `Terjadi kesalahan: ${error.message}`, swimmer: null };
     }
 };

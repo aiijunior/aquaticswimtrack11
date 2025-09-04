@@ -67,10 +67,11 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
 3.  **Dapatkan Kunci API Supabase**:
     *   Setelah skema selesai dijalankan, buka **Project Settings** (ikon roda gigi di bagian bawah menu kiri).
     *   Pilih **API** dari daftar pengaturan.
-    *   Anda akan memerlukan dua hal dari halaman ini:
+    *   Anda akan memerlukan tiga hal dari halaman ini:
         *   **Project URL**: Di bawah *Project API keys*, salin nilai dari field **URL**.
         *   **Project API Keys (anon public)**: Di bawah field URL, salin nilai dari field **anon** **public**.
-    *   Simpan kedua nilai ini di catatan sementara. Anda akan memerlukannya di Langkah 2.
+        *   **Project API Keys (service_role secret)**: Di bawah field `anon public`, klik "Show" pada field `service_role secret` dan salin nilainya. **PERINGATAN: Kunci ini sangat rahasia. Jangan pernah membagikannya atau menaruhnya di kode frontend.**
+    *   Simpan ketiga nilai ini di catatan sementara. Anda akan memerlukannya di Langkah 2 dan 4.
 
 4.  **Konfigurasi Otentikasi**:
     *   Dari menu kiri, klik ikon pengguna untuk membuka **Authentication**.
@@ -95,7 +96,7 @@ Sekarang Anda akan mengkonfigurasi kode aplikasi untuk terhubung ke backend Supa
         *   Ganti `YOUR_SUPABASE_ANON_KEY_HERE` dengan kunci **anon public** yang Anda salin dari Supabase.
     *   **Super Admin**:
         *   Ganti `email` dan `password` di dalam objek `superAdmin` dengan kredensial yang Anda inginkan untuk akun admin utama. Akun ini memiliki hak akses tertinggi dan tidak disimpan di database.
-    *   **Google Gemini API Key**: Kunci ini tidak lagi diatur di sini. Ia akan diatur di Netlify pada langkah selanjutnya untuk keamanan.
+    *   **Google Gemini API Key & Supabase Service Key**: Kunci-kunci ini tidak lagi diatur di sini. Mereka akan diatur di Netlify pada langkah selanjutnya untuk keamanan.
     *   Simpan file `config.ts`.
 
 ### Langkah 3: Unggah Kode ke GitHub (Penyimpanan Kode)
@@ -154,15 +155,19 @@ Netlify akan mengambil kode dari GitHub Anda dan mempublikasikannya ke web.
         *   **Publish directory**: `.` (sesuai `netlify.toml`).
     *   Klik "**Deploy site**". Netlify akan mulai mem-build dan mempublikasikan situs Anda, termasuk serverless function.
 
-4.  **Atur Kunci API (Langkah Paling Penting)**:
+4.  **Atur Kunci API & Variabel Lingkungan (Langkah Paling Penting)**:
     *   Setelah Netlify selesai melakukan deploy awal, buka **Site configuration** untuk situs baru Anda.
     *   Di menu kiri, pilih **Build & deploy** > **Environment** > **Environment variables**.
-    *   Klik "**Add a variable**".
-    *   Tambahkan variabel baru:
-        *   **Key**: `API_KEY`
-        *   **Value**: Tempelkan kunci **Google Gemini API** Anda di sini.
-    *   Klik "**Create variable**".
-    *   Variabel ini akan disuntikkan secara aman ke serverless function Anda oleh Netlify.
+    *   Klik "**Add a variable**" dan tambahkan **tiga** variabel berikut, satu per satu:
+        *   **Untuk Google Gemini (Komentar AI):**
+            *   **Key**: `API_KEY`
+            *   **Value**: Tempelkan kunci **Google Gemini API** Anda di sini.
+        *   **Untuk Pendaftaran Online & Koneksi Server:**
+            *   **Key**: `SUPABASE_URL`
+            *   **Value**: Tempelkan **Project URL** Supabase Anda di sini (dari Langkah 1).
+            *   **Key**: `SUPABASE_SERVICE_KEY`
+            *   **Value**: Tempelkan kunci **service_role secret** Supabase Anda di sini (dari Langkah 1).
+    *   Variabel-variabel ini akan disuntikkan secara aman ke serverless function Anda oleh Netlify.
 
 5.  **Redeploy dengan Kunci API**:
     *   Pergi ke tab **Deploys** untuk situs Anda.

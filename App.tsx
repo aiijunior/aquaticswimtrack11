@@ -15,7 +15,7 @@ import { PublicResultsView } from './components/PublicResultsView';
 import { UserManagementView } from './components/UserManagementView';
 import { OnlineRegistrationView } from './components/OnlineRegistrationView';
 import { logout, getCurrentUser } from './services/authService';
-import { getSwimmers, getEvents, getCompetitionInfo } from './services/databaseService';
+import { getPublicData } from './services/databaseService';
 import { Button } from './components/ui/Button';
 import { ThemeToggle } from './components/ui/ThemeToggle';
 import { supabase } from './services/supabaseClient';
@@ -73,16 +73,13 @@ const App: React.FC = () => {
   const refreshData = useCallback(async () => {
     setIsDataLoading(true);
     try {
-      const [swimmersData, eventsData, infoData] = await Promise.all([
-        getSwimmers(),
-        getEvents(),
-        getCompetitionInfo()
-      ]);
+      // Use the new serverless function to fetch all public data securely
+      const { competitionInfo: infoData, swimmers: swimmersData, events: eventsData } = await getPublicData();
       setSwimmers(swimmersData);
       setEvents(eventsData);
       setCompetitionInfo(infoData);
-    } catch (error) {
-      console.error("Failed to refresh data from Supabase:", error);
+    } catch (error: any) {
+      console.error("Failed to refresh data from server:", error.message || JSON.stringify(error));
     } finally {
       setIsDataLoading(false);
     }
@@ -137,18 +134,16 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkSupabaseConnection = async () => {
         try {
-            const { error } = await supabase.from('competition_info').select('id').limit(1);
-            if (error) {
-                if (error.message.includes('Auth session missing') || error.message.includes('JWT expired')) {
-                    setDbStatus('connected');
-                } else {
-                    throw error;
-                }
+            // Ping our own serverless health check endpoint instead of Supabase directly
+            const response = await fetch('/.netlify/functions/healthCheck');
+            if (response.ok) {
+                setDbStatus('connected');
             } else {
-               setDbStatus('connected');
+                const errorData = await response.json().catch(() => ({})); // Gracefully handle non-json responses
+                throw new Error(errorData.message || `Health check failed with status ${response.status}`);
             }
-        } catch (e) {
-            console.error("Supabase connection check failed:", e);
+        } catch (e: any) {
+            console.error("Supabase connection check failed:", e.message || JSON.stringify(e));
             setDbStatus('error');
         }
     };
