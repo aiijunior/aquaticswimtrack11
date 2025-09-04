@@ -1,3 +1,6 @@
+# NOTE: This is a template file. The active configuration used by Netlify is in 'netlify.toml'.
+# To avoid deployment errors, please ensure any configuration changes are made in the 'netlify.toml' file.
+
 [build]
   command = "npm run build"
   publish = "dist"
