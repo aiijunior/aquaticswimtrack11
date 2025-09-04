@@ -85,8 +85,24 @@ export const getPublicData = async (): Promise<{ competitionInfo: CompetitionInf
     try {
         const response = await fetch('/.netlify/functions/getPublicData');
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response from server.' }));
-            throw new Error(errorData.message || `Server error: ${response.statusText}`);
+            // Improved error handling: try to parse as JSON, fallback to text.
+            let errorMessage = `Server error: ${response.status} ${response.statusText}`;
+            try {
+                const errorBody = await response.text();
+                // Try to parse as JSON, but if it fails, use the raw text.
+                try {
+                    const errorJson = JSON.parse(errorBody);
+                    errorMessage = errorJson.message || JSON.stringify(errorJson);
+                } catch (jsonError) {
+                    // The response was not JSON, maybe HTML or plain text.
+                    // Shorten it to avoid flooding the console/UI with an entire HTML page.
+                    errorMessage = errorBody.length > 500 ? errorBody.substring(0, 500) + '...' : errorBody;
+                }
+            } catch (textError) {
+                // Could not even read the response body as text.
+                errorMessage += ' (and failed to read error response body)';
+            }
+            throw new Error(errorMessage);
         }
         const data = await response.json();
         return data;
@@ -599,14 +615,21 @@ export const processOnlineRegistration = async (
             body: JSON.stringify({ swimmerData, registrations }),
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-            // Use the message from the serverless function's response if available
-            throw new Error(data.message || `Server error: ${response.statusText}`);
+            let errorMessage = `Server error: ${response.statusText}`;
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.message || JSON.stringify(errorData);
+            } catch (e) {
+                // Could not parse JSON, maybe a Netlify error page
+                const textError = await response.text().catch(() => "Could not read error body.");
+                errorMessage = textError.substring(0, 500); // Truncate long HTML errors
+            }
+            throw new Error(errorMessage);
         }
 
-        return data; // The serverless function now returns the same structure
+        const data = await response.json();
+        return data;
     } catch (error: any) {
         console.error("Error submitting online registration:", error.message || error);
         return { success: false, message: `Terjadi kesalahan: ${error.message}`, swimmer: null };

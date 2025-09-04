@@ -61,8 +61,156 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
     *   Tunggu hingga proyek Anda selesai dibuat.
     *   Dari menu di sebelah kiri, klik ikon database untuk membuka **SQL Editor**.
     *   Klik "**+ New query**".
-    *   Salin (**copy**) seluruh konten dari file `schema.sql` yang ada di proyek ini, lalu tempel (**paste**) ke dalam editor kueri di Supabase.
+    *   Salin (**copy**) seluruh skrip SQL di bawah ini, lalu tempel (**paste**) ke dalam editor kueri di Supabase.
     *   Klik tombol hijau "**RUN**". Ini akan membuat semua tabel, peran, dan kebijakan keamanan yang diperlukan.
+
+    ```sql
+    -- Create custom types for enums, but only if they don't already exist.
+    DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'swim_style') THEN
+            CREATE TYPE public.swim_style AS ENUM ('Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Medley', 'Papan Luncur');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'gender') THEN
+            CREATE TYPE public.gender AS ENUM ('Men''s', 'Women''s', 'Mixed');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'swimmer_gender') THEN
+            CREATE TYPE public.swimmer_gender AS ENUM ('Male', 'Female');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'record_type') THEN
+            CREATE TYPE public.record_type AS ENUM ('PORPROV', 'Nasional');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+            CREATE TYPE public.user_role AS ENUM ('SUPER_ADMIN', 'ADMIN');
+        END IF;
+    END $$;
+
+    -- Table for Competition Information
+    CREATE TABLE IF NOT EXISTS public.competition_info (
+        id bigint PRIMARY KEY DEFAULT 1,
+        event_name text NOT NULL,
+        event_date date NOT NULL,
+        event_logo text,
+        sponsor_logo text,
+        is_registration_open boolean NOT NULL DEFAULT false,
+        number_of_lanes integer NOT NULL DEFAULT 8
+    );
+    ALTER TABLE public.competition_info ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Public can read competition info" ON public.competition_info;
+    CREATE POLICY "Public can read competition info" ON public.competition_info FOR SELECT USING (true);
+    DROP POLICY IF EXISTS "Admins can update competition info" ON public.competition_info;
+    CREATE POLICY "Admins can update competition info" ON public.competition_info FOR UPDATE USING (auth.role() = 'authenticated');
+
+    -- Table for Swimmers
+    CREATE TABLE IF NOT EXISTS public.swimmers (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        name text NOT NULL,
+        birth_year integer NOT NULL,
+        gender public.swimmer_gender NOT NULL,
+        club text NOT NULL
+    );
+    ALTER TABLE public.swimmers ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Public can read swimmers" ON public.swimmers;
+    CREATE POLICY "Public can read swimmers" ON public.swimmers FOR SELECT USING (true);
+    DROP POLICY IF EXISTS "Admins can manage swimmers" ON public.swimmers;
+    CREATE POLICY "Admins can manage swimmers" ON public.swimmers FOR ALL USING (auth.role() = 'authenticated');
+
+    -- Table for Swim Events
+    CREATE TABLE IF NOT EXISTS public.events (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        distance integer NOT NULL,
+        style public.swim_style NOT NULL,
+        gender public.gender NOT NULL,
+        session_number integer,
+        heat_order integer,
+        session_date_time timestamp with time zone,
+        relay_legs integer,
+        category text
+    );
+    ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Public can read events" ON public.events;
+    CREATE POLICY "Public can read events" ON public.events FOR SELECT USING (true);
+    DROP POLICY IF EXISTS "Admins can manage events" ON public.events;
+    CREATE POLICY "Admins can manage events" ON public.events FOR ALL USING (auth.role() = 'authenticated');
+
+    -- Table for Event Entries (linking swimmers to events)
+    CREATE TABLE IF NOT EXISTS public.event_entries (
+        event_id uuid NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+        swimmer_id uuid NOT NULL REFERENCES public.swimmers(id) ON DELETE CASCADE,
+        seed_time bigint NOT NULL,
+        PRIMARY KEY (event_id, swimmer_id)
+    );
+    ALTER TABLE public.event_entries ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Public can read event entries" ON public.event_entries;
+    CREATE POLICY "Public can read event entries" ON public.event_entries FOR SELECT USING (true);
+    DROP POLICY IF EXISTS "Admins can manage event entries" ON public.event_entries;
+    CREATE POLICY "Admins can manage event entries" ON public.event_entries FOR ALL USING (auth.role() = 'authenticated');
+
+    -- Table for Event Results
+    CREATE TABLE IF NOT EXISTS public.event_results (
+        event_id uuid NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+        swimmer_id uuid NOT NULL REFERENCES public.swimmers(id) ON DELETE CASCADE,
+        "time" bigint NOT NULL,
+        PRIMARY KEY (event_id, swimmer_id)
+    );
+    ALTER TABLE public.event_results ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Public can read event results" ON public.event_results;
+    CREATE POLICY "Public can read event results" ON public.event_results FOR SELECT USING (true);
+    DROP POLICY IF EXISTS "Admins can manage event results" ON public.event_results;
+    CREATE POLICY "Admins can manage event results" ON public.event_results FOR ALL USING (auth.role() = 'authenticated');
+
+    -- Table for Swim Records
+    CREATE TABLE IF NOT EXISTS public.records (
+        id text PRIMARY KEY,
+        "type" public.record_type NOT NULL,
+        gender public.gender NOT NULL,
+        distance integer NOT NULL,
+        style public.swim_style NOT NULL,
+        "time" bigint NOT NULL,
+        holder_name text NOT NULL,
+        year_set integer NOT NULL,
+        location_set text,
+        relay_legs integer,
+        category text
+    );
+    ALTER TABLE public.records ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Public can read records" ON public.records;
+    CREATE POLICY "Public can read records" ON public.records FOR SELECT USING (true);
+    DROP POLICY IF EXISTS "Admins can manage records" ON public.records;
+    CREATE POLICY "Admins can manage records" ON public.records FOR ALL USING (auth.role() = 'authenticated');
+
+    -- Table for User Roles (linked to Supabase Auth)
+    CREATE TABLE IF NOT EXISTS public.users (
+        id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+        "role" public.user_role NOT NULL,
+        created_at timestamp with time zone DEFAULT now() NOT NULL
+    );
+    ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "Users can read their own role" ON public.users;
+    CREATE POLICY "Users can read their own role" ON public.users FOR SELECT USING (auth.uid() = id);
+    DROP POLICY IF EXISTS "Admins can see all users" ON public.users;
+    CREATE POLICY "Admins can see all users" ON public.users FOR SELECT USING (auth.role() = 'authenticated');
+
+    -- Function to automatically add a new user to the users table.
+    CREATE OR REPLACE FUNCTION public.handle_new_user()
+    RETURNS TRIGGER AS $$
+    BEGIN
+      INSERT INTO public.users (id, role)
+      VALUES (new.id, 'ADMIN'); -- Default role for new sign-ups is ADMIN
+      RETURN new;
+    END;
+    $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+    -- Trigger to call the function when a new user signs up.
+    DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+    CREATE TRIGGER on_auth_user_created
+      AFTER INSERT ON auth.users
+      FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+    -- Initial default competition info.
+    INSERT INTO public.competition_info (id, event_name, event_date, number_of_lanes)
+    VALUES (1, 'My Awesome Swim Meet', CURRENT_DATE, 8)
+    ON CONFLICT (id) DO NOTHING;
+    ```
 
 3.  **Dapatkan Kunci API Supabase**:
     *   Setelah skema selesai dijalankan, buka **Project Settings** (ikon roda gigi di bagian bawah menu kiri).
@@ -73,11 +221,18 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
         *   **Project API Keys (service_role secret)**: Di bawah field `anon public`, klik "Show" pada field `service_role secret` dan salin nilainya. **PERINGATAN: Kunci ini sangat rahasia. Jangan pernah membagikannya atau menaruhnya di kode frontend.**
     *   Simpan ketiga nilai ini di catatan sementara. Anda akan memerlukannya di Langkah 2 dan 4.
 
-4.  **Konfigurasi Otentikasi**:
+4.  **Konfigurasi Otentikasi & URL (SANGAT PENTING)**:
     *   Dari menu kiri, klik ikon pengguna untuk membuka **Authentication**.
     *   Di bawah **Configuration**, pilih **Providers**.
-    *   Pastikan provider **Email** sudah aktif (di-toggle **ON**).
-    *   Klik provider Email untuk membuka pengaturannya. **Matikan** (toggle **OFF**) opsi **Confirm email**. Ini penting karena aplikasi tidak memiliki alur konfirmasi email bawaan.
+    *   Di dalam **Email** provider, **matikan** (toggle **OFF**) opsi **Confirm email**. Ini krusial karena aplikasi tidak memiliki alur konfirmasi email bawaan.
+    *   Selanjutnya, di bawah **Configuration**, pilih **URL Configuration**.
+        *   Di field **Site URL**, masukkan URL utama tempat aplikasi Anda akan di-deploy. Jika Anda menggunakan Netlify, ini akan terlihat seperti `https://nama-unik-anda.netlify.app`. **Jangan tambahkan garis miring di akhir.**
+        *   Di bagian **Redirect URLs**, tambahkan URL berikut untuk memastikan login berfungsi baik saat pengembangan lokal maupun setelah di-deploy:
+            ```
+            http://localhost:8888
+            ```
+        *   **PENTING**: Jika Anda sudah memiliki URL Netlify, tambahkan juga di sini, misalnya: `https://nama-unik-anda.netlify.app`.
+        *   Klik **Save**. Langkah ini sangat penting untuk mengizinkan aplikasi Anda berkomunikasi dengan Supabase tanpa error CORS atau masalah koneksi.
 
 ### Langkah 2: Pengaturan Kode Aplikasi (Lokal)
 

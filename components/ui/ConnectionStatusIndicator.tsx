@@ -1,7 +1,7 @@
 import React from 'react';
 
 type InternetStatus = 'online' | 'offline';
-type DbStatus = 'checking' | 'connected' | 'error' | 'offline';
+type DbStatus = 'checking' | 'connected' | 'error' | 'offline' | 'reconnecting';
 
 interface ConnectionStatusIndicatorProps {
   internetStatus: InternetStatus;
@@ -18,6 +18,7 @@ const dbStatusConfig: Record<DbStatus, { color: string, text: string }> = {
   connected: { color: 'bg-green-500', text: 'Terhubung' },
   error: { color: 'bg-red-500', text: 'Gagal' },
   offline: { color: 'bg-gray-400', text: 'Offline' },
+  reconnecting: { color: 'bg-yellow-400', text: 'Menyambung...' },
 };
 
 const Dot: React.FC<{ color: string, pulse: boolean }> = ({ color, pulse }) => (
@@ -40,7 +41,7 @@ export const ConnectionStatusIndicator: React.FC<ConnectionStatusIndicatorProps>
       <div className="flex items-center justify-between">
         <span className="font-medium">Database</span>
         <div className="flex items-center space-x-2">
-          <Dot color={dbConfig.color} pulse={dbStatus === 'checking'} />
+          <Dot color={dbConfig.color} pulse={dbStatus === 'checking' || dbStatus === 'reconnecting'} />
           <span>{dbConfig.text}</span>
         </div>
       </div>

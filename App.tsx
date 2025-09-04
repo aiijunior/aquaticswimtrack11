@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View } from './types';
 import type { Swimmer, SwimEvent, CompetitionInfo, User } from './types';
 import { LoginView } from './components/LoginView';
@@ -66,8 +66,7 @@ const App: React.FC = () => {
   
   // State for connection status
   const [internetStatus, setInternetStatus] = useState<'online' | 'offline'>('online');
-  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error' | 'offline'>('checking');
-  const checkIntervalRef = useRef<number | null>(null);
+  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error' | 'offline' | 'reconnecting'>('checking');
 
   // Centralized data fetching function
   const refreshData = useCallback(async () => {
@@ -104,79 +103,79 @@ const App: React.FC = () => {
             setCurrentView(View.LOGIN);
         }
 
-        await refreshData();
+        // Data fetching is now handled by the real-time subscription effect on initial connection
+        // await refreshData(); 
         setAppStatus('ready');
     };
 
     checkUserAndLoadData();
-  }, [refreshData]);
+  }, []);
 
-  // Real-time data subscription
+  // Real-time data subscription and connection management
   useEffect(() => {
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public' },
-        (payload) => {
-            console.log('Realtime change received! Refreshing data.', payload);
-            refreshData();
-        }
-      )
-      .subscribe();
+      const channel = supabase.channel('schema-db-changes');
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [refreshData]);
+      channel.on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+          console.log('Realtime change received! Refreshing data.', payload);
+          refreshData();
+      });
+
+      channel.subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+              console.log('Realtime channel connected.');
+              setDbStatus('connected');
+              // Initial sync on successful connection to catch up on any missed changes
+              refreshData();
+          }
+          if (status === 'CHANNEL_ERROR') {
+              console.error('Realtime channel error:', err);
+              setDbStatus('error');
+          }
+          if (status === 'TIMED_OUT') {
+              console.warn('Realtime channel timed out. Attempting to reconnect.');
+              setDbStatus('reconnecting');
+          }
+          // The Supabase client will attempt to reconnect automatically.
+          // On successful reconnect, 'SUBSCRIBED' will be emitted again.
+      });
+
+      return () => {
+          supabase.removeChannel(channel);
+      };
+  }, [refreshData]); // refreshData is stable, so this runs once
   
-  // Connection Status Effect
+  // Manages browser online/offline status
   useEffect(() => {
-    const checkSupabaseConnection = async () => {
-        try {
-            // Ping our own serverless health check endpoint instead of Supabase directly
-            const response = await fetch('/.netlify/functions/healthCheck');
-            if (response.ok) {
-                setDbStatus('connected');
-            } else {
-                const errorData = await response.json().catch(() => ({})); // Gracefully handle non-json responses
-                throw new Error(errorData.message || `Health check failed with status ${response.status}`);
-            }
-        } catch (e: any) {
-            console.error("Supabase connection check failed:", e.message || JSON.stringify(e));
-            setDbStatus('error');
-        }
-    };
+      const handleOnline = () => {
+          setInternetStatus('online');
+          // When browser comes back online, Supabase client will try to reconnect automatically.
+          // The realtime channel's SUBSCRIBED event will handle the final dbStatus update.
+          // We set it to 'reconnecting' as an intermediate state.
+          setDbStatus('reconnecting'); 
+          console.log("Browser is online, attempting to reconnect to services.");
+      };
 
-    const runChecks = () => {
-        if (!navigator.onLine) {
-            setInternetStatus('offline');
-            setDbStatus('offline');
-            return;
-        }
-        setInternetStatus('online');
-        setDbStatus('checking');
-        checkSupabaseConnection();
-    };
+      const handleOffline = () => {
+          setInternetStatus('offline');
+          setDbStatus('offline');
+          console.log("Browser is offline.");
+      };
+      
+      // Set initial state based on current browser status
+      if (navigator.onLine) {
+          setInternetStatus('online');
+      } else {
+          setInternetStatus('offline');
+          setDbStatus('offline');
+      }
 
-    runChecks();
-    
-    const handleOffline = () => {
-        setInternetStatus('offline');
-        setDbStatus('offline');
-    };
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
 
-    window.addEventListener('online', runChecks);
-    window.addEventListener('offline', handleOffline);
-    
-    if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
-    checkIntervalRef.current = window.setInterval(runChecks, 30000);
-
-    return () => {
-        window.removeEventListener('online', runChecks);
-        window.removeEventListener('offline', handleOffline);
-        if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
-    };
+      return () => {
+          window.removeEventListener('online', handleOnline);
+          window.removeEventListener('offline', handleOffline);
+      };
   }, []);
 
   const handleLogin = () => {

@@ -29,7 +29,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onShowPubl
       await login(username, password);
       onLoginSuccess();
     } catch(err: any) {
-        setError(err.message || 'Terjadi kesalahan saat login.');
+        // Check for generic network errors that might indicate a CORS or connection issue.
+        if (err.message && (err.message.toLowerCase().includes('failed to fetch') || err.message.toLowerCase().includes('network request failed'))) {
+            setError('Gagal terhubung ke server otentikasi. Pastikan Anda online dan URL Supabase di `config.ts` sudah benar. Jika sudah di-deploy, periksa konfigurasi URL di Supabase (lihat README).');
+        } else {
+            setError(err.message || 'Terjadi kesalahan saat login.');
+        }
     } finally {
         setIsLoading(false);
     }
