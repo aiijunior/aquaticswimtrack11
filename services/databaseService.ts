@@ -164,6 +164,28 @@ export const getSwimmerById = async (id: string): Promise<Swimmer | undefined> =
     return toSwimmer(data);
 };
 
+export const findSwimmerByName = async (name: string): Promise<Swimmer | null> => {
+    if (!name || name.trim() === '') {
+        return null;
+    }
+    // Using .ilike for case-insensitive search and .limit(1).single() for efficiency.
+    const { data, error } = await supabase
+        .from('swimmers')
+        .select('*')
+        .ilike('name', name.trim())
+        .limit(1)
+        .single();
+
+    // PGRST116 is the code for "No rows found", which is not an actual error in this case.
+    if (error && error.code !== 'PGRST116') {
+        console.error("Error fetching swimmer by name:", error);
+        return null;
+    }
+
+    return data ? toSwimmer(data) : null;
+};
+
+
 // --- Events ---
 export const getEvents = async (): Promise<SwimEvent[]> => {
   const { data, error } = await supabase.from('events').select('*, event_entries(*), event_results(*)').order('session_number').order('heat_order');

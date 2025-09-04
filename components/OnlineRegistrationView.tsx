@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent } from '../types';
-import { getEvents, processOnlineRegistration } from '../services/databaseService';
+import { getEvents, processOnlineRegistration, findSwimmerByName } from '../services/databaseService';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Spinner } from './ui/Spinner';
-import { formatEventName, toTitleCase } from '../constants';
+import { formatEventName, toTitleCase, formatTime } from '../constants';
 
 interface OnlineRegistrationViewProps {
     competitionInfo: CompetitionInfo | null;
@@ -44,6 +44,11 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+    
+    // State for auto-fill feature
+    const [isCheckingName, setIsCheckingName] = useState(false);
+    const [existingSwimmerFound, setExistingSwimmerFound] = useState(false);
+
 
     useEffect(() => {
         const fetchEvents = async () => {
@@ -102,6 +107,38 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         .filter(event => event.gender === "Mixed" || (formData.gender === "Male" && event.gender === "Men's") || (formData.gender === "Female" && event.gender === "Women's"))
         .sort((a,b) => a.distance - b.distance || a.style.localeCompare(b.style));
     }, [localEvents, formData.gender]);
+
+    const handleNameBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+        const swimmerName = e.target.value.trim();
+        if (swimmerName.length < 3) {
+            if (existingSwimmerFound) {
+                setExistingSwimmerFound(false);
+                setFormData(prev => ({ ...prev, club: '', birthYear: new Date().getFullYear() - 10, gender: 'Male' }));
+            }
+            return;
+        }
+        setIsCheckingName(true);
+        const foundSwimmer = await findSwimmerByName(swimmerName);
+        setIsCheckingName(false);
+        if (foundSwimmer) {
+            setFormData({
+                name: foundSwimmer.name,
+                club: foundSwimmer.club,
+                birthYear: foundSwimmer.birthYear,
+                gender: foundSwimmer.gender,
+            });
+            setExistingSwimmerFound(true);
+        } else if (existingSwimmerFound) {
+            clearAutoFilledData();
+        }
+    };
+    
+    const clearAutoFilledData = () => {
+        setExistingSwimmerFound(false);
+        setFormData(prev => ({ ...prev, club: '', birthYear: new Date().getFullYear() - 10, gender: 'Male' }));
+        setTimeout(() => document.getElementById('club')?.focus(), 0);
+    };
+
     
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -146,10 +183,25 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         const result = await processOnlineRegistration(formData, registrationsToSubmit);
         setIsSubmitting(false);
 
-        if (result.success) {
-            setSuccessMessage(`${result.message} Selamat! Anda telah terdaftar. Silakan hubungi panitia untuk konfirmasi.`);
+        if (result.success && result.swimmer) {
+            const swimmerName = result.swimmer.name;
+            const registeredEventsList = registrationsToSubmit.map(reg => {
+                const event = localEvents.find(e => e.id === reg.eventId);
+                const eventName = event ? formatEventName(event) : 'Nomor Lomba Tidak Dikenal';
+                const time = formatTime(reg.seedTime);
+                return `• ${eventName} (Waktu: ${time})`;
+            }).join('\n');
+
+            const detailedSuccessMessage = `Pendaftaran untuk ${swimmerName} berhasil diterima!\n\nNomor lomba yang didaftarkan:\n${registeredEventsList}\n\nSelamat! Anda telah terdaftar. Silakan hubungi panitia untuk konfirmasi.`;
+
+            setSuccessMessage(detailedSuccessMessage);
             onRegistrationSuccess(); // Refresh data in the background
             // Reset form
+            setFormData({ name: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', club: '' });
+            setSelectedEvents({});
+        } else if (result.success) { // Fallback just in case
+            setSuccessMessage(`${result.message} Selamat! Anda telah terdaftar. Silakan hubungi panitia untuk konfirmasi.`);
+            onRegistrationSuccess();
             setFormData({ name: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', club: '' });
             setSelectedEvents({});
         } else {
@@ -227,7 +279,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <h2 className="text-2xl font-bold mb-4">Pendaftaran Berhasil!</h2>
-                    <p className="text-text-secondary">{successMessage}</p>
+                    <p className="text-text-secondary whitespace-pre-wrap text-left">{successMessage}</p>
                 </div>
             </Card>
         );
@@ -238,13 +290,44 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             <Card>
                 <h2 className="text-2xl font-bold mb-4 border-b border-border pb-2">Data Diri Perenang</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input label="Nama Lengkap" id="name" name="name" value={formData.name} onChange={handleFormChange} required />
-                    <Input label="Klub / Tim" id="club" name="club" value={formData.club} onChange={handleFormChange} required />
-                    <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={formData.birthYear} onChange={handleFormChange} required />
-                    <Select label="Jenis Kelamin" id="gender" name="gender" value={formData.gender} onChange={handleFormChange}>
+                    <div className="relative">
+                         <Input 
+                            label="Nama Lengkap" 
+                            id="name" 
+                            name="name" 
+                            value={formData.name} 
+                            onChange={handleFormChange} 
+                            onBlur={handleNameBlur} 
+                            required 
+                        />
+                        {isCheckingName && (
+                            <div className="absolute right-3 top-8">
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                            </div>
+                        )}
+                        {existingSwimmerFound && !isCheckingName && (
+                            <button 
+                                type="button" 
+                                onClick={clearAutoFilledData} 
+                                className="absolute right-2 top-8 text-xs text-blue-500 hover:underline px-2 py-1 bg-background/80 rounded"
+                                title="Daftarkan sebagai perenang baru atau ganti data"
+                            >
+                                Ganti
+                            </button>
+                        )}
+                    </div>
+                    <Input label="Klub / Tim" id="club" name="club" value={formData.club} onChange={handleFormChange} required disabled={existingSwimmerFound} />
+                    <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={formData.birthYear} onChange={handleFormChange} required disabled={existingSwimmerFound} />
+                    <Select label="Jenis Kelamin" id="gender" name="gender" value={formData.gender} onChange={handleFormChange} disabled={existingSwimmerFound}>
                         <option value="Male">Laki-laki (Male)</option>
                         <option value="Female">Perempuan (Female)</option>
                     </Select>
+                     {existingSwimmerFound && (
+                        <div className="md:col-span-2 text-sm text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/40 p-3 rounded-md border border-green-200 dark:border-green-700">
+                            <p className="font-semibold">Data perenang ditemukan!</p>
+                            <p>Data klub, tahun lahir, dan jenis kelamin telah diisi otomatis. Jika ini bukan perenang yang benar, klik 'Ganti' di atas.</p>
+                        </div>
+                    )}
                 </div>
             </Card>
 
