@@ -180,15 +180,33 @@ Netlify akan mengambil kode dari GitHub Anda dan mempublikasikannya ke web.
 
 ## Menjalankan Secara Lokal
 
-Proyek ini dibuat dengan modul ES modern dan tidak memerlukan proses *build* yang rumit seperti Webpack atau Vite untuk pengembangan lokal.
+Untuk menjalankan aplikasi ini secara lokal, termasuk *serverless functions* untuk AI dan pendaftaran, Anda perlu menggunakan Netlify CLI. Ini akan mensimulasikan lingkungan Netlify di komputer Anda.
 
-1.  Pastikan Anda telah menginstal [Node.js](https://nodejs.org/) (untuk menggunakan `npx`).
+1.  Pastikan Anda telah menginstal [Node.js](https://nodejs.org/).
 2.  Pastikan Anda telah mengisi file `config.ts` sesuai petunjuk di atas.
 3.  Buka terminal di direktori utama proyek.
-4.  Jalankan `npm install` untuk menginstal dependensi yang diperlukan.
-5.  Gunakan server statis sederhana seperti `serve`. Jika belum terinstal, jalankan: `npm install -g serve`.
-6.  Jalankan server: `serve -s .` (Flag `-s` penting untuk menangani rute di sisi klien).
-7.  Buka browser Anda dan navigasikan ke alamat lokal yang disediakan oleh server (misalnya, `http://localhost:3000`).
+4.  **Instal Dependensi**: Jalankan perintah berikut untuk menginstal semua yang dibutuhkan, termasuk Netlify CLI:
+    ```bash
+    npm install
+    ```
+5.  **Siapkan Variabel Lingkungan Lokal**:
+    *   Buat file baru di root proyek dengan nama `.env`.
+    *   Salin (**copy**) dan tempel (**paste**) konten berikut ke dalam file `.env` tersebut, lalu isi dengan kunci rahasia Anda. File ini sudah ada di `.gitignore` sehingga tidak akan terunggah ke GitHub.
+    ```
+# Kunci untuk fitur AI (Google Gemini)
+API_KEY=MASUKKAN_KUNCI_GEMINI_API_ANDA_DI_SINI
+
+# Kunci untuk Pendaftaran Online & fungsi server lainnya (Supabase)
+SUPABASE_URL=MASUKKAN_URL_SUPABASE_ANDA_DI_SINI
+SUPABASE_SERVICE_KEY=MASUKKAN_KUNCI_SERVICE_ROLE_SUPABASE_ANDA_DI_SINI
+    ```
+6.  **Jalankan Server Pengembangan**:
+    *   Jalankan perintah berikut:
+    ```bash
+    npm run dev
+    ```
+    *   Netlify CLI akan memulai server pengembangan, biasanya di `http://localhost:8888`.
+7.  Buka browser Anda dan navigasikan ke alamat yang ditampilkan di terminal. Aplikasi sekarang akan berjalan penuh, termasuk semua fitur backend.
 
 ---
 ## Panduan Penggunaan Aplikasi
