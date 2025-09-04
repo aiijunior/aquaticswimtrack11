@@ -36,7 +36,7 @@ export const config = {
    */
   superAdmin: {
     email: "muarif@sman11mks.com", // 👈 Change this for the super admin login
-    password: "muarif", // 👈 Change this for the super admin login
+    password: "12345", // 👈 Change this for the super admin login
   },
 
   /**
