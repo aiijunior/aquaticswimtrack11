@@ -1,14 +1,14 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import type { SwimEvent, Swimmer, CompetitionInfo, SwimRecord, BrokenRecord } from '../types';
-import { RecordType } from '../types';
-import { Card } from './ui/Card';
-import { Spinner } from './ui/Spinner';
-import { Button } from './ui/Button';
-import { Input } from './ui/Input';
-import { formatEventName } from '../constants';
-import { useTheme } from '../contexts/ThemeContext';
-import { getPublicData } from '../services/databaseService';
-import { supabase } from '../services/supabaseClient';
+import type { SwimEvent, Swimmer, CompetitionInfo, SwimRecord, BrokenRecord } from './types';
+import { RecordType } from './types';
+import { Card } from './components/ui/Card';
+import { Spinner } from './components/ui/Spinner';
+import { Button } from './components/ui/Button';
+import { Input } from './components/ui/Input';
+import { formatEventName } from './constants';
+import { useTheme } from './contexts/ThemeContext';
+import { getPublicData } from './services/databaseService';
+import { supabase } from './services/supabaseClient';
 
 
 interface PublicResultsViewProps {
