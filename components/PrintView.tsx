@@ -7,7 +7,6 @@ import { Spinner } from './ui/Spinner';
 import { Input } from './ui/Input';
 import { formatEventName, generateHeats, translateGender } from '../constants';
 import { getRecords } from '../services/databaseService';
-import { generateCoverImage } from '../services/geminiService';
 
 declare var XLSX: any;
 
@@ -976,7 +975,7 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
 
 
 // --- MAIN VIEW COMPONENT ---
-type PrintTab = 'scheduleOfEvents' | 'programBook' | 'eventResults' | 'clubStandings' | 'individualStandings' | 'brokenRecords' | 'rekapJuaraKategori' | 'clubAthleteRecap' | 'cover';
+type PrintTab = 'scheduleOfEvents' | 'programBook' | 'eventResults' | 'clubStandings' | 'individualStandings' | 'brokenRecords' | 'rekapJuaraKategori' | 'clubAthleteRecap';
 
 const PRINT_TITLES: Record<PrintTab, string> = {
     scheduleOfEvents: 'Susunan Acara',
@@ -986,8 +985,7 @@ const PRINT_TITLES: Record<PrintTab, string> = {
     individualStandings: 'Klasemen Medali Perorangan',
     brokenRecords: 'Daftar Rekor Terpecahkan',
     rekapJuaraKategori: 'Rekapitulasi Juara per Kategori',
-    clubAthleteRecap: 'Rekapitulasi Medali Klub & Atlet',
-    cover: 'Buat Sampul AI'
+    clubAthleteRecap: 'Rekapitulasi Medali Klub & Atlet'
 };
 
 
@@ -997,13 +995,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const [isDownloading, setIsDownloading] = useState(false);
     const [selectedEventIdForPrint, setSelectedEventIdForPrint] = useState<string>('all');
     const [selectedClubForRecap, setSelectedClubForRecap] = useState<string>('all');
-    
-    // State for AI Cover Generation
-    const [generatedCover, setGeneratedCover] = useState<string | null>(null);
-    const [isGeneratingCover, setIsGeneratingCover] = useState(false);
-    const [coverType, setCoverType] = useState<'event' | 'results' | null>(null);
-    const [coverError, setCoverError] = useState<string | null>(null);
-
 
     const eventsWithResults = useMemo(() => events.filter(e => e.results && e.results.length > 0), [events]);
     
@@ -1057,57 +1048,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         return [...new Map(calculated.map(item => [item.record.id, item])).values()];
     }, [events, swimmers, records]);
     
-    // --- AI Cover Generation Logic ---
-    const handleGenerateCover = async (type: 'event' | 'results') => {
-        if (!competitionInfo) {
-            setCoverError("Informasi kompetisi tidak tersedia.");
-            return;
-        }
-        setIsGeneratingCover(true);
-        setCoverType(type);
-        setCoverError(null);
-        setGeneratedCover(null);
-
-        const eventDateStr = new Date(competitionInfo.eventDate).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
-
-        const basePrompt = `Buat gambar sampul artistik dan profesional untuk sebuah kompetisi renang. Tema visual harus modern, dinamis, dan berhubungan dengan air atau renang, seperti percikan air, perenang bergaya, atau lintasan kolam renang. Gunakan palet warna biru dan aqua yang menarik. Integrasikan logo acara dan sponsor secara alami ke dalam desain. Sertakan teks berikut dengan tipografi yang jelas dan mudah dibaca:\n- Judul Utama: "${competitionInfo.eventName}"\n- Tanggal: "${eventDateStr}"`;
-        
-        const prompt = type === 'event' 
-            ? `${basePrompt}\n\nFokus sampul ini adalah untuk promosi acara dan buku acara (start list). Desain harus terasa energik dan mengundang. Tambahkan sub-judul "BUKU ACARA".`
-            : `${basePrompt}\n\nFokus sampul ini adalah untuk laporan hasil akhir kompetisi. Desain harus terasa lebih formal dan merayakan pencapaian, mungkin dengan elemen medali atau piala. Palet warna bisa menggunakan emas, perak, dan biru tua. Tambahkan judul utama "HASIL AKHIR PERLOMBAAN" dan nama acara sebagai sub-judul.`;
-
-        try {
-            const imageBase64 = await generateCoverImage(prompt, competitionInfo.eventLogo, competitionInfo.sponsorLogo);
-            setGeneratedCover(imageBase64);
-        } catch (err: any) {
-            setCoverError(err.message || 'Terjadi kesalahan yang tidak diketahui.');
-        } finally {
-            setIsGeneratingCover(false);
-            setCoverType(null);
-        }
-    };
-    
-    const handlePrintCover = () => {
-        if (!generatedCover) return;
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-            printWindow.document.write(`
-                <html>
-                    <head><title>Cetak Sampul</title>
-                        <style>
-                            @page { size: A4; margin: 0; }
-                            body { margin: 0; padding: 0; }
-                            img { width: 100vw; height: 100vh; object-fit: cover; }
-                        </style>
-                    </head>
-                    <body><img src="${generatedCover}" onload="window.print(); setTimeout(function(){window.close();}, 100);" /></body>
-                </html>
-            `);
-            printWindow.document.close();
-        }
-    };
-
-
     // --- EXCEL DOWNLOAD LOGIC ---
     const getExcelHeaderAOA = (reportTitle: string, numCols: number): { aoa: any[][], merges: any[], currentRow: number } => {
         if (!competitionInfo) return { aoa: [], merges: [], currentRow: 0 };
@@ -1604,7 +1544,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             case 'brokenRecords': return <BrokenRecordsReport brokenRecords={brokenRecords} info={competitionInfo} />;
             case 'rekapJuaraKategori': return <RekapJuaraPerKategori events={events} swimmers={swimmers} info={competitionInfo} />;
             case 'clubAthleteRecap': return <ClubAthleteMedalRecap events={events} swimmers={swimmers} info={competitionInfo} brokenRecords={brokenRecords} selectedClub={selectedClubForRecap} />;
-            case 'cover': return null; // Cover is handled outside the print preview area
             default: return null;
         }
     };
@@ -1624,10 +1563,10 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold">Unduh Laporan</h1>
                     <div className="flex space-x-2">
-                         <Button onClick={handleDownloadExcel} disabled={isLoading || isDownloading || activeTab === 'cover'} variant="secondary">
+                         <Button onClick={handleDownloadExcel} disabled={isLoading || isDownloading} variant="secondary">
                             {isDownloading ? <Spinner /> : 'Unduh Excel'}
                         </Button>
-                        <Button onClick={() => window.print()} disabled={isLoading || activeTab === 'cover'}>
+                        <Button onClick={() => window.print()} disabled={isLoading}>
                             Unduh PDF
                         </Button>
                     </div>
@@ -1643,7 +1582,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                         <TabButton tab="clubAthleteRecap" label="Rekap Medali Klub & Atlet" />
                         <TabButton tab="individualStandings" label="Klasemen Perorangan" />
                         <TabButton tab="brokenRecords" label="Rekor Terpecahkan" />
-                        <TabButton tab="cover" label="Buat Sampul AI" />
                     </div>
                     {activeTab === 'eventResults' && eventsWithResults.length > 0 && (
                         <div className="p-4 border-b border-border">
@@ -1685,61 +1623,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     )}
                 </Card>
             </div>
-            
-            {/* AI Cover Generation UI */}
-            {activeTab === 'cover' && (
-                <Card className="mt-4 no-print">
-                    <h2 className="text-xl font-bold mb-2">Buat Sampul dengan AI</h2>
-                    <p className="text-text-secondary mb-6">Gunakan AI untuk membuat sampul acara atau sampul laporan hasil secara otomatis berdasarkan informasi kompetisi Anda.</p>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <Card className="bg-background">
-                            <h3 className="font-semibold text-lg">Sampul Acara</h3>
-                            <p className="text-sm text-text-secondary mt-1 mb-4">Membuat gambar sampul depan yang cocok untuk buku acara atau promosi.</p>
-                            <Button onClick={() => handleGenerateCover('event')} disabled={isGeneratingCover}>
-                            {isGeneratingCover && coverType === 'event' ? <Spinner /> : 'Buat Sampul Acara'}
-                            </Button>
-                        </Card>
-                        <Card className="bg-background">
-                            <h3 className="font-semibold text-lg">Sampul Hasil Lomba</h3>
-                            <p className="text-sm text-text-secondary mt-1 mb-4">Membuat gambar sampul untuk laporan hasil akhir kompetisi.</p>
-                            <Button onClick={() => handleGenerateCover('results')} disabled={isGeneratingCover}>
-                            {isGeneratingCover && coverType === 'results' ? <Spinner /> : 'Buat Sampul Hasil'}
-                            </Button>
-                        </Card>
-                    </div>
-
-                    <div className="mt-6 pt-6 border-t border-border">
-                        <h3 className="text-lg font-semibold text-center mb-4">Hasil Sampul</h3>
-                        {isGeneratingCover && (
-                            <div className="flex flex-col items-center justify-center p-10 bg-background rounded-lg">
-                            <Spinner />
-                            <p className="mt-4 text-text-secondary">AI sedang menggambar, mohon tunggu...</p>
-                            </div>
-                        )}
-                        {coverError && (
-                            <div className="p-4 bg-red-900/20 border border-red-500/50 rounded-lg text-red-400 text-center">
-                            <p className="font-bold">Gagal Membuat Sampul</p>
-                            <p className="text-sm">{coverError}</p>
-                            </div>
-                        )}
-                        {generatedCover && (
-                            <div className="text-center">
-                            <img src={generatedCover} alt="AI Generated Cover" className="max-w-full mx-auto rounded-lg shadow-lg border border-border" />
-                            <Button onClick={handlePrintCover} className="mt-6">
-                                Cetak Sampul
-                            </Button>
-                            </div>
-                        )}
-                        {!isGeneratingCover && !generatedCover && !coverError && (
-                            <p className="text-center text-text-secondary p-10 bg-background rounded-lg">Pilih salah satu tipe sampul di atas untuk memulai.</p>
-                        )}
-                    </div>
-                </Card>
-            )}
-            
             {/* The on-screen preview and printable content */}
-            <div className={`print-preview-content-wrapper ${activeTab === 'cover' ? 'hidden' : ''}`}>
+            <div className="print-preview-content-wrapper">
                 <div className="print-preview-content">
                     {competitionInfo && <ReportHeader info={competitionInfo} title={printTitle} />}
                     {renderContent()}
