@@ -71,19 +71,9 @@ Pembaruan ini berfokus pada peningkatan kecepatan dan perbaikan keamanan di leve
 
 ### Error: `new row violates row-level security policy for table "competition_info"`
 
-**Penyebab:** Analisis Anda benar. Error ini terjadi karena database Anda belum memiliki aturan (kebijakan RLS) yang mengizinkan pengguna yang sudah login untuk **menambahkan (`INSERT`)** data baru ke tabel `competition_info`. Ini sering terjadi saat mencoba menyimpan pengaturan untuk pertama kalinya atau setelah menghapus semua data.
+**Penyebab:** Kesalahan ini terjadi karena kebijakan keamanan (Row Level Security) di database Supabase Anda belum dikonfigurasi dengan benar untuk mengizinkan penambahan data baru (`INSERT`) pada tabel yang kosong. Ini biasanya terjadi pada instalasi baru atau setelah data dihapus.
 
-**Solusi:** Anda perlu menjalankan potongan kode SQL berikut di **SQL Editor** Supabase Anda. Ini akan secara spesifik menambahkan kebijakan yang hilang.
-
-```sql
--- Tambahkan kebijakan ini untuk mengizinkan operasi INSERT oleh admin
-CREATE POLICY "Admins can insert competition info"
-ON public.competition_info
-FOR INSERT
-WITH CHECK (auth.role() = 'authenticated');
-```
-
-**Catatan:** Skrip SQL lengkap di bagian **"Langkah 1"** di bawah ini sudah mencakup kebijakan ini. Jika Anda menjalankan seluruh skrip tersebut pada database yang baru, error ini tidak akan terjadi.
+**Solusi:** Skrip SQL di bawah pada **Langkah 1: Pengaturan Supabase** telah diperbarui untuk mengatasi masalah ini. Cukup salin seluruh skrip SQL terbaru dari panduan ini dan jalankan di **SQL Editor** Supabase Anda. Tindakan ini aman untuk dijalankan kembali dan akan memperbaiki kebijakan keamanan yang ada.
 
 ---
 
@@ -149,11 +139,20 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
         is_registration_open boolean NOT NULL DEFAULT false,
         number_of_lanes integer NOT NULL DEFAULT 8
     );
+    -- RLS Policies for competition_info
     ALTER TABLE public.competition_info ENABLE ROW LEVEL SECURITY;
     DROP POLICY IF EXISTS "Public can read competition info" ON public.competition_info;
     CREATE POLICY "Public can read competition info" ON public.competition_info FOR SELECT USING (true);
+    -- Cleanup old/conflicting policies
     DROP POLICY IF EXISTS "Admins can manage competition info" ON public.competition_info;
-    CREATE POLICY "Admins can manage competition info" ON public.competition_info FOR ALL USING (auth.role() = 'authenticated');
+    DROP POLICY IF EXISTS "Admins can insert competition info" ON public.competition_info;
+    DROP POLICY IF EXISTS "Admins can update and delete competition info" ON public.competition_info;
+    DROP POLICY IF EXISTS "Admins can write to competition info" ON public.competition_info;
+    -- Consolidated write policy for authenticated users
+    CREATE POLICY "Admins can write to competition info" ON public.competition_info
+        FOR ALL
+        USING (auth.role() = 'authenticated')
+        WITH CHECK (auth.role() = 'authenticated');
 
     -- Table for Swimmers
     CREATE TABLE IF NOT EXISTS public.swimmers (
@@ -163,11 +162,20 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
         gender public.swimmer_gender NOT NULL,
         club text NOT NULL
     );
+    -- RLS Policies for swimmers
     ALTER TABLE public.swimmers ENABLE ROW LEVEL SECURITY;
     DROP POLICY IF EXISTS "Public can read swimmers" ON public.swimmers;
     CREATE POLICY "Public can read swimmers" ON public.swimmers FOR SELECT USING (true);
+    -- Cleanup old/conflicting policies
     DROP POLICY IF EXISTS "Admins can manage swimmers" ON public.swimmers;
-    CREATE POLICY "Admins can manage swimmers" ON public.swimmers FOR ALL USING (auth.role() = 'authenticated');
+    DROP POLICY IF EXISTS "Admins can insert swimmers" ON public.swimmers;
+    DROP POLICY IF EXISTS "Admins can update and delete swimmers" ON public.swimmers;
+    DROP POLICY IF EXISTS "Admins can write to swimmers" ON public.swimmers;
+    -- Consolidated write policy for authenticated users
+    CREATE POLICY "Admins can write to swimmers" ON public.swimmers
+        FOR ALL
+        USING (auth.role() = 'authenticated')
+        WITH CHECK (auth.role() = 'authenticated');
 
     -- Table for Swim Events
     CREATE TABLE IF NOT EXISTS public.events (
@@ -181,11 +189,20 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
         relay_legs integer,
         category text
     );
+    -- RLS Policies for events
     ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
     DROP POLICY IF EXISTS "Public can read events" ON public.events;
     CREATE POLICY "Public can read events" ON public.events FOR SELECT USING (true);
+    -- Cleanup old/conflicting policies
     DROP POLICY IF EXISTS "Admins can manage events" ON public.events;
-    CREATE POLICY "Admins can manage events" ON public.events FOR ALL USING (auth.role() = 'authenticated');
+    DROP POLICY IF EXISTS "Admins can insert events" ON public.events;
+    DROP POLICY IF EXISTS "Admins can update and delete events" ON public.events;
+    DROP POLICY IF EXISTS "Admins can write to events" ON public.events;
+    -- Consolidated write policy for authenticated users
+    CREATE POLICY "Admins can write to events" ON public.events
+        FOR ALL
+        USING (auth.role() = 'authenticated')
+        WITH CHECK (auth.role() = 'authenticated');
 
     -- Table for Event Entries (linking swimmers to events)
     CREATE TABLE IF NOT EXISTS public.event_entries (
@@ -194,11 +211,20 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
         seed_time bigint NOT NULL,
         PRIMARY KEY (event_id, swimmer_id)
     );
+    -- RLS Policies for event_entries
     ALTER TABLE public.event_entries ENABLE ROW LEVEL SECURITY;
     DROP POLICY IF EXISTS "Public can read event entries" ON public.event_entries;
     CREATE POLICY "Public can read event entries" ON public.event_entries FOR SELECT USING (true);
+    -- Cleanup old/conflicting policies
     DROP POLICY IF EXISTS "Admins can manage event entries" ON public.event_entries;
-    CREATE POLICY "Admins can manage event entries" ON public.event_entries FOR ALL USING (auth.role() = 'authenticated');
+    DROP POLICY IF EXISTS "Admins can insert event entries" ON public.event_entries;
+    DROP POLICY IF EXISTS "Admins can update and delete event entries" ON public.event_entries;
+    DROP POLICY IF EXISTS "Admins can write to event entries" ON public.event_entries;
+    -- Consolidated write policy for authenticated users
+    CREATE POLICY "Admins can write to event entries" ON public.event_entries
+        FOR ALL
+        USING (auth.role() = 'authenticated')
+        WITH CHECK (auth.role() = 'authenticated');
 
     -- Table for Event Results
     CREATE TABLE IF NOT EXISTS public.event_results (
@@ -207,11 +233,20 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
         "time" bigint NOT NULL,
         PRIMARY KEY (event_id, swimmer_id)
     );
+    -- RLS Policies for event_results
     ALTER TABLE public.event_results ENABLE ROW LEVEL SECURITY;
     DROP POLICY IF EXISTS "Public can read event results" ON public.event_results;
     CREATE POLICY "Public can read event results" ON public.event_results FOR SELECT USING (true);
+    -- Cleanup old/conflicting policies
     DROP POLICY IF EXISTS "Admins can manage event results" ON public.event_results;
-    CREATE POLICY "Admins can manage event results" ON public.event_results FOR ALL USING (auth.role() = 'authenticated');
+    DROP POLICY IF EXISTS "Admins can insert event results" ON public.event_results;
+    DROP POLICY IF EXISTS "Admins can update and delete event results" ON public.event_results;
+    DROP POLICY IF EXISTS "Admins can write to event results" ON public.event_results;
+    -- Consolidated write policy for authenticated users
+    CREATE POLICY "Admins can write to event results" ON public.event_results
+        FOR ALL
+        USING (auth.role() = 'authenticated')
+        WITH CHECK (auth.role() = 'authenticated');
 
     -- Table for Swim Records
     CREATE TABLE IF NOT EXISTS public.records (
@@ -227,11 +262,20 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
         relay_legs integer,
         category text
     );
+    -- RLS Policies for records
     ALTER TABLE public.records ENABLE ROW LEVEL SECURITY;
     DROP POLICY IF EXISTS "Public can read records" ON public.records;
     CREATE POLICY "Public can read records" ON public.records FOR SELECT USING (true);
+    -- Cleanup old/conflicting policies
     DROP POLICY IF EXISTS "Admins can manage records" ON public.records;
-    CREATE POLICY "Admins can manage records" ON public.records FOR ALL USING (auth.role() = 'authenticated');
+    DROP POLICY IF EXISTS "Admins can insert records" ON public.records;
+    DROP POLICY IF EXISTS "Admins can update and delete records" ON public.records;
+    DROP POLICY IF EXISTS "Admins can write to records" ON public.records;
+    -- Consolidated write policy for authenticated users
+    CREATE POLICY "Admins can write to records" ON public.records
+        FOR ALL
+        USING (auth.role() = 'authenticated')
+        WITH CHECK (auth.role() = 'authenticated');
 
     -- Table for User Roles (linked to Supabase Auth)
     CREATE TABLE IF NOT EXISTS public.users (
