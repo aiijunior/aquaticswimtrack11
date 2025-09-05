@@ -695,20 +695,48 @@ const BrokenRecordsReport: React.FC<{ brokenRecords: BrokenRecord[], info: Compe
         return <p className="text-center text-text-secondary py-10">Tidak ada rekor yang terpecahkan.</p>;
     }
     return (
-        <main className="space-y-4">
-            {brokenRecords.map(({ record, newEventName, newHolder, newTime }, i) => (
-                <div key={i} className="p-4 border border-gray-300 rounded-lg print-event-section">
-                    <p className="font-bold text-lg text-gray-800">{newEventName}</p>
-                    <p className="font-semibold text-xl text-black">
-                        {newHolder.name} ({newHolder.club}) - 
-                        <span className="font-mono ml-2">{formatTime(newTime)}</span>
-                        <span className={`record-badge ${record.type.toLowerCase()}`}>{record.type}</span>
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                        Memecahkan Rekor <strong>{record.type}</strong> ({formatTime(record.time)}) atas nama {record.holderName} ({record.yearSet})
-                    </p>
-                </div>
-            ))}
+        <main>
+            <table className="w-full text-left text-sm">
+                <colgroup>
+                    <col style={{ width: '30%' }} />
+                    <col style={{ width: '25%' }} />
+                    <col style={{ width: '15%' }} />
+                    <col style={{ width: '20%' }} />
+                    <col style={{ width: '10%' }} />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>Nomor Lomba & Tipe</th>
+                        <th>Pemecah Rekor Baru</th>
+                        <th className="text-right">Waktu Baru</th>
+                        <th>Rekor Lama</th>
+                        <th className="text-right">Waktu Lama</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {brokenRecords.map(({ record, newEventName, newHolder, newTime }, i) => (
+                        <tr key={i} className="even:bg-gray-100">
+                            <td>
+                                <span className="font-bold">{newEventName}</span>
+                                <br />
+                                <span className={`record-badge ${record.type.toLowerCase()}`}>{record.type}</span>
+                            </td>
+                            <td>
+                                <span className="font-semibold">{newHolder.name}</span>
+                                <br />
+                                <span className="text-text-secondary text-xs">{newHolder.club}</span>
+                            </td>
+                            <td className="text-right font-mono font-bold text-lg text-primary">{formatTime(newTime)}</td>
+                            <td>
+                                {record.holderName}
+                                <br />
+                                <span className="text-text-secondary text-xs">({record.yearSet})</span>
+                            </td>
+                            <td className="text-right font-mono line-through text-text-secondary">{formatTime(record.time)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </main>
     );
 };
