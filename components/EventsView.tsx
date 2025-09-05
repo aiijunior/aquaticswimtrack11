@@ -27,8 +27,20 @@ const TrashIcon = () => (
 );
 
 const StopwatchIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+);
+
+const UsersIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.124-1.283-.356-1.857M7 20v-2c0-.653.124-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+);
+
+const CheckCircleIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
 );
 
@@ -63,18 +75,42 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     return { scheduled, unscheduledExists };
   }, [events]);
 
-  const filteredEvents = useMemo(() => {
-    return events.filter(event => {
-        const sessionMatch = selectedSession === 0 ||
-            (selectedSession === -1 && (!event.sessionNumber || event.sessionNumber === 0)) ||
-            (event.sessionNumber === selectedSession);
-
-        if (!sessionMatch) {
-            return false;
+  const groupedEvents = useMemo(() => {
+    const grouped = events.reduce((acc, event) => {
+        const sessionNum = event.sessionNumber || 0;
+        if (!acc[sessionNum]) {
+            acc[sessionNum] = [];
         }
+        acc[sessionNum].push(event);
+        return acc;
+    }, {} as Record<number, SwimEvent[]>);
 
-        return !searchQuery || formatEventName(event).toLowerCase().includes(searchQuery.toLowerCase());
+    // Sort events within each session
+    for (const sessionNum in grouped) {
+        grouped[sessionNum].sort((a, b) => (a.heatOrder ?? 999) - (b.heatOrder ?? 999));
+    }
+
+    const filteredAndGrouped: Record<string, SwimEvent[]> = {};
+    const sessionKeys = Object.keys(grouped).map(Number).sort((a,b) => a-b);
+    
+    sessionKeys.forEach(sessionNum => {
+        const sessionMatch = selectedSession === 0 ||
+            (selectedSession === -1 && sessionNum === 0) ||
+            (sessionNum === selectedSession);
+
+        if (sessionMatch) {
+            const eventsInSession = grouped[sessionNum].filter(event => 
+                !searchQuery || formatEventName(event).toLowerCase().includes(searchQuery.toLowerCase())
+            );
+
+            if (eventsInSession.length > 0) {
+                const sessionName = sessionNum === 0 ? 'Belum Terjadwal' : `Sesi ${romanize(sessionNum)}`;
+                filteredAndGrouped[sessionName] = eventsInSession;
+            }
+        }
     });
+
+    return filteredAndGrouped;
   }, [events, searchQuery, selectedSession]);
 
   const handleAddEvent = async (e: React.FormEvent) => {
@@ -308,47 +344,58 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         </div>
       </Card>
 
+      <Card>
+        {isLoading ? (
+            <div className="flex justify-center items-center py-10">
+                <Spinner />
+                <p className="ml-2 text-text-secondary">Memuat nomor lomba...</p>
+            </div>
+        ) : Object.keys(groupedEvents).length > 0 ? (
+            <div className="space-y-6">
+                {Object.entries(groupedEvents).map(([sessionName, eventsInSession]) => (
+                    <div key={sessionName}>
+                        <h2 className="text-xl font-bold text-primary border-b-2 border-primary/20 pb-2 mb-3">{sessionName}</h2>
+                        <div className="space-y-2">
+                            {eventsInSession.map((event) => (
+                                <div key={event.id} className="flex items-center justify-between p-3 bg-background rounded-lg hover:shadow-md transition-shadow">
+                                    <div className="flex-1">
+                                        <p className="font-bold text-text-primary">{formatEventName(event)}</p>
+                                        <div className="flex items-center space-x-4 text-sm text-text-secondary mt-1">
+                                            <span className="flex items-center"><UsersIcon /> <span className="ml-1.5">{event.entries.length} Peserta</span></span>
+                                            <span className={`flex items-center ${event.results.length > 0 ? 'text-green-500' : ''}`}><CheckCircleIcon /> <span className="ml-1.5">{event.results.length > 0 ? 'Hasil Tercatat' : 'Belum Ada Hasil'}</span></span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
+                                        <Button onClick={() => onSelectEvent(event.id)} variant="secondary" className="text-xs py-1 px-3">
+                                            Detail
+                                        </Button>
+                                        <Button 
+                                            onClick={() => onStartTiming(event.id)} 
+                                            disabled={event.entries.length === 0}
+                                            title={event.entries.length === 0 ? "Tambah peserta untuk memulai timing" : "Mulai timing lomba"}
+                                            className="text-xs py-1 px-3 flex items-center"
+                                        >
+                                            <StopwatchIcon />
+                                            <span className="ml-1">Timing</span>
+                                        </Button>
+                                        <button onClick={() => openDeleteConfirm(event)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-full transition-colors" title="Hapus Nomor Lomba">
+                                            <TrashIcon />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        ) : (
+            <div className="text-center text-text-secondary py-10">
+              <h3 className="text-xl font-semibold">Tidak Ada Nomor Lomba</h3>
+              <p className="mt-2">{searchQuery ? `Tidak ada nomor lomba yang cocok dengan "${searchQuery}".` : "Tidak ada nomor lomba dalam sesi ini atau belum ada nomor lomba yang dibuat."}</p>
+            </div>
+        )}
+      </Card>
 
-      {isLoading ? (
-        <p>Memuat nomor lomba...</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEvents.length > 0 ? (
-            filteredEvents.map((event) => (
-              <Card key={event.id} className="flex flex-col justify-between">
-                <div>
-                    <h2 className="text-xl font-bold text-primary">{formatEventName(event)}</h2>
-                    <p className="text-text-secondary mt-2">{event.entries.length} perenang terdaftar</p>
-                    <p className="text-text-secondary">{event.results.length > 0 ? `${event.results.length} hasil dicatat` : "Menunggu hasil"}</p>
-                </div>
-                <div className="mt-4 flex items-center justify-between space-x-2">
-                     <Button onClick={() => onSelectEvent(event.id)} variant="secondary" className="flex-grow">
-                        Detail
-                    </Button>
-                    <Button 
-                        onClick={() => onStartTiming(event.id)} 
-                        disabled={event.entries.length === 0}
-                        title={event.entries.length === 0 ? "Tambah peserta untuk memulai timing" : "Mulai timing lomba"}
-                        className="flex-grow flex items-center justify-center"
-                    >
-                        <StopwatchIcon />
-                        Timing
-                    </Button>
-                </div>
-                <div className="mt-2">
-                    <Button onClick={() => openDeleteConfirm(event)} variant="danger" className="w-full text-xs py-1">
-                        Hapus Nomor Lomba
-                    </Button>
-                </div>
-              </Card>
-            ))
-          ) : (
-            <Card className="md:col-span-2 lg:col-span-3 text-center text-text-secondary py-10">
-              {searchQuery ? `Tidak ada nomor lomba yang cocok dengan "${searchQuery}".` : "Tidak ada nomor lomba dalam sesi ini."}
-            </Card>
-          )}
-        </div>
-      )}
 
       <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setFormError(null); }} title="Buat Nomor Lomba Baru">
         <form onSubmit={handleAddEvent} className="space-y-4">
