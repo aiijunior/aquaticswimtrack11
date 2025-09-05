@@ -105,6 +105,81 @@ const PrintRecordRow: React.FC<{ record: SwimRecord | undefined; type: string; }
     );
 };
 
+const ScheduleOfEvents: React.FC<{ events: SwimEvent[] }> = ({ events }) => {
+    const processedData = useMemo(() => {
+        let globalEventCounter = 1;
+        const scheduledEvents = events
+            .filter(e => e.sessionNumber && e.sessionNumber > 0 && e.sessionDateTime)
+            .sort((a, b) => {
+                const dateA = new Date(a.sessionDateTime!).getTime();
+                const dateB = new Date(b.sessionDateTime!).getTime();
+                if (dateA !== dateB) return dateA - dateB;
+                
+                const sessionDiff = (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0);
+                if (sessionDiff !== 0) return sessionDiff;
+                
+                return (a.heatOrder ?? 0) - (b.heatOrder ?? 0);
+            });
+
+        const groupedByDate = scheduledEvents.reduce((acc, event) => {
+            const dateStr = new Date(event.sessionDateTime!).toLocaleDateString('id-ID', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+            if (!acc[dateStr]) acc[dateStr] = [];
+            acc[dateStr].push(event);
+            return acc;
+        }, {} as Record<string, SwimEvent[]>);
+
+        return Object.entries(groupedByDate).map(([date, dateEvents]) => {
+            const groupedBySession = dateEvents.reduce((acc, event) => {
+                const sessionName = `Sesi ${romanize(event.sessionNumber!)}`;
+                if (!acc[sessionName]) acc[sessionName] = [];
+                acc[sessionName].push({ ...event, globalEventNumber: globalEventCounter++ });
+                return acc;
+            }, {} as Record<string, (SwimEvent & { globalEventNumber: number })[]>);
+            return { date, sessions: Object.entries(groupedBySession) };
+        });
+    }, [events]);
+
+    if (processedData.length === 0) {
+        return <p className="text-center text-text-secondary py-10">Tidak ada data untuk ditampilkan. Jadwalkan nomor lomba ke dalam sesi terlebih dahulu.</p>;
+    }
+
+    return (
+        <main className="space-y-6">
+            {processedData.map(({ date, sessions }) => (
+                <div key={date}>
+                    <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md text-center">{date}</h3>
+                    {sessions.map(([sessionName, sessionEvents]) => (
+                        <div key={sessionName} className="mb-4">
+                            <h4 className="text-xl font-semibold mb-2">{sessionName}</h4>
+                            <table className="w-full text-left text-sm">
+                                <colgroup>
+                                    <col style={{ width: '15%' }} />
+                                    <col style={{ width: '85%' }} />
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th>No. Acara</th>
+                                        <th>Nomor Lomba</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {sessionEvents.map(event => (
+                                        <tr key={event.id}>
+                                            <td className="font-bold">{event.globalEventNumber}</td>
+                                            <td>{formatEventName(event)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ))}
+                </div>
+            ))}
+        </main>
+    );
+};
 
 const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[] }> = ({ events, swimmers, info, records }) => {
     const data = useMemo(() => {
@@ -872,9 +947,10 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
 
 
 // --- MAIN VIEW COMPONENT ---
-type PrintTab = 'programBook' | 'eventResults' | 'clubStandings' | 'individualStandings' | 'brokenRecords' | 'rekapJuaraKategori' | 'clubAthleteRecap';
+type PrintTab = 'scheduleOfEvents' | 'programBook' | 'eventResults' | 'clubStandings' | 'individualStandings' | 'brokenRecords' | 'rekapJuaraKategori' | 'clubAthleteRecap';
 
 const PRINT_TITLES: Record<PrintTab, string> = {
+    scheduleOfEvents: 'Susunan Acara',
     programBook: 'Buku Acara',
     eventResults: 'Hasil Lomba per Nomor',
     clubStandings: 'Rekapitulasi Medali Klub',
@@ -886,7 +962,7 @@ const PRINT_TITLES: Record<PrintTab, string> = {
 
 
 export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competitionInfo, isLoading }) => {
-    const [activeTab, setActiveTab] = useState<PrintTab>('programBook');
+    const [activeTab, setActiveTab] = useState<PrintTab>('scheduleOfEvents');
     const [records, setRecords] = useState<SwimRecord[]>([]);
     const [isDownloading, setIsDownloading] = useState(false);
     const [selectedEventIdForPrint, setSelectedEventIdForPrint] = useState<string>('all');
@@ -966,6 +1042,59 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         currentRow++;
     
         return { aoa, merges, currentRow };
+    };
+
+    const downloadScheduleOfEventsExcel = () => {
+        if (!competitionInfo) return;
+        const NUM_COLS = 2;
+        const headerInfo = getExcelHeaderAOA('Susunan Acara', NUM_COLS);
+        const aoa = headerInfo.aoa;
+        const merges = headerInfo.merges;
+        let currentRow = headerInfo.currentRow;
+
+        let globalEventCounter = 1;
+        const scheduledEvents = events.filter(e => e.sessionNumber && e.sessionNumber > 0 && e.sessionDateTime).sort((a,b) => new Date(a.sessionDateTime!).getTime() - new Date(b.sessionDateTime!).getTime() || (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
+        const groupedByDate = scheduledEvents.reduce((acc,event) => {
+            const dateStr = new Date(event.sessionDateTime!).toLocaleDateString('id-ID',{weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'});
+            if(!acc[dateStr]) acc[dateStr] = [];
+            acc[dateStr].push(event);
+            return acc;
+        }, {} as Record<string, SwimEvent[]>);
+        const processedData = Object.entries(groupedByDate).map(([date,dateEvents])=>{
+            const groupedBySession = dateEvents.reduce((acc,event)=>{
+                const sessionName = `Sesi ${romanize(event.sessionNumber!)}`;
+                if(!acc[sessionName]) acc[sessionName] = [];
+                acc[sessionName].push({...event, globalEventNumber: globalEventCounter++});
+                return acc;
+            },{} as Record<string, (SwimEvent & { globalEventNumber: number })[]>);
+            return {date, sessions: Object.entries(groupedBySession)};
+        });
+
+        processedData.forEach(({ date, sessions }) => {
+            aoa.push([date]);
+            merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
+            currentRow++;
+
+            sessions.forEach(([sessionName, sessionEvents]) => {
+                aoa.push([sessionName]);
+                merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
+                currentRow++;
+                aoa.push(['No. Acara', 'Nomor Lomba']);
+                currentRow++;
+                sessionEvents.forEach(event => {
+                    aoa.push([event.globalEventNumber, formatEventName(event)]);
+                    currentRow++;
+                });
+                aoa.push([]); currentRow++;
+            });
+        });
+
+        const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+        worksheet['!merges'] = merges;
+        worksheet['!cols'] = [{ wch: 15 }, { wch: 60 }];
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Susunan Acara");
+        XLSX.writeFile(workbook, "Susunan_Acara.xlsx");
     };
 
     const downloadProgramBookExcel = () => {
@@ -1349,6 +1478,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         setIsDownloading(true);
         try {
             switch (activeTab) {
+                case 'scheduleOfEvents': downloadScheduleOfEventsExcel(); break;
                 case 'programBook': downloadProgramBookExcel(); break;
                 case 'eventResults': downloadEventResultsExcel(); break;
                 case 'clubStandings': downloadClubStandingsExcel(); break;
@@ -1370,6 +1500,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         if (!competitionInfo) return <p>Informasi kompetisi belum diatur.</p>;
 
         switch (activeTab) {
+            case 'scheduleOfEvents': return <ScheduleOfEvents events={events} />;
             case 'programBook': return <ProgramBook events={events} swimmers={swimmers} info={competitionInfo} records={records} />;
             case 'eventResults': {
                 const filteredEvents = selectedEventIdForPrint === 'all'
@@ -1415,6 +1546,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
                 <Card>
                     <div className="border-b border-border flex flex-wrap">
+                        <TabButton tab="scheduleOfEvents" label="Susunan Acara" />
                         <TabButton tab="programBook" label="Buku Acara" />
                         <TabButton tab="eventResults" label="Hasil per Nomor" />
                         <TabButton tab="rekapJuaraKategori" label="Rekap Juara (Kategori)" />
