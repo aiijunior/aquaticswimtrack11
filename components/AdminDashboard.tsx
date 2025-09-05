@@ -64,7 +64,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
             </p>
             {competitionInfo && (
                 <div className="mt-4 pt-4 border-t border-border">
-                    <h3 className="font-bold text-lg">{competitionInfo.eventName}</h3>
+                    {competitionInfo.eventName.split('\n').map((line, index) => (
+                        <h3 key={index} className="font-bold text-lg">{line}</h3>
+                    ))}
                     <p className="text-text-secondary">{competitionInfo.eventDate}</p>
                 </div>
             )}

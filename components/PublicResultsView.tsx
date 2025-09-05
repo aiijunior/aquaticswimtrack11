@@ -167,7 +167,13 @@ export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ onAdminLog
     const renderHeader = () => (
         <header className="relative text-center p-4 md:p-6">
             {localCompetitionInfo?.eventLogo && <img src={localCompetitionInfo.eventLogo} alt="Logo Acara" className={`mx-auto h-20 md:h-24 object-contain mb-4 ${theme === 'dark' ? 'bg-white p-2 rounded' : ''}`} />}
-            <h1 className="text-3xl md:text-5xl font-extrabold text-primary tracking-tight">{localCompetitionInfo?.eventName || 'Hasil Lomba'}</h1>
+            {localCompetitionInfo ? (
+                localCompetitionInfo.eventName.split('\n').map((line, index) => (
+                    <h1 key={index} className="text-3xl md:text-5xl font-extrabold text-primary tracking-tight">{line}</h1>
+                ))
+            ) : (
+                <h1 className="text-3xl md:text-5xl font-extrabold text-primary tracking-tight">Hasil Lomba</h1>
+            )}
             <p className="text-md md:text-xl text-text-secondary mt-2">{localCompetitionInfo?.eventDate ? new Date(localCompetitionInfo.eventDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''}</p>
         </header>
     );

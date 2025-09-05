@@ -68,7 +68,9 @@ const ReportHeader: React.FC<{ info: CompetitionInfo, title: string }> = ({ info
         {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-20 object-contain mx-auto mb-4" />}
         
         <div className="mb-4">
-            <h1 className="text-3xl font-bold tracking-tight">{info.eventName}</h1>
+            {info.eventName.split('\n').map((line, index) => (
+                <h1 key={index} className="text-3xl font-bold tracking-tight">{line}</h1>
+            ))}
             <p className="text-lg text-gray-600 mt-1">{info.eventDate && new Date(info.eventDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
 

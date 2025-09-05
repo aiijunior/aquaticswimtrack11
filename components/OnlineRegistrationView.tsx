@@ -249,7 +249,13 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
     const renderHeader = () => (
         <header className="relative text-center p-4 md:p-6 mb-6">
-            <h1 className="text-3xl md:text-4xl font-extrabold text-primary tracking-tight">{competitionInfo?.eventName || 'Pendaftaran Lomba Renang'}</h1>
+            {competitionInfo ? (
+                competitionInfo.eventName.split('\n').map((line, index) => (
+                    <h1 key={index} className="text-3xl md:text-4xl font-extrabold text-primary tracking-tight">{line}</h1>
+                ))
+            ) : (
+                <h1 className="text-3xl md:text-4xl font-extrabold text-primary tracking-tight">Pendaftaran Lomba Renang</h1>
+            )}
             <p className="text-md md:text-lg text-text-secondary mt-2">
                 {competitionInfo?.eventDate ? new Date(competitionInfo.eventDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Formulir Pendaftaran Online'}
             </p>

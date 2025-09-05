@@ -106,6 +106,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
 
     const [activeTab, setActiveTab] = useState<'settings' | 'schedule' | 'records' | 'data'>('settings');
     const [info, setInfo] = useState<CompetitionInfo | null>(null);
+    const [eventNameLines, setEventNameLines] = useState<string[]>(['', '', '']);
     const [schedule, setSchedule] = useState<{ [key: string]: SwimEvent[] }>({});
     const [sessionNames, setSessionNames] = useState<{ [key: string]: string }>({});
     const [sessionDetails, setSessionDetails] = useState<{ [key: string]: { date: string; time: string } }>({});
@@ -146,6 +147,16 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
 
     useEffect(() => {
         setInfo(competitionInfo);
+        if (competitionInfo?.eventName) {
+            const lines = competitionInfo.eventName.split('\n');
+            setEventNameLines([
+                lines[0] || '',
+                lines[1] || '',
+                lines[2] || '',
+            ]);
+        } else {
+            setEventNameLines(['', '', '']);
+        }
     }, [competitionInfo]);
 
     useEffect(() => {
@@ -212,11 +223,20 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
 
 
     // --- Handlers ---
+    const handleEventNameChange = (index: number, value: string) => {
+        const newLines = [...eventNameLines];
+        newLines[index] = toTitleCase(value);
+        setEventNameLines(newLines);
+    };
+
     const handleSaveInfo = async () => {
         if (!info) return;
         setFormStatus({ message: 'Menyimpan perubahan...', type: 'success' });
         try {
-            await updateCompetitionInfo(info);
+            const combinedEventName = eventNameLines.map(line => line.trim()).filter(Boolean).join('\n');
+            const infoToSave = { ...info, eventName: combinedEventName };
+
+            await updateCompetitionInfo(infoToSave);
             onDataUpdate();
             setFormStatus({ message: 'Pengaturan umum berhasil disimpan!', type: 'success' });
             setTimeout(() => setFormStatus(null), 4000);
@@ -820,7 +840,11 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                             />
                             <p className="text-xs text-text-secondary mt-2">Aktifkan untuk mengizinkan peserta mendaftar melalui halaman pendaftaran publik.</p>
                         </div>
-                        <Input label="Nama Event" id="event-name" type="text" value={info.eventName} onChange={(e) => setInfo({ ...info, eventName: toTitleCase(e.target.value) })}/>
+                        <div>
+                            <Input label="Nama Event (Baris 1)" id="event-name-1" type="text" value={eventNameLines[0]} onChange={(e) => handleEventNameChange(0, e.target.value)} />
+                            <Input label="Nama Event (Baris 2)" id="event-name-2" type="text" value={eventNameLines[1]} onChange={(e) => handleEventNameChange(1, e.target.value)} className="mt-4"/>
+                            <Input label="Nama Event (Baris 3)" id="event-name-3" type="text" value={eventNameLines[2]} onChange={(e) => handleEventNameChange(2, e.target.value)} className="mt-4"/>
+                        </div>
                         <Input label="Hari dan Tanggal Event" id="event-date" type="date" value={info.eventDate} onChange={(e) => setInfo({ ...info, eventDate: e.target.value })}/>
                         <Select
                             label="Jumlah Lintasan per Seri"
