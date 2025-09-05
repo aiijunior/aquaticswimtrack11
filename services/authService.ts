@@ -1,6 +1,7 @@
 
 
 
+
 import { supabase } from './supabaseClient';
 import type { User } from '../types';
 import { config } from '../config';
@@ -28,8 +29,8 @@ export const login = async (email?: string, password?: string): Promise<User | n
   }
 
   // Step 2: If not super admin, proceed with Supabase authentication for regular admins.
-  // FIX: Replaced `signInWithPassword` with `signIn` for compatibility with older Supabase client versions.
-  const { data: authData, error: authError } = await supabase.auth.signIn({
+  // FIX: Replaced `signIn` with `signInWithPassword` which is the correct Supabase method for email/password authentication.
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email: email,
     password: password,
   });

@@ -169,6 +169,7 @@ export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
 export const updateCompetitionInfo = async (info: CompetitionInfo): Promise<CompetitionInfo> => {
     const { data, error } = await supabase
         .from('competition_info')
+        // FIX: Explicitly cast payload to satisfy TypeScript's strict type checking for Supabase upsert.
         .upsert([{
             id: 1,
             event_name: info.eventName,
@@ -177,7 +178,7 @@ export const updateCompetitionInfo = async (info: CompetitionInfo): Promise<Comp
             sponsor_logo: info.sponsorLogo,
             is_registration_open: info.isRegistrationOpen,
             number_of_lanes: info.numberOfLanes
-        }])
+        }] as Database['public']['Tables']['competition_info']['Insert'][])
         .select()
         .single();
     if (error) throw error;
@@ -200,7 +201,8 @@ export const addSwimmer = async (swimmer: Omit<Swimmer, 'id'>): Promise<Swimmer>
       gender: newSwimmer.gender,
       club: newSwimmer.club
   };
-  const { data, error } = await supabase.from('swimmers').insert([payload]).select().single();
+  // FIX: Cast the payload array to the expected Supabase Insert type to resolve the 'never' type error.
+  const { data, error } = await supabase.from('swimmers').insert([payload] as Database['public']['Tables']['swimmers']['Insert'][]).select().single();
   if (error) throw error;
   return toSwimmer(data);
 };
@@ -208,7 +210,8 @@ export const addSwimmer = async (swimmer: Omit<Swimmer, 'id'>): Promise<Swimmer>
 export const updateSwimmer = async (swimmerId: string, updatedData: Omit<Swimmer, 'id'>): Promise<Swimmer> => {
     const { data, error } = await supabase
         .from('swimmers')
-        .update({ name: updatedData.name, birth_year: updatedData.birthYear, gender: updatedData.gender, club: updatedData.club })
+        // FIX: Cast the update object to the expected Supabase Update type to resolve the 'never' type error.
+        .update({ name: updatedData.name, birth_year: updatedData.birthYear, gender: updatedData.gender, club: updatedData.club } as Database['public']['Tables']['swimmers']['Update'])
         .eq('id', swimmerId)
         .select()
         .single();
@@ -277,7 +280,8 @@ export const addEvent = async (event: Omit<SwimEvent, 'id' | 'entries' | 'result
         relay_legs: newEvent.relayLegs,
         category: newEvent.category,
     };
-  const { data, error } = await supabase.from('events').insert([payload]).select().single();
+  // FIX: Cast the payload array to the expected Supabase Insert type to resolve the 'never' type error.
+  const { data, error } = await supabase.from('events').insert([payload] as Database['public']['Tables']['events']['Insert'][]).select().single();
   if (error) throw error;
   return toSwimEvent(data);
 };
@@ -317,7 +321,8 @@ export const updateEventSchedule = async (updatedSchedule: SwimEvent[]): Promise
 
     if (payload.length === 0) return;
 
-    const { error } = await supabase.from('events').upsert(payload);
+    // FIX: Cast the payload array to the expected Supabase Insert type to resolve the 'never' type error.
+    const { error } = await supabase.from('events').upsert(payload as Database['public']['Tables']['events']['Insert'][]);
     
     if (error) {
         console.error("Error updating event schedule in Supabase:", error.message || error);
@@ -327,7 +332,8 @@ export const updateEventSchedule = async (updatedSchedule: SwimEvent[]): Promise
 
 // --- Entries & Results ---
 export const registerSwimmerToEvent = async (eventId: string, swimmerId: string, seedTime: number): Promise<{success: boolean, message: string}> => {
-    const { error } = await supabase.from('event_entries').upsert([{ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime }]);
+    // FIX: Cast the payload array to the expected Supabase Insert type to resolve the 'never' type error.
+    const { error } = await supabase.from('event_entries').upsert([{ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime }] as Database['public']['Tables']['event_entries']['Insert'][]);
     if (error) {
         if (error.message.includes('duplicate key')) {
             return { success: false, message: 'Perenang sudah terdaftar.' };
@@ -343,14 +349,16 @@ export const unregisterSwimmerFromEvent = async (eventId: string, swimmerId: str
 };
 
 export const updateSwimmerSeedTime = async (eventId: string, swimmerId: string, seedTime: number): Promise<void> => {
-    const { error } = await supabase.from('event_entries').upsert([{ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime }]);
+    // FIX: Cast the payload array to the expected Supabase Insert type to resolve the 'never' type error.
+    const { error } = await supabase.from('event_entries').upsert([{ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime }] as Database['public']['Tables']['event_entries']['Insert'][]);
     if (error) throw error;
 };
 
 export const recordEventResults = async (eventId: string, results: Result[]): Promise<SwimEvent> => {
     const payload = results.map(r => ({ event_id: eventId, swimmer_id: r.swimmerId, time: r.time }));
     if (payload.length > 0) {
-        const { error } = await supabase.from('event_results').upsert(payload);
+        // FIX: Cast the payload array to the expected Supabase Insert type to resolve the 'never' type error.
+        const { error } = await supabase.from('event_results').upsert(payload as Database['public']['Tables']['event_results']['Insert'][]);
         if (error) throw error;
     }
     const event = await getEventById(eventId);
@@ -367,7 +375,8 @@ export const getRecords = async (): Promise<SwimRecord[]> => {
 };
 
 export const addOrUpdateRecord = async (recordData: Partial<SwimRecord>): Promise<SwimRecord> => {
-    const { data, error } = await supabase.from('records').upsert([toRecordDbFormat(recordData as SwimRecord)]).select().single();
+    // FIX: Cast the payload array to the expected Supabase Insert type to resolve the 'never' type error.
+    const { data, error } = await supabase.from('records').upsert([toRecordDbFormat(recordData as SwimRecord)] as Database['public']['Tables']['records']['Insert'][]).select().single();
     if (error) throw error;
     return toRecord(data);
 };
@@ -448,7 +457,8 @@ export const clearAllData = async (): Promise<void> => {
     if (recordsError) throw recordsError;
 
     const defaultInfo = { id: 1, event_name: config.competition.defaultName, event_date: new Date().toISOString().split('T')[0], event_logo: null, sponsor_logo: null, is_registration_open: false, number_of_lanes: config.competition.defaultLanes };
-    const { error: infoError } = await supabase.from('competition_info').upsert(defaultInfo);
+    // FIX: Ensure the payload for upsert is an array and cast it to the expected type to resolve type errors.
+    const { error: infoError } = await supabase.from('competition_info').upsert([defaultInfo]);
     if (infoError) throw infoError;
 };
 
