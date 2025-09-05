@@ -358,7 +358,7 @@ const App: React.FC = () => {
         <header className="md:hidden flex items-center p-4 border-b border-border bg-surface/80 backdrop-blur-sm sticky top-0 z-20 no-print">
             <button
                 onClick={() => setIsMenuOpen(true)}
-                className="p-2 rounded-md text-text-secondary hover:bg-background"
+                className="p-2 rounded-md text-text-secondary hover:bg-background focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
                 aria-label="Open menu"
             >
                 <HamburgerIcon />
