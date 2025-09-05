@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import type { Swimmer, SwimEvent, CompetitionInfo } from '../types';
 import { Card } from './ui/Card';
 import { Spinner } from './ui/Spinner';
@@ -25,6 +25,16 @@ const DocumentTextIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
 );
+const SortIcon: React.FC<{ direction: 'asc' | 'desc' | 'none' }> = ({ direction }) => {
+  if (direction === 'none') {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline ml-1 text-text-secondary/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+    );
+  }
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 inline ml-1 transition-transform ${direction === 'asc' ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+  );
+};
 
 
 interface AdminDashboardProps {
@@ -33,6 +43,8 @@ interface AdminDashboardProps {
   competitionInfo: CompetitionInfo | null;
   isLoading: boolean;
 }
+type ClubAnalysisData = { clubName: string; maleCount: number; femaleCount: number; total: number; percentage: number; };
+type SortableKey = keyof ClubAnalysisData;
 
 // Since chart.js is loaded via a script tag, we declare it as a global variable for TypeScript.
 declare var Chart: any;
@@ -41,6 +53,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
   const { theme } = useTheme();
   const chartRef = useRef<HTMLCanvasElement | null>(null);
   const chartInstance = useRef<any>(null); // To hold the chart instance
+  const [sortConfig, setSortConfig] = useState<{ key: SortableKey; direction: 'asc' | 'desc' }>({ key: 'total', direction: 'desc' });
 
   const stats = useMemo(() => {
     const swimmerCount = swimmers.length;
@@ -51,26 +64,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
   }, [swimmers, events]);
 
 
-  const chartData = useMemo(() => {
-    const clubCounts: Record<string, number> = {};
+  const clubAnalysisData = useMemo(() => {
+    const clubData: Record<string, { male: number; female: number }> = {};
     swimmers.forEach(swimmer => {
-      clubCounts[swimmer.club] = (clubCounts[swimmer.club] || 0) + 1;
+        if (!clubData[swimmer.club]) {
+            clubData[swimmer.club] = { male: 0, female: 0 };
+        }
+        if (swimmer.gender === 'Male') {
+            clubData[swimmer.club].male++;
+        } else {
+            clubData[swimmer.club].female++;
+        }
     });
 
-    const sortedClubs = Object.entries(clubCounts).sort((a, b) => b[1] - a[1]);
-    const topClubs = sortedClubs.slice(0, 7);
-    const otherCount = sortedClubs.slice(7).reduce((acc, [, count]) => acc + count, 0);
-
-    const labels = topClubs.map(([name]) => name);
-    const data = topClubs.map(([, count]) => count);
-
-    if (otherCount > 0) {
-      labels.push('Lainnya');
-      data.push(otherCount);
-    }
-
-    return { labels, data };
+    const totalSwimmers = swimmers.length;
+    return Object.entries(clubData).map(([clubName, counts]) => ({
+        clubName,
+        maleCount: counts.male,
+        femaleCount: counts.female,
+        total: counts.male + counts.female,
+        percentage: totalSwimmers > 0 ? ((counts.male + counts.female) / totalSwimmers) * 100 : 0,
+    }));
   }, [swimmers]);
+  
+  const sortedClubData = useMemo(() => {
+    const sortableData = [...clubAnalysisData];
+    if (sortConfig.key) {
+      sortableData.sort((a, b) => {
+        const aVal = a[sortConfig.key];
+        const bVal = b[sortConfig.key];
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableData;
+  }, [clubAnalysisData, sortConfig]);
+
+  const requestSort = (key: SortableKey) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+  
+  const chartData = useMemo(() => {
+    const topClubs = [...clubAnalysisData].sort((a,b) => b.total - a.total).slice(0, 7);
+    const labels = topClubs.map(c => c.clubName);
+    const data = topClubs.map(c => c.total);
+    return { labels, data };
+  }, [clubAnalysisData]);
 
   useEffect(() => {
     if (!chartRef.current || isLoading) return;
@@ -98,16 +142,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
         }]
       },
       options: {
+        indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
             legend: { display: false },
-            title: {
-                display: true,
-                text: 'Distribusi Perenang per Klub (Top 7)',
-                color: textColor,
-                font: { size: 16, family: 'sans-serif' }
-            },
+            title: { display: false },
             tooltip: {
                 backgroundColor: 'var(--color-surface)',
                 titleColor: 'var(--color-text-primary)',
@@ -118,13 +158,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
         },
         scales: {
           y: {
+            ticks: { color: textColor },
+            grid: { color: 'transparent' }
+          },
+          x: {
             beginAtZero: true,
             ticks: { color: textColor, precision: 0 },
             grid: { color: gridColor }
-          },
-          x: {
-            ticks: { color: textColor },
-            grid: { color: 'transparent' }
           }
         }
       }
@@ -148,6 +188,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
         </div>
     </Card>
   );
+  
+  const TableHeader: React.FC<{ onSort: () => void; label: string; sortKey: SortableKey; currentSort: typeof sortConfig }> = ({ onSort, label, sortKey, currentSort }) => {
+    const direction = currentSort.key === sortKey ? currentSort.direction : 'none';
+    return (
+        <th className="p-3 cursor-pointer hover:bg-background" onClick={onSort}>
+            {label}
+            <SortIcon direction={direction} />
+        </th>
+    );
+  };
 
   return (
     <div>
@@ -169,9 +219,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
           <Card className="mt-6">
             <h2 className="text-xl font-bold mb-4">Analisis Klub</h2>
             {swimmers.length > 0 ? (
-                 <div style={{ position: 'relative', height: '40vh' }}>
-                    <canvas ref={chartRef}></canvas>
-                </div>
+                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <div>
+                        <h3 className="text-lg font-semibold text-text-primary mb-2 text-center">Top 7 Klub Berdasarkan Jumlah Atlet</h3>
+                         <div style={{ position: 'relative', height: '50vh', minHeight: '350px' }}>
+                            <canvas ref={chartRef}></canvas>
+                        </div>
+                    </div>
+                    <div>
+                         <h3 className="text-lg font-semibold text-text-primary mb-2 text-center">Rincian Data Klub</h3>
+                        <div className="overflow-y-auto max-h-[50vh] border border-border rounded-lg">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-background sticky top-0">
+                                    <tr className="border-b border-border">
+                                        <TableHeader onSort={() => requestSort('clubName')} label="Klub" sortKey="clubName" currentSort={sortConfig} />
+                                        <TableHeader onSort={() => requestSort('maleCount')} label="Putra (L)" sortKey="maleCount" currentSort={sortConfig} />
+                                        <TableHeader onSort={() => requestSort('femaleCount')} label="Putri (P)" sortKey="femaleCount" currentSort={sortConfig} />
+                                        <TableHeader onSort={() => requestSort('total')} label="Total" sortKey="total" currentSort={sortConfig} />
+                                        <TableHeader onSort={() => requestSort('percentage')} label="Persentase" sortKey="percentage" currentSort={sortConfig} />
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {sortedClubData.map(club => (
+                                        <tr key={club.clubName} className="border-b border-border last:border-b-0 hover:bg-background/50">
+                                            <td className="p-3 font-semibold">{club.clubName}</td>
+                                            <td className="p-3 text-center">{club.maleCount}</td>
+                                            <td className="p-3 text-center">{club.femaleCount}</td>
+                                            <td className="p-3 text-center font-bold">{club.total}</td>
+                                            <td className="p-3 text-center">{club.percentage.toFixed(2)}%</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                 </div>
             ) : (
                 <p className="text-text-secondary text-center py-10">Data perenang belum tersedia untuk ditampilkan.</p>
             )}
