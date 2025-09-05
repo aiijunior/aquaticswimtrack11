@@ -95,8 +95,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
                             else if (rank === 3) clubMedals[swimmer.club].bronze++;
 
                             // Tally medals for individuals (non-mixed events)
-                            if (event.gender !== Gender.MIXED) {
-                                if (!individualMedals[swimmer.id]) individualMedals[swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 };
+                            // Only add swimmer to the list if they've won a medal
+                            if (event.gender !== Gender.MIXED && rank <= 3) {
+                                if (!individualMedals[swimmer.id]) {
+                                    individualMedals[swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 };
+                                }
                                 if (rank === 1) individualMedals[swimmer.id].gold++;
                                 else if (rank === 2) individualMedals[swimmer.id].silver++;
                                 else if (rank === 3) individualMedals[swimmer.id].bronze++;
@@ -128,7 +131,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
         // Deduplicate broken records list for the summary view
         const uniqueBrokenRecords = [...new Map(brokenRecordsList.map(item => [item.record.id, item])).values()];
         
-        // NEW: Split individual medals by gender
+        // Split individual medals by gender
         const maleIndividualMedals = sortedIndividualMedals.filter(data => data.swimmer.gender === 'Male');
         const femaleIndividualMedals = sortedIndividualMedals.filter(data => data.swimmer.gender === 'Female');
 
