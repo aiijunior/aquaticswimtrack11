@@ -366,14 +366,14 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                                         </div>
                                     </div>
                                     <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
-                                        <Button onClick={() => onSelectEvent(event.id)} variant="secondary" className="text-xs py-1 px-3">
+                                        <Button onClick={() => onSelectEvent(event.id)} variant="secondary" className="py-2 px-4">
                                             Detail
                                         </Button>
                                         <Button 
                                             onClick={() => onStartTiming(event.id)} 
                                             disabled={event.entries.length === 0}
                                             title={event.entries.length === 0 ? "Tambah peserta untuk memulai timing" : "Mulai timing lomba"}
-                                            className="text-xs py-1 px-3 flex items-center"
+                                            className="py-2 px-4 flex items-center"
                                         >
                                             <StopwatchIcon />
                                             <span className="ml-1">Timing</span>
@@ -472,12 +472,21 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
       <Modal isOpen={isDeleteModalOpen} onClose={closeDeleteConfirm} title="Konfirmasi Hapus Nomor Lomba">
         {eventToDelete && (
           <div className="space-y-6">
-            <p className="text-text-secondary">
-              Anda yakin ingin menghapus nomor lomba <strong className="text-text-primary">{formatEventName(eventToDelete)}</strong>?
-              <br/>
-              Tindakan ini tidak dapat dibatalkan.
-            </p>
-            <div className="flex justify-end space-x-4 mt-4">
+            {eventToDelete.entries.length > 0 ? (
+              <p className="text-text-secondary">
+                <strong className="text-yellow-500 font-bold block mb-2">PERINGATAN!</strong>
+                Nomor lomba <strong className="text-text-primary">{formatEventName(eventToDelete)}</strong> sudah memiliki <strong className="text-red-500 font-bold">{eventToDelete.entries.length} peserta</strong> terdaftar.
+                <br/><br/>
+                Menghapus nomor lomba ini akan menghapus semua data pendaftaran yang terkait secara permanen. Anda yakin ingin melanjutkan?
+              </p>
+            ) : (
+              <p className="text-text-secondary">
+                Anda yakin ingin menghapus nomor lomba <strong className="text-text-primary">{formatEventName(eventToDelete)}</strong>?
+                <br/>
+                Tindakan ini tidak dapat dibatalkan.
+              </p>
+            )}
+            <div className="flex justify-end space-x-4">
               <Button variant="secondary" onClick={closeDeleteConfirm}>
                 Batal
               </Button>
