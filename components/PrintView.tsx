@@ -18,6 +18,13 @@ interface PrintViewProps {
   isLoading: boolean;
 }
 
+// --- ICONS ---
+const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 10a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
+const MaleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9.5a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15M9 12l3 3m0 0l3-3m-3 3V2.25" /></svg>;
+const FemaleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6.75 15.75L3 12m0 0l3.75-3.75M3 12h18" /></svg>;
+const MixedIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>;
+
+
 // --- HELPER FUNCTIONS ---
 const romanize = (num: number): string => {
     if (isNaN(num) || num <= 0) return '';
@@ -141,38 +148,46 @@ const ScheduleOfEvents: React.FC<{ events: SwimEvent[] }> = ({ events }) => {
         });
     }, [events]);
 
+    const getGenderIcon = (gender: Gender) => {
+        switch (gender) {
+            case Gender.MALE: return <MaleIcon />;
+            case Gender.FEMALE: return <FemaleIcon />;
+            case Gender.MIXED: return <MixedIcon />;
+            default: return null;
+        }
+    };
+
     if (processedData.length === 0) {
         return <p className="text-center text-text-secondary py-10">Tidak ada data untuk ditampilkan. Jadwalkan nomor lomba ke dalam sesi terlebih dahulu.</p>;
     }
 
     return (
-        <main className="space-y-6">
+        <main className="space-y-8">
             {processedData.map(({ date, sessions }) => (
                 <div key={date}>
-                    <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md text-center">{date}</h3>
+                    <h3 className="text-3xl font-bold my-4 bg-gray-200 text-black p-3 rounded-md text-center">{date}</h3>
                     {sessions.map(([sessionName, sessionEvents]) => (
-                        <div key={sessionName} className="mb-4">
-                            <h4 className="text-xl font-semibold mb-2">{sessionName}</h4>
-                            <table className="w-full text-left text-sm">
-                                <colgroup>
-                                    <col style={{ width: '15%' }} />
-                                    <col style={{ width: '85%' }} />
-                                </colgroup>
-                                <thead>
-                                    <tr>
-                                        <th>No. Acara</th>
-                                        <th>Nomor Lomba</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {sessionEvents.map(event => (
-                                        <tr key={event.id}>
-                                            <td className="font-bold">{event.globalEventNumber}</td>
-                                            <td>{formatEventName(event)}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        <div key={sessionName} className="mb-6">
+                            <h4 className="text-2xl font-semibold mb-4 border-b-2 border-border pb-2">{sessionName}</h4>
+                            <div className="space-y-4">
+                                {sessionEvents.map(event => (
+                                    <div key={event.id} className="flex items-center space-x-4 bg-surface p-4 rounded-lg shadow-md">
+                                        <div className="flex-shrink-0 flex items-center justify-center w-16 h-16 rounded-full bg-primary text-white font-bold text-2xl">
+                                            {event.globalEventNumber}
+                                        </div>
+                                        <div className="flex-grow">
+                                            <p className="font-bold text-lg text-text-primary">{formatEventName(event)}</p>
+                                            <div className="flex items-center space-x-4 text-sm text-text-secondary mt-2">
+                                                <span className="flex items-center space-x-1.5"><UsersIcon /> <span>{event.entries.length} Peserta</span></span>
+                                                <span className="flex items-center space-x-1.5">{getGenderIcon(event.gender)} <span>{translateGender(event.gender)}</span></span>
+                                                {event.category && (
+                                                    <span className="bg-secondary/20 text-text-secondary px-2 py-1 rounded-full text-xs font-semibold">{event.category}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -1046,7 +1061,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
     const downloadScheduleOfEventsExcel = () => {
         if (!competitionInfo) return;
-        const NUM_COLS = 2;
+        const NUM_COLS = 4;
         const headerInfo = getExcelHeaderAOA('Susunan Acara', NUM_COLS);
         const aoa = headerInfo.aoa;
         const merges = headerInfo.merges;
@@ -1079,10 +1094,10 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 aoa.push([sessionName]);
                 merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
                 currentRow++;
-                aoa.push(['No. Acara', 'Nomor Lomba']);
+                aoa.push(['No. Acara', 'Nomor Lomba', 'Kategori', 'Jumlah Peserta']);
                 currentRow++;
                 sessionEvents.forEach(event => {
-                    aoa.push([event.globalEventNumber, formatEventName(event)]);
+                    aoa.push([event.globalEventNumber, formatEventName(event), event.category || '-', event.entries.length]);
                     currentRow++;
                 });
                 aoa.push([]); currentRow++;
@@ -1091,7 +1106,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
         const worksheet = XLSX.utils.aoa_to_sheet(aoa);
         worksheet['!merges'] = merges;
-        worksheet['!cols'] = [{ wch: 15 }, { wch: 60 }];
+        worksheet['!cols'] = [{ wch: 10 }, { wch: 50 }, { wch: 15 }, { wch: 15 }];
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Susunan Acara");
         XLSX.writeFile(workbook, "Susunan_Acara.xlsx");
