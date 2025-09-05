@@ -31,6 +31,7 @@ export interface CompetitionInfo {
     eventLogo: string | null;
     sponsorLogo: string | null;
     isRegistrationOpen?: boolean;
+    // FIX: Corrected typo from numberOfLlanes to numberOfLanes
     numberOfLanes?: number;
 }
 

@@ -19,16 +19,52 @@ Aquatic Swimtrack 11 adalah aplikasi modern, *offline-first*, dan *real-time* ya
 - **Otentikasi Aman**: Kontrol akses berbasis peran (Admin, Super Admin) yang didukung oleh Supabase Auth.
 - **UI/UX Modern**: Antarmuka yang bersih dan responsif dengan mode Terang (*Light*) dan Gelap (*Dark*).
 
-## Teknologi yang Digunakan
+---
+## Pembaruan Aplikasi (Changelog)
 
-- **Frontend**: React, TypeScript, Tailwind CSS
-- **Backend-as-a-Service (BaaS)**: [Supabase](https://supabase.com/)
-    - **Database**: Supabase Postgres
-    - **Authentication**: Supabase Auth
-    - **Realtime**: Supabase Realtime Subscriptions
-- **Serverless Functions**: [Netlify Functions](https://www.netlify.com/products/functions/)
-- **AI**: [Google Gemini API](https://ai.google.dev/)
-- **Client-side Excel**: [SheetJS (xlsx)](https://sheetjs.com/)
+Catatan ini melacak semua perubahan signifikan yang diterapkan pada aplikasi Aquatic Swimtrack 11.
+
+---
+### **Versi 1.1.4 (Pembaruan Terkini): Dasbor Analitik & Peningkatan UI**
+*Tanggal Rilis: Sesuai pembaruan terakhir*
+
+Pembaruan ini berfokus pada perombakan dasbor admin untuk memberikan wawasan data yang lebih kaya dan meningkatkan pengalaman pengguna secara keseluruhan.
+
+- **Fitur Baru: Dasbor Analitik**
+  - **Statistik Kunci**: Dasbor kini menampilkan empat statistik utama: Total Perenang, Total Nomor Lomba, Total Klub, dan Total Pendaftaran, memberikan gambaran cepat mengenai skala kompetisi.
+  - **Bagan Distribusi Klub**: Menambahkan bagan (chart) visual baru yang menampilkan distribusi jumlah perenang per klub. Bagan ini menyorot 7 klub teratas untuk analisis yang mudah dan mengelompokkan sisanya.
+
+- **Penyempurnaan UI/UX**:
+  - **Tata Letak Dasbor Baru**: Mengatur ulang tata letak dasbor untuk tampilan yang lebih modern, bersih, dan fokus pada data.
+  - **Integrasi Grafik**: Menambahkan pustaka `Chart.js` untuk memastikan visualisasi data yang andal dan responsif, serta mendukung mode terang dan gelap.
+
+---
+### **Versi 1.1.3: Perbaikan Stabilitas & Notifikasi**
+
+Versi ini mengatasi beberapa masalah mendasar terkait interaksi pengguna dan memperkaya alur kerja pendaftaran.
+
+- **Perbaikan: Stabilitas Tombol Aplikasi**
+  - Memperbaiki masalah kritis di mana tombol di dalam formulir (seperti 'Hapus', 'Tambah', atau 'Buka Modal') secara tidak sengaja bertindak sebagai tombol 'submit', yang menyebabkan perilaku aplikasi yang tidak diharapkan. Semua tombol sekarang secara default diatur ke `type="button"`, kecuali jika secara eksplisit ditujukan untuk mengirimkan formulir.
+
+- **Perbaikan: Notifikasi Pendaftaran yang Lebih Informatif**
+  - Notifikasi keberhasilan pendaftaran online sekarang telah disempurnakan. Selain menampilkan nomor lomba yang baru didaftarkan, notifikasi kini juga mencantumkan riwayat nomor lomba yang sudah pernah didaftarkan oleh perenang tersebut sebelumnya, memberikan konfirmasi yang lebih lengkap kepada pengguna.
+
+---
+### **Versi 1.1.2: Optimasi Kinerja & Keamanan**
+
+Pembaruan ini berfokus pada peningkatan kecepatan dan perbaikan keamanan di level database.
+
+- **Peningkatan: Kinerja Halaman Pendaftaran Online**
+  - Mengatasi kelambatan pada menu pendaftaran online dengan mengoptimalkan kueri data. Halaman sekarang hanya memuat informasi yang relevan untuk pendaftaran (info acara dan entri) tanpa mengambil data hasil lomba yang besar, sehingga waktu muat menjadi jauh lebih cepat.
+
+- **Perbaikan: Kebijakan Keamanan Database (RLS)**
+  - Menambahkan kebijakan Row Level Security (RLS) yang hilang untuk operasi `INSERT` pada tabel `competition_info`. Hal ini memperbaiki error `new row violates row-level security policy` yang terjadi saat aplikasi mencoba membuat data kompetisi untuk pertama kalinya (misalnya, setelah menghapus semua data).
+
+---
+## Tindakan yang Diperlukan
+
+- **Untuk Pengguna Umum**: Tidak ada tindakan yang diperlukan. Cukup muat ulang aplikasi untuk melihat perubahan terbaru pada dasbor dan fungsionalitas lainnya.
+- **Untuk Administrator Database**: Jika Anda baru meng-install aplikasi ini atau telah mengatur ulang database Anda, pastikan Anda telah menjalankan skrip SQL terbaru dari bagian **"Langkah 1: Pengaturan Supabase"** di bawah ini. Skrip tersebut telah diperbarui untuk menyertakan kebijakan keamanan (RLS) yang memperbaiki masalah `INSERT` (lihat changelog Versi 1.1.2).
 
 ---
 
@@ -99,6 +135,10 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
     CREATE POLICY "Public can read competition info" ON public.competition_info FOR SELECT USING (true);
     DROP POLICY IF EXISTS "Admins can update competition info" ON public.competition_info;
     CREATE POLICY "Admins can update competition info" ON public.competition_info FOR UPDATE USING (auth.role() = 'authenticated');
+    -- FIX: Add INSERT policy for authenticated users.
+    DROP POLICY IF EXISTS "Admins can insert competition info" ON public.competition_info;
+    CREATE POLICY "Admins can insert competition info" ON public.competition_info FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
 
     -- Table for Swimmers
     CREATE TABLE IF NOT EXISTS public.swimmers (
