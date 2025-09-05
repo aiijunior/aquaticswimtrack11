@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -256,22 +252,88 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
 
   const handleDownloadParticipants = () => {
     if (typeof XLSX === 'undefined') {
-        alert('Pustaka untuk membuat file Excel belum termuat. Periksa koneksi internet Anda dan muat ulang halaman.');
-        return;
+      alert('Pustaka untuk membuat file Excel belum termuat. Periksa koneksi internet Anda dan muat ulang halaman.');
+      return;
     }
 
     if (swimmers.length === 0) {
-        alert('Tidak ada data peserta untuk diunduh.');
-        return;
+      alert('Tidak ada data peserta untuk diunduh.');
+      return;
     }
 
-    const dataToExport = swimmers.map(swimmer => ({ "Nama Peserta": swimmer.name, "Klub/Tim": swimmer.club, "Tahun Lahir": swimmer.birthYear, "Jenis Kelamin": swimmer.gender }));
-
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    worksheet['!cols'] = [ { wch: 30 }, { wch: 30 }, { wch: 15 }, { wch: 15 } ];
-
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Peserta");
+
+    // --- Sheet 1: Rekap Peserta ---
+    const sortedSwimmers = [...swimmers].sort((a, b) => a.name.localeCompare(b.name));
+    const participantsData = sortedSwimmers.map((swimmer, index) => ({
+      "No": index + 1,
+      "Nama Peserta": swimmer.name,
+      "Klub/Tim": swimmer.club,
+      "Jenis Kelamin (L/P)": swimmer.gender === 'Male' ? 'L' : 'P'
+    }));
+    const wsParticipants = XLSX.utils.json_to_sheet(participantsData, { skipHeader: false });
+    wsParticipants['!cols'] = [
+        { wch: 5 },
+        { wch: 40 },
+        { wch: 35 },
+        { wch: 20 }
+    ];
+
+    const totalMale = swimmers.filter(s => s.gender === 'Male').length;
+    const totalFemale = swimmers.filter(s => s.gender === 'Female').length;
+    XLSX.utils.sheet_add_aoa(wsParticipants, [
+        [], // Spacer row
+        ["REKAPITULASI JUMLAH PESERTA"],
+        ["Total Putra (L)", totalMale],
+        ["Total Putri (P)", totalFemale],
+        ["Total Keseluruhan", swimmers.length]
+    ], { origin: -1 });
+    const summaryHeaderRowIndex = participantsData.length + 2;
+    if (!wsParticipants['!merges']) wsParticipants['!merges'] = [];
+    wsParticipants['!merges'].push({ s: { r: summaryHeaderRowIndex, c: 0 }, e: { r: summaryHeaderRowIndex, c: 1 } });
+    XLSX.utils.book_append_sheet(workbook, wsParticipants, "Rekap Peserta");
+
+    // --- Sheet 2: Rekap Klub ---
+    const clubRecap: Record<string, { male: number; female: number }> = {};
+    swimmers.forEach(swimmer => {
+      if (!clubRecap[swimmer.club]) {
+        clubRecap[swimmer.club] = { male: 0, female: 0 };
+      }
+      if (swimmer.gender === 'Male') {
+        clubRecap[swimmer.club].male++;
+      } else {
+        clubRecap[swimmer.club].female++;
+      }
+    });
+
+    const sortedClubs = Object.entries(clubRecap).sort((a, b) => a[0].localeCompare(b[0]));
+    const clubsData = sortedClubs.map(([clubName, counts], index) => ({
+      "No": index + 1,
+      "Nama Klub/Tim": clubName,
+      "Jumlah Putra (L)": counts.male,
+      "Jumlah Putri (P)": counts.female,
+      "Total Peserta": counts.male + counts.female
+    }));
+    const wsClubs = XLSX.utils.json_to_sheet(clubsData, { skipHeader: false });
+    wsClubs['!cols'] = [
+        { wch: 5 },
+        { wch: 40 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 }
+    ];
+
+    const grandTotalMale = sortedClubs.reduce((acc, [, counts]) => acc + counts.male, 0);
+    const grandTotalFemale = sortedClubs.reduce((acc, [, counts]) => acc + counts.female, 0);
+    const grandTotal = grandTotalMale + grandTotalFemale;
+
+    XLSX.utils.sheet_add_aoa(wsClubs, [
+        [], // Spacer row
+        ["", "TOTAL KESELURUHAN", grandTotalMale, grandTotalFemale, grandTotal]
+    ], { origin: -1 });
+
+    XLSX.utils.book_append_sheet(workbook, wsClubs, "Rekap Klub");
+
     XLSX.writeFile(workbook, "Rekap_Peserta_Kompetisi.xlsx");
   };
 
