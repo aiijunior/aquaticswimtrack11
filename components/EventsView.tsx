@@ -358,8 +358,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <div className="space-y-2">
                             {eventsInSession.map((event) => (
                                 <div key={event.id} className="flex items-center justify-between p-3 bg-background rounded-lg hover:shadow-md transition-shadow">
-                                    <div className="flex-1">
-                                        <p className="font-bold text-text-primary">{formatEventName(event)}</p>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-text-primary whitespace-normal break-words">{formatEventName(event)}</p>
                                         <div className="flex items-center space-x-4 text-sm text-text-secondary mt-1">
                                             <span className="flex items-center"><UsersIcon /> <span className="ml-1.5">{event.entries.length} Peserta</span></span>
                                             <span className={`flex items-center ${event.results.length > 0 ? 'text-green-500' : ''}`}><CheckCircleIcon /> <span className="ml-1.5">{event.results.length > 0 ? 'Hasil Tercatat' : 'Belum Ada Hasil'}</span></span>

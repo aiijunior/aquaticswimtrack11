@@ -326,7 +326,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
                 {eventsWithResults.length > 0 ? eventsWithResults.map(event => (
                     <Card key={event.id} className="overflow-hidden p-0">
                         <button onClick={() => handleToggleEvent(event.id)} className="w-full flex justify-between items-center p-4 text-left">
-                            <h3 className="text-xl font-bold text-primary">{formatEventName(event)}</h3>
+                            <h3 className="text-xl font-bold text-primary whitespace-normal break-words">{formatEventName(event)}</h3>
                             <svg className={`h-6 w-6 transform transition-transform text-text-secondary ${expandedEventId === event.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                         </button>
                         {expandedEventId === event.id && (
