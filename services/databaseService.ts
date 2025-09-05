@@ -261,6 +261,12 @@ export const getEvents = async (): Promise<SwimEvent[]> => {
   return data.map(toSwimEvent);
 };
 
+export const getEventsForRegistration = async (): Promise<SwimEvent[]> => {
+  const { data, error } = await supabase.from('events').select('*, event_entries(*)').order('session_number').order('heat_order');
+  if (error) throw error;
+  return data.map(toSwimEvent);
+};
+
 export const addEvent = async (event: Omit<SwimEvent, 'id' | 'entries' | 'results'>): Promise<SwimEvent> => {
   const newEvent: SwimEvent = { ...event, id: crypto.randomUUID(), entries: [], results: [] };
   const payload: Database['public']['Tables']['events']['Insert'] = {

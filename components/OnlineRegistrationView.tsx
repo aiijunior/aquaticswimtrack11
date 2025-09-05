@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer } from '../types';
-import { getEvents, processOnlineRegistration, findSwimmerByName } from '../services/databaseService';
+import { getEventsForRegistration, processOnlineRegistration, findSwimmerByName } from '../services/databaseService';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -53,7 +53,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     useEffect(() => {
         const fetchEvents = async () => {
             setIsDataLoading(true);
-            const onlineEvents = await getEvents();
+            const onlineEvents = await getEventsForRegistration();
             setLocalEvents(onlineEvents);
             setIsDataLoading(false);
         };
