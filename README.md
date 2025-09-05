@@ -152,12 +152,8 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
     ALTER TABLE public.competition_info ENABLE ROW LEVEL SECURITY;
     DROP POLICY IF EXISTS "Public can read competition info" ON public.competition_info;
     CREATE POLICY "Public can read competition info" ON public.competition_info FOR SELECT USING (true);
-    DROP POLICY IF EXISTS "Admins can update competition info" ON public.competition_info;
-    CREATE POLICY "Admins can update competition info" ON public.competition_info FOR UPDATE USING (auth.role() = 'authenticated');
-    -- FIX: Add INSERT policy for authenticated users.
-    DROP POLICY IF EXISTS "Admins can insert competition info" ON public.competition_info;
-    CREATE POLICY "Admins can insert competition info" ON public.competition_info FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-
+    DROP POLICY IF EXISTS "Admins can manage competition info" ON public.competition_info;
+    CREATE POLICY "Admins can manage competition info" ON public.competition_info FOR ALL USING (auth.role() = 'authenticated');
 
     -- Table for Swimmers
     CREATE TABLE IF NOT EXISTS public.swimmers (
