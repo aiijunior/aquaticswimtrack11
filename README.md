@@ -67,6 +67,25 @@ Pembaruan ini berfokus pada peningkatan kecepatan dan perbaikan keamanan di leve
 - **Untuk Administrator Database**: Jika Anda baru meng-install aplikasi ini atau telah mengatur ulang database Anda, pastikan Anda telah menjalankan skrip SQL terbaru dari bagian **"Langkah 1: Pengaturan Supabase"** di bawah ini. Skrip tersebut telah diperbarui untuk menyertakan kebijakan keamanan (RLS) yang memperbaiki masalah `INSERT` (lihat changelog Versi 1.1.2).
 
 ---
+## Troubleshooting Umum
+
+### Error: `new row violates row-level security policy for table "competition_info"`
+
+**Penyebab:** Analisis Anda benar. Error ini terjadi karena database Anda belum memiliki aturan (kebijakan RLS) yang mengizinkan pengguna yang sudah login untuk **menambahkan (`INSERT`)** data baru ke tabel `competition_info`. Ini sering terjadi saat mencoba menyimpan pengaturan untuk pertama kalinya atau setelah menghapus semua data.
+
+**Solusi:** Anda perlu menjalankan potongan kode SQL berikut di **SQL Editor** Supabase Anda. Ini akan secara spesifik menambahkan kebijakan yang hilang.
+
+```sql
+-- Tambahkan kebijakan ini untuk mengizinkan operasi INSERT oleh admin
+CREATE POLICY "Admins can insert competition info"
+ON public.competition_info
+FOR INSERT
+WITH CHECK (auth.role() = 'authenticated');
+```
+
+**Catatan:** Skrip SQL lengkap di bagian **"Langkah 1"** di bawah ini sudah mencakup kebijakan ini. Jika Anda menjalankan seluruh skrip tersebut pada database yang baru, error ini tidak akan terjadi.
+
+---
 
 ## Prasyarat
 

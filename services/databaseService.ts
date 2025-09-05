@@ -179,7 +179,8 @@ export const updateCompetitionInfo = async (info: CompetitionInfo): Promise<Comp
     };
     const { data, error } = await supabase
         .from('competition_info')
-        .upsert(payload)
+        // FIX: The upsert method expects an array of objects.
+        .upsert([payload])
         .select()
         .single();
     if (error) throw error;
@@ -203,7 +204,8 @@ export const addSwimmer = async (swimmer: Omit<Swimmer, 'id'>): Promise<Swimmer>
       club: newSwimmer.club
   };
   // FIX: Remove redundant cast as `payload` is already typed, resolving 'never' type error.
-  const { data, error } = await supabase.from('swimmers').insert([payload]).select().single();
+  // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
+  const { data, error } = await supabase.from('swimmers').insert([payload] as any).select().single();
   if (error) throw error;
   return toSwimmer(data);
 };
@@ -218,7 +220,8 @@ export const updateSwimmer = async (swimmerId: string, updatedData: Omit<Swimmer
     };
     const { data, error } = await supabase
         .from('swimmers')
-        .update(payload)
+        // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
+        .update(payload as any)
         .eq('id', swimmerId)
         .select()
         .single();
@@ -288,7 +291,8 @@ export const addEvent = async (event: Omit<SwimEvent, 'id' | 'entries' | 'result
         category: newEvent.category,
     };
   // FIX: Remove redundant cast as `payload` is already typed, resolving 'never' type error.
-  const { data, error } = await supabase.from('events').insert([payload]).select().single();
+  // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
+  const { data, error } = await supabase.from('events').insert([payload] as any).select().single();
   if (error) throw error;
   return toSwimEvent(data);
 };
@@ -329,7 +333,8 @@ export const updateEventSchedule = async (updatedSchedule: SwimEvent[]): Promise
     if (payload.length === 0) return;
 
     // FIX: Remove redundant cast as `payload` is already typed, resolving 'never' type error.
-    const { error } = await supabase.from('events').upsert(payload);
+    // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
+    const { error } = await supabase.from('events').upsert(payload as any);
     
     if (error) {
         console.error("Error updating event schedule in Supabase:", error.message || error);
@@ -341,7 +346,8 @@ export const updateEventSchedule = async (updatedSchedule: SwimEvent[]): Promise
 export const registerSwimmerToEvent = async (eventId: string, swimmerId: string, seedTime: number): Promise<{success: boolean, message: string}> => {
     // FIX: Define payload in a typed variable to resolve 'never' type error.
     const payload: Database['public']['Tables']['event_entries']['Insert'][] = [{ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime }];
-    const { error } = await supabase.from('event_entries').upsert(payload);
+    // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
+    const { error } = await supabase.from('event_entries').upsert(payload as any);
     if (error) {
         if (error.message.includes('duplicate key')) {
             return { success: false, message: 'Perenang sudah terdaftar.' };
@@ -359,7 +365,8 @@ export const unregisterSwimmerFromEvent = async (eventId: string, swimmerId: str
 export const updateSwimmerSeedTime = async (eventId: string, swimmerId: string, seedTime: number): Promise<void> => {
     // FIX: Define payload in a typed variable to resolve 'never' type error.
     const payload: Database['public']['Tables']['event_entries']['Insert'][] = [{ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime }];
-    const { error } = await supabase.from('event_entries').upsert(payload);
+    // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
+    const { error } = await supabase.from('event_entries').upsert(payload as any);
     if (error) throw error;
 };
 
@@ -367,7 +374,8 @@ export const recordEventResults = async (eventId: string, results: Result[]): Pr
     const payload: Database['public']['Tables']['event_results']['Insert'][] = results.map(r => ({ event_id: eventId, swimmer_id: r.swimmerId, time: r.time }));
     if (payload.length > 0) {
         // FIX: Remove redundant cast as `payload` is already typed, resolving 'never' type error.
-        const { error } = await supabase.from('event_results').upsert(payload);
+        // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
+        const { error } = await supabase.from('event_results').upsert(payload as any);
         if (error) throw error;
     }
     const event = await getEventById(eventId);
@@ -386,7 +394,8 @@ export const getRecords = async (): Promise<SwimRecord[]> => {
 export const addOrUpdateRecord = async (recordData: Partial<SwimRecord>): Promise<SwimRecord> => {
     // FIX: Define payload in a typed variable to resolve 'never' type error.
     const payload: Database['public']['Tables']['records']['Insert'][] = [toRecordDbFormat(recordData as SwimRecord)];
-    const { data, error } = await supabase.from('records').upsert(payload).select().single();
+    // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
+    const { data, error } = await supabase.from('records').upsert(payload as any).select().single();
     if (error) throw error;
     return toRecord(data);
 };
@@ -469,7 +478,8 @@ export const clearAllData = async (): Promise<void> => {
     const defaultInfo = { id: 1, event_name: config.competition.defaultName, event_date: new Date().toISOString().split('T')[0], event_logo: null, sponsor_logo: null, is_registration_open: false, number_of_lanes: config.competition.defaultLanes };
     // FIX: Explicitly type the payload to resolve the 'never' type error.
     const payload: Database['public']['Tables']['competition_info']['Insert'][] = [defaultInfo];
-    const { error: infoError } = await supabase.from('competition_info').upsert(payload);
+    // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
+    const { error: infoError } = await supabase.from('competition_info').upsert(payload as any);
     if (infoError) throw infoError;
 };
 
