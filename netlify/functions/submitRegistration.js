@@ -34,7 +34,7 @@ export const handler = async (event) => {
             return { statusCode: 400, body: JSON.stringify({ success: false, message: 'Data pendaftaran tidak valid.', swimmer: null }) };
         }
         
-        // 1. Find or create the swimmer using the admin client to bypass RLS
+        // 1. Find or create the swimmer and find existing registrations
         const { data: existingSwimmers, error: searchError } = await supabaseAdmin
             .from('swimmers')
             .select('id, name, birth_year, gender, club')
@@ -46,8 +46,30 @@ export const handler = async (event) => {
         if (searchError) throw searchError;
         
         let swimmer;
+        let previouslyRegisteredEvents = [];
+
         if (existingSwimmers && existingSwimmers.length > 0) {
             swimmer = existingSwimmers[0];
+
+            // Fetch previously registered events
+            const { data: existingEntries, error: entriesFetchError } = await supabaseAdmin
+                .from('event_entries')
+                .select('event_id')
+                .eq('swimmer_id', swimmer.id);
+                
+            if (entriesFetchError) throw entriesFetchError;
+            
+            if (existingEntries && existingEntries.length > 0) {
+                const eventIds = existingEntries.map(e => e.event_id);
+                const { data: eventsData, error: eventsFetchError } = await supabaseAdmin
+                    .from('events')
+                    .select('id, distance, style, gender, relay_legs, category')
+                    .in('id', eventIds);
+                    
+                if (eventsFetchError) throw eventsFetchError;
+                
+                previouslyRegisteredEvents = eventsData || [];
+            }
         } else {
             const { data: newSwimmer, error: addError } = await supabaseAdmin
                 .from('swimmers')
@@ -63,29 +85,36 @@ export const handler = async (event) => {
             swimmer = newSwimmer;
         }
 
-        // 2. Insert event entries, also bypassing RLS
+        // 2. Insert new event entries
         const entriesToInsert = registrations.map(reg => ({
             event_id: reg.eventId,
             swimmer_id: swimmer.id,
             seed_time: reg.seedTime
         }));
         
-        const { error: entriesError } = await supabaseAdmin.from('event_entries').upsert(entriesToInsert);
-        
-        if (entriesError) {
-             if (entriesError.message.includes('duplicate key value violates unique constraint')) {
-                 return { 
-                    statusCode: 409, 
-                    body: JSON.stringify({ success: false, message: 'Gagal: Salah satu pendaftaran duplikat. Perenang mungkin sudah terdaftar di nomor lomba tersebut.', swimmer: null }) 
-                };
+        if (entriesToInsert.length > 0) {
+            const { error: entriesError } = await supabaseAdmin.from('event_entries').upsert(entriesToInsert);
+            
+            if (entriesError) {
+                 if (entriesError.message.includes('duplicate key value violates unique constraint')) {
+                     return { 
+                        statusCode: 409, 
+                        body: JSON.stringify({ success: false, message: 'Gagal: Salah satu pendaftaran duplikat. Perenang mungkin sudah terdaftar di nomor lomba tersebut.', swimmer: null }) 
+                    };
+                }
+                throw entriesError;
             }
-            throw entriesError;
         }
 
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ success: true, message: 'Pendaftaran berhasil diterima.', swimmer }),
+            body: JSON.stringify({ 
+                success: true, 
+                message: 'Pendaftaran berhasil diterima.', 
+                swimmer,
+                previouslyRegisteredEvents
+            }),
         };
 
     } catch (error) {

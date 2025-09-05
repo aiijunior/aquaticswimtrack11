@@ -201,14 +201,34 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
         if (result.success && result.swimmer) {
             const swimmerName = result.swimmer.name;
-            const registeredEventsList = registrationsToSubmit.map(reg => {
+            const newlyRegisteredEventsList = registrationsToSubmit.map(reg => {
                 const event = localEvents.find(e => e.id === reg.eventId);
                 const eventName = event ? formatEventName(event) : 'Nomor Lomba Tidak Dikenal';
                 const time = formatTime(reg.seedTime);
                 return `• ${eventName} (Waktu: ${time})`;
             }).join('\n');
 
-            const detailedSuccessMessage = `Pendaftaran untuk ${swimmerName} berhasil diterima!\n\nNomor lomba yang didaftarkan:\n${registeredEventsList}\n\nSelamat! Anda telah terdaftar. Silakan hubungi panitia untuk konfirmasi.`;
+            let previouslyRegisteredEventsList = '';
+            if (result.previouslyRegisteredEvents && result.previouslyRegisteredEvents.length > 0) {
+                previouslyRegisteredEventsList = result.previouslyRegisteredEvents.map(event => {
+                    const formattableEvent = {
+                        distance: event.distance,
+                        style: event.style,
+                        gender: event.gender,
+                        relayLegs: event.relayLegs,
+                        category: event.category,
+                    };
+                    return `• ${formatEventName(formattableEvent)}`;
+                }).join('\n');
+            }
+
+            const previouslyRegisteredSection = previouslyRegisteredEventsList 
+                ? `\nNomor lomba yang didaftarkan sebelumnya:\n${previouslyRegisteredEventsList}\n` 
+                : '';
+            
+            const newlyRegisteredSection = `Nomor lomba yang baru didaftarkan:\n${newlyRegisteredEventsList}`;
+
+            const detailedSuccessMessage = `Pendaftaran untuk ${swimmerName} berhasil diterima!\n\n${newlyRegisteredSection}\n${previouslyRegisteredSection}\nSelamat! Anda telah terdaftar. Silakan hubungi panitia untuk konfirmasi.`;
 
             setSuccessMessage(detailedSuccessMessage);
             onRegistrationSuccess(); // Refresh data in the background

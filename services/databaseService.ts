@@ -608,10 +608,18 @@ export const processParticipantUpload = async (data: any[]): Promise<{ newSwimme
     
     return { newSwimmers: newSwimmersCount, updatedSwimmers: successfulRegistrations, errors };
 };
+
+interface OnlineRegistrationResponse {
+    success: boolean;
+    message: string;
+    swimmer: Swimmer | null;
+    previouslyRegisteredEvents?: FormattableEvent[];
+}
+
 export const processOnlineRegistration = async (
     swimmerData: Omit<Swimmer, 'id'>,
     registrations: { eventId: string, seedTime: number }[]
-): Promise<{ success: boolean; message: string; swimmer: Swimmer | null }> => {
+): Promise<OnlineRegistrationResponse> => {
     try {
         const response = await fetch('/.netlify/functions/submitRegistration', {
             method: 'POST',

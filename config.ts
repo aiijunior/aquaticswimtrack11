@@ -35,7 +35,7 @@ export const config = {
    * IMPORTANT: Use strong, unique credentials.
    */
   superAdmin: {
-    email: "muarif@sman11mks.com", // 👈 Change this for the super admin login
+    email: "muarifamir@sman11mks.com", // 👈 Change this for the super admin login
     password: "12345", // 👈 Change this for the super admin login
   },
 
