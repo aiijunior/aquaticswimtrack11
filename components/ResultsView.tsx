@@ -41,7 +41,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
         fetchRecords();
     }, []);
 
-    const { clubMedals, individualMedals, brokenRecords, eventsWithResults } = useMemo(() => {
+    const { clubMedals, maleIndividualMedals, femaleIndividualMedals, brokenRecords, eventsWithResults } = useMemo(() => {
         const clubMedals: Record<string, MedalCounts> = {};
         const individualMedals: Record<string, MedalCounts & { swimmer: Swimmer }> = {};
         const brokenRecordsList: BrokenRecord[] = [];
@@ -127,8 +127,18 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
 
         // Deduplicate broken records list for the summary view
         const uniqueBrokenRecords = [...new Map(brokenRecordsList.map(item => [item.record.id, item])).values()];
+        
+        // NEW: Split individual medals by gender
+        const maleIndividualMedals = sortedIndividualMedals.filter(data => data.swimmer.gender === 'Male');
+        const femaleIndividualMedals = sortedIndividualMedals.filter(data => data.swimmer.gender === 'Female');
 
-        return { clubMedals: sortedClubMedals, individualMedals: sortedIndividualMedals, brokenRecords: uniqueBrokenRecords, eventsWithResults: eventsWithResults };
+        return { 
+            clubMedals: sortedClubMedals, 
+            maleIndividualMedals,
+            femaleIndividualMedals,
+            brokenRecords: uniqueBrokenRecords, 
+            eventsWithResults: eventsWithResults 
+        };
     }, [events, swimmers, records]);
     
 
@@ -236,14 +246,54 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
                 {/* Individual Scores */}
                 <Card>
                     <div className="flex items-center space-x-4 mb-4"><UserGroupIcon /><h2 className="text-2xl font-bold">Klasemen Perorangan</h2></div>
-                     {individualMedals.length > 0 ? (
-                        <div className="overflow-y-auto max-h-96">
-                            <table className="w-full text-left">
-                                <thead><tr className="border-b-2 border-border"><th className="p-2 w-12 text-center">#</th><th className="p-2">Nama</th><th className="p-2">Klub</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
-                                <tbody>{individualMedals.map((data, index) => (<tr key={data.swimmer.id} className="border-b border-border last:border-b-0 hover:bg-background"><td className="p-2 text-center font-bold">{index + 1}</td><td className="p-2 font-semibold">{data.swimmer.name}</td><td className="p-2 text-text-secondary">{data.swimmer.club}</td><td className="p-2 text-center">{data.gold}</td><td className="p-2 text-center">{data.silver}</td><td className="p-2 text-center">{data.bronze}</td></tr>))}</tbody>
-                            </table>
+                     {(maleIndividualMedals.length > 0 || femaleIndividualMedals.length > 0) ? (
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-4">
+                            {/* Putra Table */}
+                            <div>
+                                <h3 className="text-lg font-semibold text-center p-2 rounded-t-lg bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200">Putra</h3>
+                                <div className="overflow-y-auto max-h-80">
+                                    <table className="w-full text-left">
+                                        <thead><tr className="border-b-2 border-border"><th className="p-2 w-8 text-center">#</th><th className="p-2">Nama</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
+                                        <tbody>
+                                        {maleIndividualMedals.length > 0 ? (
+                                            maleIndividualMedals.map((data, index) => (
+                                                <tr key={data.swimmer.id} className="border-b border-border last:border-b-0 hover:bg-background">
+                                                    <td className="p-2 text-center font-bold">{index + 1}</td>
+                                                    <td className="p-2 text-sm"><span className="font-semibold">{data.swimmer.name}</span><span className="block text-xs text-text-secondary">{data.swimmer.club}</span></td>
+                                                    <td className="p-2 text-center">{data.gold}</td><td className="p-2 text-center">{data.silver}</td><td className="p-2 text-center">{data.bronze}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr><td colSpan={5} className="text-center p-4 text-text-secondary">Tidak ada data.</td></tr>
+                                        )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            {/* Putri Table */}
+                            <div>
+                                <h3 className="text-lg font-semibold text-center p-2 rounded-t-lg bg-pink-100 dark:bg-pink-900/50 text-pink-800 dark:text-pink-200">Putri</h3>
+                                <div className="overflow-y-auto max-h-80">
+                                     <table className="w-full text-left">
+                                        <thead><tr className="border-b-2 border-border"><th className="p-2 w-8 text-center">#</th><th className="p-2">Nama</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
+                                        <tbody>
+                                        {femaleIndividualMedals.length > 0 ? (
+                                            femaleIndividualMedals.map((data, index) => (
+                                                <tr key={data.swimmer.id} className="border-b border-border last:border-b-0 hover:bg-background">
+                                                    <td className="p-2 text-center font-bold">{index + 1}</td>
+                                                    <td className="p-2 text-sm"><span className="font-semibold">{data.swimmer.name}</span><span className="block text-xs text-text-secondary">{data.swimmer.club}</span></td>
+                                                    <td className="p-2 text-center">{data.gold}</td><td className="p-2 text-center">{data.silver}</td><td className="p-2 text-center">{data.bronze}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr><td colSpan={5} className="text-center p-4 text-text-secondary">Tidak ada data.</td></tr>
+                                        )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
-                    ) : <p className="text-text-secondary text-center py-4">Belum ada medali yang diraih.</p>}
+                    ) : <p className="text-text-secondary text-center py-4">Belum ada medali perorangan yang diraih.</p>}
                     <p className="text-xs text-text-secondary mt-2 text-center">Rekap perorangan tidak termasuk medali dari nomor lomba campuran.</p>
                 </Card>
             </div>
