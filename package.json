@@ -4,7 +4,7 @@
   "private": true,
   "description": "An offline-first application to manage swimming competitions, from athlete registration to event timing and results. Includes AI-powered commentary generation for race highlights.",
   "scripts": {
-    "build": "esbuild index.tsx --bundle --outfile=dist/main.js --jsx=automatic && cp index.html dist/index.html",
+    "build": "esbuild index.tsx --bundle --outfile=dist/main.js --jsx=automatic && cp index.html dist/index.html && cp metadata.json dist/metadata.json",
     "dev": "netlify dev"
   },
   "dependencies": {
