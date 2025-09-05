@@ -50,6 +50,7 @@ const MedalIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w
 const PrintIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm7-14a2 2 0 10-4 0v4a2 2 0 104 0V3z" /></svg>;
 const LogoutIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>;
 const AccountManagementIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.124-1.283-.356-1.857M7 20v-2c0-.653.124-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>;
+const HamburgerIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>;
 
 
 const App: React.FC = () => {
@@ -57,6 +58,7 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<View>(View.LOGIN);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Centralized state
   const [swimmers, setSwimmers] = useState<Swimmer[]>([]);
@@ -196,6 +198,7 @@ const App: React.FC = () => {
   const navigateTo = (view: View) => {
     setCurrentView(view);
     setSelectedEventId(null);
+    setIsMenuOpen(false);
   }
 
   const handleSelectEvent = (id: string) => {
@@ -301,7 +304,17 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-background text-text-primary">
-      <aside className="w-64 bg-surface p-4 flex flex-col justify-between no-print">
+      {/* Mobile Menu Overlay */}
+      {isMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          onClick={() => setIsMenuOpen(false)}
+          aria-hidden="true"
+        ></div>
+      )}
+      <aside className={`w-64 bg-surface p-4 flex flex-col justify-between fixed inset-y-0 left-0 z-40 transform ${
+        isMenuOpen ? 'translate-x-0' : '-translate-x-full'
+      } transition-transform duration-300 ease-in-out md:relative md:translate-x-0 no-print`}>
         <div>
             <div className="border-b-2 border-red-500 pb-4 mb-4">
                 <div className="flex flex-col items-center text-center">
@@ -340,8 +353,24 @@ const App: React.FC = () => {
             </Button>
         </div>
       </aside>
-      <main className="flex-1 p-8 overflow-y-auto">
-        {renderContent()}
+      <main className="flex-1 flex flex-col overflow-y-auto">
+        {/* Mobile Header */}
+        <header className="md:hidden flex items-center p-4 border-b border-border bg-surface/80 backdrop-blur-sm sticky top-0 z-20 no-print">
+            <button
+                onClick={() => setIsMenuOpen(true)}
+                className="p-2 rounded-md text-text-secondary hover:bg-background"
+                aria-label="Open menu"
+            >
+                <HamburgerIcon />
+            </button>
+            <h1 className="text-lg font-bold text-primary ml-4 truncate">
+                {competitionInfo?.eventName || "Aquatic Swimtrack 11"}
+            </h1>
+        </header>
+
+        <div className="p-8 flex-grow">
+          {renderContent()}
+        </div>
       </main>
     </div>
   );
