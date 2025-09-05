@@ -179,88 +179,91 @@ export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ onAdminLog
     );
 
     return (
-        <div className="min-h-screen bg-background text-text-primary">
-            <div className="sticky top-0 z-20 bg-surface/80 backdrop-blur-sm shadow-sm">
-                {renderHeader()}
-            </div>
-            
-            <main className="container mx-auto p-2 md:p-6">
-                <div className="flex justify-end items-center mb-4">
-                     {lastUpdated && <div className="text-right"><p className="text-sm text-text-secondary">Pembaruan Terakhir</p><p className="font-bold">{lastUpdated.toLocaleTimeString('id-ID')}</p></div>}
+        <div className="min-h-screen bg-background text-text-primary secure-view">
+            <div className="secure-view-content">
+                <div className="sticky top-0 z-20 bg-surface/80 backdrop-blur-sm shadow-sm no-print">
+                    {renderHeader()}
                 </div>
+                
+                <main className="container mx-auto p-2 md:p-6 no-select">
+                    <div className="flex justify-end items-center mb-4">
+                        {lastUpdated && <div className="text-right"><p className="text-sm text-text-secondary">Pembaruan Terakhir</p><p className="font-bold">{lastUpdated.toLocaleTimeString('id-ID')}</p></div>}
+                    </div>
 
-                {isDataLoading && localEvents.length === 0 ? <div className="flex justify-center items-center py-20"><Spinner /></div>
-                : (
-                     <div className="space-y-4">
-                        <Card>
-                            <div>
-                                <Input label="Cari Nomor Lomba" id="results-search" type="text" placeholder="Cth: 50m Gaya Bebas..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                            </div>
-                        </Card>
-                        {eventsWithResults.length > 0 ? eventsWithResults.map(event => (
-                            <Card key={event.id} id={`event-card-${event.id}`} className={`p-4 md:p-6 transition-shadow duration-300 hover:shadow-xl ${highlightedEventId === event.id ? 'flash-animation' : ''}`}>
-                                <div className="flex justify-between items-center mb-3">
-                                    <h3 className="text-xl md:text-2xl font-bold text-primary">{formatEventName(event)}</h3>
-                                    <span className="text-xs md:text-sm font-semibold bg-background px-3 py-1 rounded-full text-text-secondary whitespace-nowrap">{event.sortedResults.length} Finisher</span>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="border-b-2 border-border text-sm text-text-secondary uppercase">
-                                                <th className="p-2 font-semibold text-center w-16">Peringkat</th>
-                                                <th className="p-2 font-semibold">Nama</th>
-                                                <th className="p-2 font-semibold hidden md:table-cell">Klub</th>
-                                                <th className="p-2 font-semibold text-right">Waktu</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {event.sortedResults.map(result => {
-                                                const getRankClasses = (rank: number) => {
-                                                    if (rank === 1) return 'border-l-4 border-amber-400 bg-amber-400/5';
-                                                    if (rank === 2) return 'border-l-4 border-slate-400 bg-slate-400/5';
-                                                    if (rank === 3) return 'border-l-4 border-orange-600 bg-orange-600/5';
-                                                    return 'border-l-4 border-transparent';
-                                                };
-                                                const isDq = result.time < 0;
-                                                return (
-                                                    <tr key={result.swimmerId} className={`border-b border-border last:border-b-0 ${isDq ? 'bg-red-500/10' : getRankClasses(result.rank)}`}>
-                                                        <td className="p-3 text-center font-bold text-lg">
-                                                            {isDq ? <span className="text-red-500">DQ</span> : 
-                                                            <>
-                                                              <span>{result.rank}</span>
-                                                              <Medal rank={result.rank} />
-                                                            </>}
-                                                        </td>
-                                                        <td className="p-3 font-semibold">
-                                                            {result.swimmer?.name || 'N/A'}
-                                                            <span className="block md:hidden text-xs font-normal text-text-secondary">{result.swimmer?.club || 'N/A'}</span>
-                                                        </td>
-                                                        <td className="p-3 text-text-secondary hidden md:table-cell">{result.swimmer?.club || 'N/A'}</td>
-                                                        <td className="p-3 text-right font-mono">
-                                                            {formatTime(result.time)}
-                                                            {result.brokenRecordDetails.map(br => (
-                                                                <span key={br.record.id} className={`record-badge ${br.record.type.toLowerCase()}`}>
-                                                                    {br.record.type}
-                                                                </span>
-                                                            ))}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
+                    {isDataLoading && localEvents.length === 0 ? <div className="flex justify-center items-center py-20"><Spinner /></div>
+                    : (
+                        <div className="space-y-4">
+                            <Card>
+                                <div>
+                                    <Input label="Cari Nomor Lomba" id="results-search" type="text" placeholder="Cth: 50m Gaya Bebas..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                                 </div>
                             </Card>
-                        )) : ( <Card><p className="text-text-secondary text-center py-10 text-lg">{searchQuery ? `Tidak ada hasil yang cocok dengan "${searchQuery}".` : 'Menunggu hasil lomba pertama...'}</p></Card> )}
-                    </div>
-                )}
-            </main>
-            <footer className="text-center p-4 mt-8 border-t border-border">
-                <Button variant="primary" onClick={onAdminLogin} className="px-6 py-3 text-lg mb-4">
-                    &larr; Kembali ke Halaman Utama
-                </Button>
-                <p className="text-xs text-text-secondary">&copy; {new Date().getFullYear()} {localCompetitionInfo?.eventName}. Didukung oleh Aquatic Swimtrack 11.</p>
-            </footer>
+                            {eventsWithResults.length > 0 ? eventsWithResults.map(event => (
+                                <Card key={event.id} id={`event-card-${event.id}`} className={`p-4 md:p-6 transition-shadow duration-300 hover:shadow-xl ${highlightedEventId === event.id ? 'flash-animation' : ''}`}>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h3 className="text-xl md:text-2xl font-bold text-primary">{formatEventName(event)}</h3>
+                                        <span className="text-xs md:text-sm font-semibold bg-background px-3 py-1 rounded-full text-text-secondary whitespace-nowrap">{event.sortedResults.length} Finisher</span>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="border-b-2 border-border text-sm text-text-secondary uppercase">
+                                                    <th className="p-2 font-semibold text-center w-16">Peringkat</th>
+                                                    <th className="p-2 font-semibold">Nama</th>
+                                                    <th className="p-2 font-semibold hidden md:table-cell">Klub</th>
+                                                    <th className="p-2 font-semibold text-right">Waktu</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {event.sortedResults.map(result => {
+                                                    const getRankClasses = (rank: number) => {
+                                                        if (rank === 1) return 'border-l-4 border-amber-400 bg-amber-400/5';
+                                                        if (rank === 2) return 'border-l-4 border-slate-400 bg-slate-400/5';
+                                                        if (rank === 3) return 'border-l-4 border-orange-600 bg-orange-600/5';
+                                                        return 'border-l-4 border-transparent';
+                                                    };
+                                                    const isDq = result.time < 0;
+                                                    return (
+                                                        <tr key={result.swimmerId} className={`border-b border-border last:border-b-0 ${isDq ? 'bg-red-500/10' : getRankClasses(result.rank)}`}>
+                                                            <td className="p-3 text-center font-bold text-lg">
+                                                                {isDq ? <span className="text-red-500">DQ</span> : 
+                                                                <>
+                                                                <span>{result.rank}</span>
+                                                                <Medal rank={result.rank} />
+                                                                </>}
+                                                            </td>
+                                                            <td className="p-3 font-semibold">
+                                                                {result.swimmer?.name || 'N/A'}
+                                                                <span className="block md:hidden text-xs font-normal text-text-secondary">{result.swimmer?.club || 'N/A'}</span>
+                                                            </td>
+                                                            <td className="p-3 text-text-secondary hidden md:table-cell">{result.swimmer?.club || 'N/A'}</td>
+                                                            <td className="p-3 text-right font-mono">
+                                                                {formatTime(result.time)}
+                                                                {result.brokenRecordDetails.map(br => (
+                                                                    <span key={br.record.id} className={`record-badge ${br.record.type.toLowerCase()}`}>
+                                                                        {br.record.type}
+                                                                    </span>
+                                                                ))}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </Card>
+                            )) : ( <Card><p className="text-text-secondary text-center py-10 text-lg">{searchQuery ? `Tidak ada hasil yang cocok dengan "${searchQuery}".` : 'Menunggu hasil lomba pertama...'}</p></Card> )}
+                        </div>
+                    )}
+                </main>
+                <footer className="text-center p-4 mt-8 border-t border-border no-print">
+                    <Button variant="primary" onClick={onAdminLogin} className="px-6 py-3 text-lg mb-4">
+                        &larr; Kembali ke Halaman Utama
+                    </Button>
+                    <p className="text-xs text-text-secondary">&copy; {new Date().getFullYear()} {localCompetitionInfo?.eventName.split('\n')[0]}. Didukung oleh Aquatic Swimtrack 11.</p>
+                </footer>
+            </div>
+            <div className="secure-view-print-message" />
         </div>
     );
 };
