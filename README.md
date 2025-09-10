@@ -14,7 +14,6 @@ Aquatic Swimtrack 11 adalah aplikasi modern, *offline-first*, dan *real-time* ya
 - **Manajemen Data**:
     - Impor/Ekspor nomor lomba dan rekor melalui Excel.
     - Fungsi backup dan restore seluruh database menggunakan file JSON.
-- **Laporan Cetak**: Buat dan cetak laporan profesional, termasuk Buku Acara (*Start List*), Hasil Lomba, Klasemen Medali, dan lainnya.
 - **Pendaftaran Online**: Formulir publik yang memungkinkan atlet mendaftar secara online (tergantung persetujuan admin).
 - **Otentikasi Aman**: Kontrol akses berbasis peran (Admin, Super Admin) yang didukung oleh Supabase Auth.
 - **UI/UX Modern**: Antarmuka yang bersih dan responsif dengan mode Terang (*Light*) dan Gelap (*Dark*).
@@ -137,7 +136,8 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
         event_logo text,
         sponsor_logo text,
         is_registration_open boolean NOT NULL DEFAULT false,
-        number_of_lanes integer NOT NULL DEFAULT 8
+        number_of_lanes integer NOT NULL DEFAULT 8,
+        registration_deadline timestamp with time zone
     );
     -- RLS Policies for competition_info
     ALTER TABLE public.competition_info ENABLE ROW LEVEL SECURITY;

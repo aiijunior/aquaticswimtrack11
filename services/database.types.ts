@@ -10,6 +10,7 @@ export type Database = {
           sponsor_logo: string | null
           is_registration_open: boolean
           number_of_lanes: number
+          registration_deadline: string | null
         }
         Insert: {
           id?: number
@@ -19,6 +20,7 @@ export type Database = {
           sponsor_logo?: string | null
           is_registration_open?: boolean
           number_of_lanes?: number
+          registration_deadline?: string | null
         }
         Update: {
           id?: number
@@ -28,6 +30,7 @@ export type Database = {
           sponsor_logo?: string | null
           is_registration_open?: boolean
           number_of_lanes?: number
+          registration_deadline?: string | null
         }
         Relationships: []
       }

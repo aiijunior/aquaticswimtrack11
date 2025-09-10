@@ -49,6 +49,10 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     const [isCheckingName, setIsCheckingName] = useState(false);
     const [existingSwimmer, setExistingSwimmer] = useState<Swimmer | null>(null);
 
+    // State for deadline countdown
+    const [timeLeft, setTimeLeft] = useState('');
+    const [isDeadlinePassed, setIsDeadlinePassed] = useState(false);
+
 
     useEffect(() => {
         const fetchEvents = async () => {
@@ -60,6 +64,40 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
         fetchEvents();
     }, []);
+    
+    useEffect(() => {
+        if (!competitionInfo?.registrationDeadline) {
+            setIsDeadlinePassed(false);
+            setTimeLeft('');
+            return;
+        }
+
+        const deadline = new Date(competitionInfo.registrationDeadline);
+
+        const updateCountdown = () => {
+            const now = new Date();
+            const difference = deadline.getTime() - now.getTime();
+
+            if (difference <= 0) {
+                setIsDeadlinePassed(true);
+                setTimeLeft('Batas waktu pendaftaran telah berakhir.');
+                if (intervalId) clearInterval(intervalId);
+                return;
+            }
+
+            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+            setTimeLeft(`${days} hari ${hours} jam ${minutes} menit ${seconds} detik`);
+        };
+
+        updateCountdown();
+        const intervalId = setInterval(updateCountdown, 1000);
+
+        return () => clearInterval(intervalId);
+    }, [competitionInfo?.registrationDeadline]);
 
     const isFormValid = useMemo(() => {
         const hasPersonalInfo = formData.name.trim() !== '' && formData.club.trim() !== '';
@@ -259,6 +297,19 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             <p className="text-md md:text-lg text-text-secondary mt-2">
                 {competitionInfo?.eventDate ? new Date(competitionInfo.eventDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Formulir Pendaftaran Online'}
             </p>
+            {competitionInfo?.registrationDeadline && (
+                <div className={`mt-4 text-lg font-semibold p-3 rounded-md ${isDeadlinePassed ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary'}`}>
+                    <p className="text-sm font-normal">{isDeadlinePassed ? 'Batas Waktu Pendaftaran Telah Berakhir' : 'Pendaftaran Ditutup Dalam:'}</p>
+                    <p className="text-2xl font-bold tracking-wider">{timeLeft}</p>
+                    {!isDeadlinePassed && (
+                        <p className="text-xs font-normal mt-1">
+                            Batas akhir: {new Date(competitionInfo.registrationDeadline).toLocaleString('id-ID', {
+                                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                            })}
+                        </p>
+                    )}
+                </div>
+            )}
         </header>
     );
     
@@ -287,7 +338,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         return <div className="flex justify-center items-center h-screen"><Spinner /></div>;
     }
     
-    const isRegistrationOpen = competitionInfo?.isRegistrationOpen ?? false;
+    const isRegistrationOpen = (competitionInfo?.isRegistrationOpen ?? false) && !isDeadlinePassed;
 
     // Show closed message if not open and success message is not being displayed
     if (!isRegistrationOpen && !successMessage) {
@@ -298,7 +349,13 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     <h2 className="text-2xl font-bold mb-4">Pendaftaran Ditutup</h2>
-                    <p className="text-text-secondary">Pendaftaran online untuk acara ini saat ini sedang ditutup oleh panitia. Silakan kembali lagi nanti atau hubungi panitia untuk informasi lebih lanjut.</p>
+                    <p className="text-text-secondary">
+                        {isDeadlinePassed 
+                            ? 'Batas waktu pendaftaran telah berakhir.' 
+                            : 'Pendaftaran online untuk acara ini saat ini sedang ditutup oleh panitia.'
+                        }
+                        {' '}Silakan kembali lagi nanti atau hubungi panitia untuk informasi lebih lanjut.
+                    </p>
                 </div>
             </Card>
         );

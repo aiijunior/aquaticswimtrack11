@@ -33,6 +33,7 @@ export interface CompetitionInfo {
     isRegistrationOpen?: boolean;
     // FIX: Corrected typo from numberOfLlanes to numberOfLanes
     numberOfLanes?: number;
+    registrationDeadline?: string | null;
 }
 
 export interface Swimmer {

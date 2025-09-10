@@ -830,7 +830,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             {activeTab === 'settings' && (
                 <Card>
                     <div className="space-y-6">
-                        <div className="p-4 border border-border rounded-lg bg-background/50">
+                        <div className="p-4 border border-border rounded-lg bg-background/50 space-y-4">
                              <ToggleSwitch
                                 label="Status Pendaftaran Online"
                                 enabled={info.isRegistrationOpen ?? false}
@@ -838,7 +838,20 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                                 enabledText="DIBUKA"
                                 disabledText="DITUTUP"
                             />
-                            <p className="text-xs text-text-secondary mt-2">Aktifkan untuk mengizinkan peserta mendaftar melalui halaman pendaftaran publik.</p>
+                            <div>
+                                <Input
+                                    label="Batas Waktu Pendaftaran Online"
+                                    id="registration-deadline"
+                                    type="datetime-local"
+                                    value={info.registrationDeadline ? info.registrationDeadline.slice(0, 16) : ''}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        const isoValue = value ? new Date(value).toISOString() : null;
+                                        setInfo({ ...info, registrationDeadline: isoValue });
+                                    }}
+                                />
+                                <p className="text-xs text-text-secondary mt-1">Kosongkan jika tidak ada batas waktu.</p>
+                            </div>
                         </div>
                         <div>
                             <Input label="Nama Event (Baris 1)" id="event-name-1" type="text" value={eventNameLines[0]} onChange={(e) => handleEventNameChange(0, e.target.value)} />

@@ -1,7 +1,4 @@
 
-
-
-
 import { supabase } from './supabaseClient';
 import type { User } from '../types';
 import { config } from '../config';
@@ -29,13 +26,15 @@ export const login = async (email?: string, password?: string): Promise<User | n
   }
 
   // Step 2: If not super admin, proceed with Supabase authentication for regular admins.
-  // FIX: Replaced `signIn` with `signInWithPassword` which is the correct Supabase method for email/password authentication.
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+  // FIX: Replaced `signIn` with `signInWithPassword` for compatibility with Supabase JS v2, and adjusted destructuring.
+  const { data: authSession, error: authError } = await supabase.auth.signInWithPassword({
     email: email,
     password: password,
   });
+  const authUser = authSession?.user;
 
-  if (authError || !authData.user) {
+
+  if (authError || !authUser) {
     if (authError) {
       console.error("Supabase Auth sign-in failed:", authError.name, authError.message);
 
@@ -61,8 +60,6 @@ export const login = async (email?: string, password?: string): Promise<User | n
     }
   }
   
-  const authUser = authData.user;
-
   // Step 3: Now that the user is authenticated, fetch their role from our public.users table.
   const { data: profileData, error: profileError } = await supabase
     .from('users')
@@ -74,7 +71,7 @@ export const login = async (email?: string, password?: string): Promise<User | n
     console.error("Failed to fetch user profile/role after login:", profileError?.message);
     // This is a critical error. The user exists in Auth but not in our profiles table.
     // It's crucial to log them out to prevent a broken state.
-    // FIX: Handled the returned error from signOut to align with best practices and potentially satisfy stricter type checks.
+    // FIX: Replaced `logout` with `signOut` for compatibility with Supabase JS v2.
     const { error: signOutError } = await supabase.auth.signOut();
     if (signOutError) {
         // Log the sign-out error but proceed to throw the main profile error.
@@ -95,7 +92,7 @@ export const login = async (email?: string, password?: string): Promise<User | n
 
 export const logout = async (): Promise<void> => {
   sessionStorage.removeItem(AUTH_KEY);
-  // FIX: Handled the returned error from signOut to align with best practices and potentially satisfy stricter type checks.
+  // FIX: Replaced `logout` with `signOut` for compatibility with Supabase JS v2.
   const { error } = await supabase.auth.signOut();
   if (error) {
     console.error("Error logging out:", error.message);

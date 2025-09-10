@@ -14,7 +14,8 @@ const toCompetitionInfo = (data: any): CompetitionInfo => ({
     eventLogo: data.event_logo,
     sponsorLogo: data.sponsor_logo,
     isRegistrationOpen: data.is_registration_open,
-    numberOfLanes: data.number_of_lanes
+    numberOfLanes: data.number_of_lanes,
+    registrationDeadline: data.registration_deadline
 });
 
 const toSwimmer = (data: any): Swimmer => ({
@@ -116,7 +117,8 @@ export const getPublicData = async (): Promise<{ competitionInfo: CompetitionInf
                 eventLogo: null, 
                 sponsorLogo: null, 
                 isRegistrationOpen: false, 
-                numberOfLanes: config.competition.defaultLanes 
+                numberOfLanes: config.competition.defaultLanes,
+                registrationDeadline: null,
             },
             swimmers: [],
             events: [],
@@ -141,7 +143,8 @@ export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
             eventLogo: null, 
             sponsorLogo: null, 
             isRegistrationOpen: false, 
-            numberOfLanes: config.competition.defaultLanes 
+            numberOfLanes: config.competition.defaultLanes,
+            registrationDeadline: null,
         };
     }
 
@@ -159,7 +162,8 @@ export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
             eventLogo: null, 
             sponsorLogo: null, 
             isRegistrationOpen: false, 
-            numberOfLanes: config.competition.defaultLanes 
+            numberOfLanes: config.competition.defaultLanes,
+            registrationDeadline: null,
         };
     }
 
@@ -175,7 +179,8 @@ export const updateCompetitionInfo = async (info: CompetitionInfo): Promise<Comp
         event_logo: info.eventLogo,
         sponsor_logo: info.sponsorLogo,
         is_registration_open: info.isRegistrationOpen,
-        number_of_lanes: info.numberOfLanes
+        number_of_lanes: info.numberOfLanes,
+        registration_deadline: info.registrationDeadline
     };
     const { data, error } = await supabase
         .from('competition_info')
@@ -430,37 +435,37 @@ export const restoreDatabase = async (backupData: any): Promise<void> => {
     await updateCompetitionInfo(backupData.competitionInfo);
 
     if (backupData.swimmers.length > 0) {
-        const swimmerPayloads = backupData.swimmers.map((s: Swimmer) => ({ id: s.id, name: s.name, birth_year: s.birthYear, gender: s.gender, club: s.club }));
-        // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
-        const { error } = await supabase.from('swimmers').insert(swimmerPayloads as any);
+        // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
+        const swimmerPayloads: Database['public']['Tables']['swimmers']['Insert'][] = backupData.swimmers.map((s: Swimmer) => ({ id: s.id, name: s.name, birth_year: s.birthYear, gender: s.gender, club: s.club }));
+        const { error } = await supabase.from('swimmers').insert(swimmerPayloads);
         if (error) throw error;
     }
 
     if (backupData.events.length > 0) {
-        const eventPayloads = backupData.events.map((e: SwimEvent) => ({ id: e.id, distance: e.distance, style: e.style, gender: e.gender, session_number: e.sessionNumber, heat_order: e.heatOrder, session_date_time: e.sessionDateTime, relay_legs: e.relayLegs, category: e.category }));
-        // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
-        const { error } = await supabase.from('events').insert(eventPayloads as any);
+        // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
+        const eventPayloads: Database['public']['Tables']['events']['Insert'][] = backupData.events.map((e: SwimEvent) => ({ id: e.id, distance: e.distance, style: e.style, gender: e.gender, session_number: e.sessionNumber, heat_order: e.heatOrder, session_date_time: e.sessionDateTime, relay_legs: e.relayLegs, category: e.category }));
+        const { error } = await supabase.from('events').insert(eventPayloads);
         if (error) throw error;
     }
 
-    const allEntries = backupData.events.flatMap((e: SwimEvent) => e.entries.map((en: EventEntry) => ({event_id: e.id, swimmer_id: en.swimmerId, seed_time: en.seedTime})));
+    const allEntries: Database['public']['Tables']['event_entries']['Insert'][] = backupData.events.flatMap((e: SwimEvent) => e.entries.map((en: EventEntry) => ({event_id: e.id, swimmer_id: en.swimmerId, seed_time: en.seedTime})));
     if (allEntries.length > 0) {
-        // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
-        const { error } = await supabase.from('event_entries').insert(allEntries as any);
+        // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
+        const { error } = await supabase.from('event_entries').insert(allEntries);
         if (error) throw error;
     }
 
-    const allResults = backupData.events.flatMap((e: SwimEvent) => e.results.map((r: Result) => ({event_id: e.id, swimmer_id: r.swimmerId, time: r.time})));
+    const allResults: Database['public']['Tables']['event_results']['Insert'][] = backupData.events.flatMap((e: SwimEvent) => e.results.map((r: Result) => ({event_id: e.id, swimmer_id: r.swimmerId, time: r.time})));
     if (allResults.length > 0) {
-        // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
-        const { error } = await supabase.from('event_results').insert(allResults as any);
+        // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
+        const { error } = await supabase.from('event_results').insert(allResults);
         if (error) throw error;
     }
 
     if (backupData.records.length > 0) {
-        const recordPayloads = backupData.records.map(toRecordDbFormat);
-        // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
-        const { error } = await supabase.from('records').insert(recordPayloads as any);
+        // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
+        const recordPayloads: Database['public']['Tables']['records']['Insert'][] = backupData.records.map(toRecordDbFormat);
+        const { error } = await supabase.from('records').insert(recordPayloads);
         if (error) throw error;
     }
 };
@@ -481,7 +486,7 @@ export const clearAllData = async (): Promise<void> => {
     const { error: recordsError } = await supabase.from('records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (recordsError) throw recordsError;
 
-    const defaultInfo = { id: 1, event_name: config.competition.defaultName, event_date: new Date().toISOString().split('T')[0], event_logo: null, sponsor_logo: null, is_registration_open: false, number_of_lanes: config.competition.defaultLanes };
+    const defaultInfo = { id: 1, event_name: config.competition.defaultName, event_date: new Date().toISOString().split('T')[0], event_logo: null, sponsor_logo: null, is_registration_open: false, number_of_lanes: config.competition.defaultLanes, registration_deadline: null };
     // FIX: Explicitly type the payload to resolve the 'never' type error.
     const payload: Database['public']['Tables']['competition_info']['Insert'][] = [defaultInfo];
     // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
