@@ -437,35 +437,40 @@ export const restoreDatabase = async (backupData: any): Promise<void> => {
     if (backupData.swimmers.length > 0) {
         // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
         const swimmerPayloads: Database['public']['Tables']['swimmers']['Insert'][] = backupData.swimmers.map((s: Swimmer) => ({ id: s.id, name: s.name, birth_year: s.birthYear, gender: s.gender, club: s.club }));
-        const { error } = await supabase.from('swimmers').insert(swimmerPayloads);
+        // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
+        const { error } = await supabase.from('swimmers').insert(swimmerPayloads as any);
         if (error) throw error;
     }
 
     if (backupData.events.length > 0) {
         // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
         const eventPayloads: Database['public']['Tables']['events']['Insert'][] = backupData.events.map((e: SwimEvent) => ({ id: e.id, distance: e.distance, style: e.style, gender: e.gender, session_number: e.sessionNumber, heat_order: e.heatOrder, session_date_time: e.sessionDateTime, relay_legs: e.relayLegs, category: e.category }));
-        const { error } = await supabase.from('events').insert(eventPayloads);
+        // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
+        const { error } = await supabase.from('events').insert(eventPayloads as any);
         if (error) throw error;
     }
 
     const allEntries: Database['public']['Tables']['event_entries']['Insert'][] = backupData.events.flatMap((e: SwimEvent) => e.entries.map((en: EventEntry) => ({event_id: e.id, swimmer_id: en.swimmerId, seed_time: en.seedTime})));
     if (allEntries.length > 0) {
         // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
-        const { error } = await supabase.from('event_entries').insert(allEntries);
+        // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
+        const { error } = await supabase.from('event_entries').insert(allEntries as any);
         if (error) throw error;
     }
 
     const allResults: Database['public']['Tables']['event_results']['Insert'][] = backupData.events.flatMap((e: SwimEvent) => e.results.map((r: Result) => ({event_id: e.id, swimmer_id: r.swimmerId, time: r.time})));
     if (allResults.length > 0) {
         // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
-        const { error } = await supabase.from('event_results').insert(allResults);
+        // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
+        const { error } = await supabase.from('event_results').insert(allResults as any);
         if (error) throw error;
     }
 
     if (backupData.records.length > 0) {
         // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
         const recordPayloads: Database['public']['Tables']['records']['Insert'][] = backupData.records.map(toRecordDbFormat);
-        const { error } = await supabase.from('records').insert(recordPayloads);
+        // FIX: Added 'as any' to work around a complex 'never' type inference issue with Supabase client.
+        const { error } = await supabase.from('records').insert(recordPayloads as any);
         if (error) throw error;
     }
 };

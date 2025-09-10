@@ -843,9 +843,10 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                                     label="Batas Waktu Pendaftaran Online"
                                     id="registration-deadline"
                                     type="datetime-local"
-                                    value={info.registrationDeadline ? info.registrationDeadline.slice(0, 16) : ''}
+                                    value={info.registrationDeadline ? new Date(info.registrationDeadline).toISOString().slice(0, 16) : ''}
                                     onChange={(e) => {
                                         const value = e.target.value;
+                                        // When the input is cleared, the value is an empty string.
                                         const isoValue = value ? new Date(value).toISOString() : null;
                                         setInfo({ ...info, registrationDeadline: isoValue });
                                     }}
