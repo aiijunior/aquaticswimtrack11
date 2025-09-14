@@ -172,6 +172,14 @@
         }
 
         .print-preview-content {
+          /* NEW: Reset CSS variables to a standard light theme for all printing */
+          --color-background: #ffffff;
+          --color-surface: #ffffff;
+          --color-text-primary: #000000;
+          --color-text-secondary: #555555;
+          --color-border: #cccccc;
+          --color-primary: #000000;
+          
           box-shadow: none !important;
           border: none !important;
           border-radius: 0 !important;
@@ -179,17 +187,8 @@
           max-width: 100% !important;
           margin: 0 !important;
           padding: 0 !important;
-          color: #000000 !important;
-          background-color: #ffffff !important;
-        }
-        
-        .print-preview-content *,
-        .print-preview-content *:before,
-        .print-preview-content *:after {
-          color: #000000 !important;
-          background-color: transparent !important;
-          text-shadow: none !important;
-          box-shadow: none !important;
+          color: var(--color-text-primary) !important;
+          background-color: var(--color-background) !important;
         }
 
         .print-preview-content table {
@@ -205,7 +204,7 @@
         
         .print-preview-content th,
         .print-preview-content td {
-          border: 1px solid #cccccc !important;
+          border: 1px solid var(--color-border) !important;
           padding: 6px 8px;
         }
         
