@@ -120,13 +120,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         return hasPersonalInfo && hasSelectedEvent;
     }, [formData, selectedEvents]);
     
-    const previouslyRegisteredEvents = useMemo(() => {
-        if (!existingSwimmer) return [];
-        return localEvents.filter(event =>
-            event.entries.some(entry => entry.swimmerId === existingSwimmer.id)
-        );
-    }, [existingSwimmer, localEvents]);
-    
     const availableEvents = useMemo(() => {
         const registeredEventIds = new Set<string>();
         if (existingSwimmer) {
@@ -279,34 +272,38 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
         if (result.success && result.swimmer) {
             const swimmerName = result.swimmer.name;
+
+            // Newly registered events formatted with their seed time
             const newlyRegisteredEventsList = registrationsToSubmit.map(reg => {
                 const event = localEvents.find(e => e.id === reg.eventId);
                 const eventName = event ? formatEventName(event) : 'Nomor Lomba Tidak Dikenal';
                 const time = formatTime(reg.seedTime);
                 return `• ${eventName} (Waktu: ${time})`;
-            }).join('\n');
+            });
 
-            let previouslyRegisteredEventsList = '';
-            if (result.previouslyRegisteredEvents && result.previouslyRegisteredEvents.length > 0) {
-                previouslyRegisteredEventsList = result.previouslyRegisteredEvents.map(event => {
-                    const formattableEvent = {
-                        distance: event.distance,
-                        style: event.style,
-                        gender: event.gender,
-                        relayLegs: event.relayLegs,
-                        category: event.category,
-                    };
-                    return `• ${formatEventName(formattableEvent)}`;
-                }).join('\n');
-            }
+            // Previously registered events (without seed time, as we don't have it easily)
+            const previouslyRegisteredEventsList = (result.previouslyRegisteredEvents || []).map(event => {
+                const formattableEvent = {
+                    distance: event.distance,
+                    style: event.style,
+                    gender: event.gender,
+                    relayLegs: event.relayLegs,
+                    category: event.category,
+                };
+                return `• ${formatEventName(formattableEvent)}`;
+            });
 
-            const previouslyRegisteredSection = previouslyRegisteredEventsList 
-                ? `\nNomor lomba yang didaftarkan sebelumnya:\n${previouslyRegisteredEventsList}\n` 
-                : '';
-            
-            const newlyRegisteredSection = `Nomor lomba yang baru didaftarkan:\n${newlyRegisteredEventsList}`;
+            // Combine all event strings and sort them for a clean list
+            const allRegisteredEventsString = [
+                ...newlyRegisteredEventsList,
+                ...previouslyRegisteredEventsList
+            ].sort().join('\n');
 
-            const detailedSuccessMessage = `Pendaftaran untuk ${swimmerName} berhasil diterima!\n\n${newlyRegisteredSection}\n${previouslyRegisteredSection}\nSelamat! Anda telah terdaftar. Silakan hubungi panitia untuk konfirmasi.`;
+            const successHeader = `Pendaftaran untuk ${swimmerName} berhasil diterima!`;
+            const eventListSection = `\n\nDaftar nomor lomba yang diikuti:\n${allRegisteredEventsString}`;
+            const confirmationFooter = `\n\nSelamat! Anda telah terdaftar. Silakan hubungi panitia untuk konfirmasi.`;
+
+            const detailedSuccessMessage = successHeader + eventListSection + confirmationFooter;
 
             setSuccessMessage(detailedSuccessMessage);
             onRegistrationSuccess(); // Refresh data in the background
@@ -471,17 +468,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                     )}
                 </div>
             </Card>
-
-            {previouslyRegisteredEvents.length > 0 && (
-                <Card className="mt-6">
-                    <h2 className="text-xl font-bold mb-2">Nomor Lomba yang Sudah Terdaftar</h2>
-                    <ul className="list-disc list-inside text-text-secondary space-y-1">
-                        {previouslyRegisteredEvents.map(event => (
-                            <li key={event.id}>{formatEventName(event)}</li>
-                        ))}
-                    </ul>
-                </Card>
-            )}
 
             <Card className="mt-6">
                 <div className="flex justify-between items-center mb-4 border-b border-border pb-2">
