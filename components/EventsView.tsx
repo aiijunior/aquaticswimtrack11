@@ -356,13 +356,36 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                     <div key={sessionName}>
                         <h2 className="text-xl font-bold text-primary border-b-2 border-primary/20 pb-2 mb-3">{sessionName}</h2>
                         <div className="space-y-2">
-                            {eventsInSession.map((event) => (
+                            {eventsInSession.map((event) => {
+                                const recordedCount = event.results.length;
+                                const entryCount = event.entries.length;
+                                const hasEntries = entryCount > 0;
+                                
+                                let statusText: string;
+                                let statusColor: string;
+                            
+                                if (!hasEntries) {
+                                    statusText = 'Belum Ada Hasil';
+                                    statusColor = '';
+                                } else if (recordedCount >= entryCount) {
+                                    statusText = `${recordedCount} Hasil Tercatat`;
+                                    statusColor = 'text-green-500';
+                                } else { // recordedCount < entryCount
+                                    const missingCount = entryCount - recordedCount;
+                                    statusText = `${recordedCount} Hasil Tercatat (${missingCount} belum ada hasil)`;
+                                    statusColor = 'text-red-500';
+                                }
+
+                                return (
                                 <div key={event.id} className="flex items-center justify-between p-3 bg-background rounded-lg hover:shadow-md transition-shadow">
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-text-primary whitespace-normal break-words">{formatEventName(event)}</p>
                                         <div className="flex items-center space-x-4 text-sm text-text-secondary mt-1">
                                             <span className="flex items-center"><UsersIcon /> <span className="ml-1.5">{event.entries.length} Peserta</span></span>
-                                            <span className={`flex items-center ${event.results.length > 0 ? 'text-green-500' : ''}`}><CheckCircleIcon /> <span className="ml-1.5">{event.results.length > 0 ? 'Hasil Tercatat' : 'Belum Ada Hasil'}</span></span>
+                                            <span className={`flex items-center ${statusColor}`}>
+                                                <CheckCircleIcon />
+                                                <span className="ml-1.5">{statusText}</span>
+                                            </span>
                                         </div>
                                     </div>
                                     <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
@@ -383,7 +406,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                                         </button>
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 ))}
