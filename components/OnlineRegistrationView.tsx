@@ -6,7 +6,8 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Spinner } from './ui/Spinner';
-import { formatEventName, toTitleCase, formatTime } from '../constants';
+import { formatEventName, toTitleCase, formatTime, translateSwimStyle } from '../constants';
+import { SwimStyle } from '../types';
 
 interface OnlineRegistrationViewProps {
     competitionInfo: CompetitionInfo | null;
@@ -26,6 +27,13 @@ const parseTimeToMs = (time: RegistrationTime): number => {
     }
     return (minutes * 60 * 1000) + (seconds * 1000) + (hundredths * 10);
 };
+
+const ChevronDownIcon = ({ isOpen }: { isOpen: boolean }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 transform transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+);
+
 
 export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     competitionInfo,
@@ -52,6 +60,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     // State for deadline countdown
     const [timeLeft, setTimeLeft] = useState('');
     const [isDeadlinePassed, setIsDeadlinePassed] = useState(false);
+    
+    // State for accordion
+    const [openAccordion, setOpenAccordion] = useState<SwimStyle | null>(null);
 
 
     useEffect(() => {
@@ -98,12 +109,57 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
         return () => clearInterval(intervalId);
     }, [competitionInfo?.registrationDeadline]);
+    
+    const handleAccordionToggle = (style: SwimStyle) => {
+        setOpenAccordion(prev => (prev === style ? null : style));
+    };
 
     const isFormValid = useMemo(() => {
         const hasPersonalInfo = formData.name.trim() !== '' && formData.club.trim() !== '';
         const hasSelectedEvent = Object.values(selectedEvents).some(e => e.selected);
         return hasPersonalInfo && hasSelectedEvent;
     }, [formData, selectedEvents]);
+    
+    const previouslyRegisteredEvents = useMemo(() => {
+        if (!existingSwimmer) return [];
+        return localEvents.filter(event =>
+            event.entries.some(entry => entry.swimmerId === existingSwimmer.id)
+        );
+    }, [existingSwimmer, localEvents]);
+    
+    const availableEvents = useMemo(() => {
+        const registeredEventIds = new Set<string>();
+        if (existingSwimmer) {
+            localEvents.forEach(event => {
+                if (event.entries.some(entry => entry.swimmerId === existingSwimmer.id)) {
+                    registeredEventIds.add(event.id);
+                }
+            });
+        }
+
+        return localEvents
+            .filter(event => {
+                if (registeredEventIds.has(event.id)) return false;
+                return event.gender === "Mixed" || (formData.gender === "Male" && event.gender === "Men's") || (formData.gender === "Female" && event.gender === "Women's");
+            })
+            .sort((a,b) => a.distance - b.distance || a.style.localeCompare(b.style));
+    }, [localEvents, formData.gender, existingSwimmer]);
+
+    const groupedAvailableEvents = useMemo(() => {
+        return availableEvents.reduce((acc, event) => {
+            const style = event.style;
+            if (!acc[style]) {
+                acc[style] = [];
+            }
+            acc[style].push(event);
+            return acc;
+        }, {} as Record<SwimStyle, SwimEvent[]>);
+    }, [availableEvents]);
+    
+    const selectedEventCount = useMemo(() => {
+        return Object.values(selectedEvents).filter(e => e.selected).length;
+    }, [selectedEvents]);
+
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -139,28 +195,12 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             },
         }));
     };
-    
-    const availableEvents = useMemo(() => {
-        const registeredEventIds = new Set<string>();
-        if (existingSwimmer) {
-            localEvents.forEach(event => {
-                if (event.entries.some(entry => entry.swimmerId === existingSwimmer.id)) {
-                    registeredEventIds.add(event.id);
-                }
-            });
-        }
 
-        return localEvents
-            .filter(event => {
-                // Check if already registered
-                if (registeredEventIds.has(event.id)) {
-                    return false;
-                }
-                // Check gender compatibility
-                return event.gender === "Mixed" || (formData.gender === "Male" && event.gender === "Men's") || (formData.gender === "Female" && event.gender === "Women's");
-            })
-            .sort((a,b) => a.distance - b.distance || a.style.localeCompare(b.style));
-    }, [localEvents, formData.gender, existingSwimmer]);
+    const handleSetNoTime = (eventId: string) => {
+        handleTimeChange(eventId, 'min', '99');
+        handleTimeChange(eventId, 'sec', '99');
+        handleTimeChange(eventId, 'ms', '99');
+    };
 
     const handleNameBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
         const swimmerName = e.target.value.trim();
@@ -318,7 +358,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             <div className="sticky top-0 z-20 bg-surface/80 backdrop-blur-sm shadow-sm">
                 {renderHeader()}
                 <div className="absolute top-4 right-4">
-                    <Button variant="secondary" onClick={onBackToLogin}>
+                    <Button type="button" variant="secondary" onClick={onBackToLogin}>
                         Login Admin
                     </Button>
                 </div>
@@ -327,7 +367,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 {content}
             </main>
              <footer className="text-center p-4 mt-8 border-t border-border">
-                <Button variant="primary" onClick={onBackToLogin} className="px-6 py-3 text-lg">
+                <Button type="button" variant="primary" onClick={onBackToLogin} className="px-6 py-3 text-lg">
                     &larr; Kembali ke Halaman Utama
                 </Button>
             </footer>
@@ -432,36 +472,79 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 </div>
             </Card>
 
+            {previouslyRegisteredEvents.length > 0 && (
+                <Card className="mt-6">
+                    <h2 className="text-xl font-bold mb-2">Nomor Lomba yang Sudah Terdaftar</h2>
+                    <ul className="list-disc list-inside text-text-secondary space-y-1">
+                        {previouslyRegisteredEvents.map(event => (
+                            <li key={event.id}>{formatEventName(event)}</li>
+                        ))}
+                    </ul>
+                </Card>
+            )}
+
             <Card className="mt-6">
-                <h2 className="text-2xl font-bold mb-4 border-b border-border pb-2">Pilih Nomor Lomba</h2>
-                <p className="text-sm text-text-secondary mb-4">Pilih nomor lomba yang akan diikuti dan masukkan waktu unggulan (seed time) Anda. Jika tidak punya, biarkan maka akan terisi otomatis 99:99.99.</p>
-                <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
-                   {availableEvents.length > 0 ? availableEvents.map(event => (
-                        <div key={event.id} className="bg-background p-4 rounded-lg border border-border">
-                            <div className="flex items-start">
-                                <input
-                                    type="checkbox"
-                                    id={`event-${event.id}`}
-                                    checked={selectedEvents[event.id]?.selected || false}
-                                    onChange={() => handleEventSelectionChange(event.id)}
-                                    className="h-6 w-6 rounded border-gray-300 text-primary focus:ring-primary mt-1"
-                                />
-                                <div className="ml-4 flex-grow">
-                                    <label htmlFor={`event-${event.id}`} className="font-bold text-lg text-text-primary cursor-pointer">
-                                        {formatEventName(event)}
-                                    </label>
-                                    {selectedEvents[event.id]?.selected && (
-                                        <div className="mt-2 grid grid-cols-3 gap-2 items-end">
-                                            <Input label="Menit" type="number" min="0" value={selectedEvents[event.id].time.min} onChange={(e) => handleTimeChange(event.id, 'min', e.target.value)} id={`min-${event.id}`} />
-                                            <Input label="Detik" type="number" min="0" max="99" value={selectedEvents[event.id].time.sec} onChange={(e) => handleTimeChange(event.id, 'sec', e.target.value)} id={`sec-${event.id}`} />
-                                            <Input label="ss (1/100)" type="number" min="0" max="99" value={selectedEvents[event.id].time.ms} onChange={(e) => handleTimeChange(event.id, 'ms', e.target.value)} id={`ms-${event.id}`} />
-                                        </div>
-                                    )}
-                                </div>
+                <div className="flex justify-between items-center mb-4 border-b border-border pb-2">
+                    <h2 className="text-2xl font-bold">Pilih Nomor Lomba</h2>
+                    <div className="text-right">
+                        <p className="font-bold text-lg text-primary">{selectedEventCount}</p>
+                        <p className="text-xs text-text-secondary -mt-1">Terpilih</p>
+                    </div>
+                </div>
+                
+                <p className="text-sm text-text-secondary mb-4">Pilih nomor lomba yang akan diikuti dan masukkan waktu unggulan (seed time) Anda. Jika tidak punya, klik tombol "Tanpa Waktu".</p>
+                
+                <div className="space-y-2">
+                    {Object.keys(groupedAvailableEvents).length > 0 ? Object.entries(groupedAvailableEvents).map(([style, eventsInStyle]) => {
+                        const isOpen = openAccordion === style;
+                        return (
+                            <div key={style} className="border border-border rounded-lg overflow-hidden transition-all duration-300">
+                                <button
+                                    type="button"
+                                    onClick={() => handleAccordionToggle(style as SwimStyle)}
+                                    className="w-full flex justify-between items-center p-4 bg-background hover:bg-surface transition-colors"
+                                    aria-expanded={isOpen}
+                                >
+                                    <div className="text-left">
+                                        <h3 className="font-bold text-lg text-text-primary">{translateSwimStyle(style as SwimStyle)}</h3>
+                                        <p className="text-sm text-text-secondary">{eventsInStyle.length} nomor tersedia</p>
+                                    </div>
+                                    <ChevronDownIcon isOpen={isOpen} />
+                                </button>
+                                {isOpen && (
+                                    <div className="p-4 space-y-3 bg-surface border-t border-border">
+                                        {eventsInStyle.map(event => (
+                                            <div key={event.id} className="bg-background p-3 rounded-md border border-border">
+                                                <div className="flex items-start">
+                                                    <input
+                                                        type="checkbox"
+                                                        id={`event-${event.id}`}
+                                                        checked={selectedEvents[event.id]?.selected || false}
+                                                        onChange={() => handleEventSelectionChange(event.id)}
+                                                        className="h-6 w-6 rounded border-gray-300 text-primary focus:ring-primary mt-1"
+                                                    />
+                                                    <div className="ml-3 flex-grow">
+                                                        <label htmlFor={`event-${event.id}`} className="font-semibold text-md text-text-primary cursor-pointer">
+                                                            {formatEventName(event)}
+                                                        </label>
+                                                        {selectedEvents[event.id]?.selected && (
+                                                            <div className="mt-2 grid grid-cols-3 md:grid-cols-4 gap-2 items-end">
+                                                                <Input label="Menit" type="number" min="0" value={selectedEvents[event.id].time.min} onChange={(e) => handleTimeChange(event.id, 'min', e.target.value)} id={`min-${event.id}`} />
+                                                                <Input label="Detik" type="number" min="0" max="99" value={selectedEvents[event.id].time.sec} onChange={(e) => handleTimeChange(event.id, 'sec', e.target.value)} id={`sec-${event.id}`} />
+                                                                <Input label="ss/100" type="number" min="0" max="99" value={selectedEvents[event.id].time.ms} onChange={(e) => handleTimeChange(event.id, 'ms', e.target.value)} id={`ms-${event.id}`} />
+                                                                <Button type="button" variant="secondary" onClick={() => handleSetNoTime(event.id)} className="h-10">Tanpa Waktu</Button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    )) : (
-                         <p className="text-center text-text-secondary py-4">Tidak ada nomor lomba yang tersedia untuk jenis kelamin ini, atau semua nomor lomba yang tersedia sudah Anda ikuti.</p>
+                        );
+                    }) : (
+                        <p className="text-center text-text-secondary py-4">Tidak ada nomor lomba yang tersedia untuk jenis kelamin ini, atau semua nomor lomba yang tersedia sudah Anda ikuti.</p>
                     )}
                 </div>
             </Card>
