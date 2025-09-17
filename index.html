@@ -42,6 +42,18 @@
         animation: flash 1.5s ease-out;
       }
       
+      /* Pulse animation for timing indicator */
+      @keyframes pulse-indicator {
+        0% {
+          transform: scale(1);
+          opacity: 0.75;
+        }
+        75%, 100% {
+          transform: scale(2.5);
+          opacity: 0;
+        }
+      }
+      
       /* Login screen blob animation */
       @keyframes blob {
         0% { transform: translate(0px, 0px) scale(1); }

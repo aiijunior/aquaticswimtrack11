@@ -360,6 +360,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                                 const recordedCount = event.results.length;
                                 const entryCount = event.entries.length;
                                 const hasEntries = entryCount > 0;
+                                const needsTiming = hasEntries && recordedCount < entryCount;
                                 
                                 let statusText: string;
                                 let statusColor: string;
@@ -373,7 +374,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                                 } else { // recordedCount < entryCount
                                     const missingCount = entryCount - recordedCount;
                                     statusText = `${recordedCount} Hasil Tercatat (${missingCount} belum ada hasil)`;
-                                    statusColor = 'text-red-500';
+                                    statusColor = 'text-yellow-500';
                                 }
 
                                 return (
@@ -396,8 +397,17 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                                             onClick={() => onStartTiming(event.id)} 
                                             disabled={event.entries.length === 0}
                                             title={event.entries.length === 0 ? "Tambah peserta untuk memulai timing" : "Mulai timing lomba"}
-                                            className="py-2 px-4 flex items-center"
+                                            className="py-2 px-4 flex items-center relative"
                                         >
+                                            {needsTiming && (
+                                                <span className="absolute top-0 right-0 -mr-1 -mt-1 flex h-3 w-3">
+                                                    <span
+                                                        className="absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"
+                                                        style={{ animation: 'pulse-indicator 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}
+                                                    ></span>
+                                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                                                </span>
+                                            )}
                                             <StopwatchIcon />
                                             <span className="ml-1">Timing</span>
                                         </Button>
