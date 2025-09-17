@@ -236,12 +236,21 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
                         const isDq = dqSwimmers.has(entry.swimmer.id);
                         const isNs = nsSwimmers.has(entry.swimmer.id);
                         const isDisabled = isDq || isNs;
+                        const swimmerTime = times[entry.swimmer.id];
+                        const timeInMillis = swimmerTime ? (parseInt(swimmerTime.min || '0') * 60000) + (parseInt(swimmerTime.sec || '0') * 1000) + parseInt(swimmerTime.ms || '0') : 0;
+                        const needsAttention = timeInMillis === 0 && !isDq && !isNs;
+
                          return (
-                         <div key={lane} className={`p-2 rounded-lg grid grid-cols-12 gap-x-3 items-center ${isDq ? 'bg-red-900/50' : isNs ? 'bg-gray-700/50' : 'bg-surface'} ${flashingLane === entry.swimmer.id ? 'flash-animation' : ''} border border-border`}>
+                         <div key={lane} className={`p-2 rounded-lg grid grid-cols-12 gap-x-3 items-center ${isDq ? 'bg-red-900/50' : isNs ? 'bg-gray-700/50' : needsAttention ? 'bg-yellow-500/20' : 'bg-surface'} ${flashingLane === entry.swimmer.id ? 'flash-animation' : ''} border border-border`}>
                             <div className="col-span-1 font-bold text-2xl text-center text-text-secondary">{lane}</div>
                             <div className="col-span-11 sm:col-span-5">
                                 <p className="font-semibold text-lg text-text-primary">{entry.swimmer.name}</p>
                                 <p className="text-sm text-text-secondary">{entry.swimmer.club}</p>
+                                {needsAttention && (
+                                    <p className="text-xs text-yellow-400 mt-1 italic">
+                                        Time peserta {entry.swimmer.name} belum terinput
+                                    </p>
+                                )}
                             </div>
                             <div className="col-span-8 sm:col-span-4 flex items-center bg-background rounded-md p-1 border border-border">
                                 <Input aria-label="Minutes" className="w-1/3" label="" id={`min-${entry.swimmer.id}`} type="number" min="0" value={times[entry.swimmer.id]?.min || '0'} onChange={e => handleTimeChange(entry.swimmer.id, 'min', e.target.value)} disabled={isDisabled} />
