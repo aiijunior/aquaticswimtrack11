@@ -273,7 +273,7 @@ const App: React.FC = () => {
     }
     switch (currentView) {
       case View.ADMIN_DASHBOARD:
-        return <AdminDashboard swimmers={swimmers} events={events} competitionInfo={competitionInfo} isLoading={isLoading} onDataUpdate={refreshData} />;
+        return <AdminDashboard swimmers={swimmers} events={events} competitionInfo={competitionInfo} isLoading={isLoading} />;
       case View.EVENT_SETTINGS:
         return <EventSettingsView 
             competitionInfo={competitionInfo} 
@@ -293,7 +293,7 @@ const App: React.FC = () => {
       case View.USER_MANAGEMENT:
           return <UserManagementView onDataUpdate={refreshData} />;
       default:
-        return <AdminDashboard swimmers={swimmers} events={events} competitionInfo={competitionInfo} isLoading={isLoading} onDataUpdate={refreshData}/>;
+        return <AdminDashboard swimmers={swimmers} events={events} competitionInfo={competitionInfo} isLoading={isLoading}/>;
     }
   };
   

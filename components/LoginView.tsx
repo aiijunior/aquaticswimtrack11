@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import type { CompetitionInfo } from '../types';
 import { Button } from './ui/Button';
@@ -42,7 +41,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onShowPubl
   };
   
   const isRegistrationOpen = competitionInfo?.isRegistrationOpen ?? false;
-  const isPublicResultsVisible = competitionInfo?.isPublicResultsVisible ?? false;
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-sky-100 to-blue-200 dark:from-slate-800 dark:to-sky-900 flex flex-col items-center justify-center p-4 overflow-hidden">
@@ -120,11 +118,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onShowPubl
         </div>
 
         <div className="mt-12 w-full max-w-md space-y-6">
-            {isPublicResultsVisible && (
-                <Button variant="secondary" onClick={onShowPublicResults} className="w-full py-4 text-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300">
-                    Lihat Hasil Langsung
-                </Button>
-            )}
+            <Button variant="secondary" onClick={onShowPublicResults} className="w-full py-4 text-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300">
+                Lihat Hasil Langsung
+            </Button>
             <div className="text-center">
                 <Button 
                     variant="primary" 

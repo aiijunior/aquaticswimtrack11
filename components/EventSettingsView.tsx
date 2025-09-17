@@ -838,13 +838,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                                 enabledText="DIBUKA"
                                 disabledText="DITUTUP"
                             />
-                             <ToggleSwitch
-                                label="Tampilkan Hasil Langsung Publik"
-                                enabled={info.isPublicResultsVisible ?? false}
-                                onChange={(enabled) => setInfo({ ...info, isPublicResultsVisible: enabled })}
-                                enabledText="DITAMPILKAN"
-                                disabledText="DISEMBUNYIKAN"
-                            />
                             <div>
                                 <Input
                                     label="Batas Waktu Pendaftaran Online"

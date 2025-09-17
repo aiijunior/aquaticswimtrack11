@@ -14,7 +14,6 @@ const toCompetitionInfo = (data: any): CompetitionInfo => ({
     eventLogo: data.event_logo,
     sponsorLogo: data.sponsor_logo,
     isRegistrationOpen: data.is_registration_open,
-    isPublicResultsVisible: data.is_public_results_visible,
     numberOfLanes: data.number_of_lanes,
     registrationDeadline: data.registration_deadline
 });
@@ -118,7 +117,6 @@ export const getPublicData = async (): Promise<{ competitionInfo: CompetitionInf
                 eventLogo: null, 
                 sponsorLogo: null, 
                 isRegistrationOpen: false, 
-                isPublicResultsVisible: false,
                 numberOfLanes: config.competition.defaultLanes,
                 registrationDeadline: null,
             },
@@ -145,7 +143,6 @@ export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
             eventLogo: null, 
             sponsorLogo: null, 
             isRegistrationOpen: false, 
-            isPublicResultsVisible: false,
             numberOfLanes: config.competition.defaultLanes,
             registrationDeadline: null,
         };
@@ -165,7 +162,6 @@ export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
             eventLogo: null, 
             sponsorLogo: null, 
             isRegistrationOpen: false, 
-            isPublicResultsVisible: false,
             numberOfLanes: config.competition.defaultLanes,
             registrationDeadline: null,
         };
@@ -183,7 +179,6 @@ export const updateCompetitionInfo = async (info: CompetitionInfo): Promise<Comp
         event_logo: info.eventLogo,
         sponsor_logo: info.sponsorLogo,
         is_registration_open: info.isRegistrationOpen,
-        is_public_results_visible: info.isPublicResultsVisible,
         number_of_lanes: info.numberOfLanes,
         registration_deadline: info.registrationDeadline
     };
@@ -496,7 +491,7 @@ export const clearAllData = async (): Promise<void> => {
     const { error: recordsError } = await supabase.from('records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (recordsError) throw recordsError;
 
-    const defaultInfo = { id: 1, event_name: config.competition.defaultName, event_date: new Date().toISOString().split('T')[0], event_logo: null, sponsor_logo: null, is_registration_open: false, is_public_results_visible: false, number_of_lanes: config.competition.defaultLanes, registration_deadline: null };
+    const defaultInfo = { id: 1, event_name: config.competition.defaultName, event_date: new Date().toISOString().split('T')[0], event_logo: null, sponsor_logo: null, is_registration_open: false, number_of_lanes: config.competition.defaultLanes, registration_deadline: null };
     // FIX: Explicitly type the payload to resolve the 'never' type error.
     const payload: Database['public']['Tables']['competition_info']['Insert'][] = [defaultInfo];
     // FIX: Removed 'as any' cast to allow for proper type checking by TypeScript.

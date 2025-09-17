@@ -11,7 +11,6 @@ export type Database = {
           is_registration_open: boolean
           number_of_lanes: number
           registration_deadline: string | null
-          is_public_results_visible: boolean | null
         }
         Insert: {
           id?: number
@@ -22,7 +21,6 @@ export type Database = {
           is_registration_open?: boolean
           number_of_lanes?: number
           registration_deadline?: string | null
-          is_public_results_visible?: boolean | null
         }
         Update: {
           id?: number
@@ -33,7 +31,6 @@ export type Database = {
           is_registration_open?: boolean
           number_of_lanes?: number
           registration_deadline?: string | null
-          is_public_results_visible?: boolean | null
         }
         Relationships: []
       }

@@ -31,8 +31,6 @@ export interface CompetitionInfo {
     eventLogo: string | null;
     sponsorLogo: string | null;
     isRegistrationOpen?: boolean;
-    // FIX: Changed type to match database schema (boolean | null) to resolve Supabase client type inference issues.
-    isPublicResultsVisible?: boolean | null;
     // FIX: Corrected typo from numberOfLlanes to numberOfLanes
     numberOfLanes?: number;
     registrationDeadline?: string | null;
