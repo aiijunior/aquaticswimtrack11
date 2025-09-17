@@ -288,10 +288,13 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
 const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[], brokenRecords: BrokenRecord[] }> = ({ events, swimmers, info, records, brokenRecords }) => {
     const data = useMemo(() => {
         const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        let globalEventCounter = 1;
         return events
             .filter(e => e.results && e.results.length > 0)
+            .sort((a,b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0))
             .map(event => ({
                 ...event,
+                globalEventNumber: globalEventCounter++,
                 sortedResults: [...event.results]
                     .sort((a,b) => {
                         if (a.time < 0) return 1; // DQ at the end
@@ -305,8 +308,7 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                         const recordsBroken = brokenRecords.filter(br => br.newHolder.id === swimmer?.id && br.newTime === r.time && br.record.style === event.style && br.record.distance === event.distance);
                         return ({ ...r, rank: r.time > 0 ? i + 1 : 0, swimmer, recordsBroken });
                     })
-            }))
-            .sort((a,b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
+            }));
     }, [events, swimmers, brokenRecords]);
 
     if (data.length === 0) return <p className="text-center text-text-secondary py-10">Tidak ada hasil lomba yang tercatat untuk nomor yang dipilih.</p>;
@@ -320,7 +322,7 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                 return (
                     <section key={event.id} className="print-event-section">
                         <h3 className="text-xl font-semibold bg-gray-100 p-2 rounded-t-md border-b-2 border-gray-400">
-                            {formatEventName(event)}
+                            {`Hasil Acara ${event.globalEventNumber}: ${formatEventName(event)}`}
                         </h3>
                          <div className="text-xs text-gray-600 mt-2 mb-2 px-2 border-l-2 border-gray-300 space-y-1">
                             <PrintRecordRow record={porprovRecord} type={RecordType.PORPROV} />
