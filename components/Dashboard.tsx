@@ -3,6 +3,9 @@ import type { Swimmer, SwimEvent, CompetitionInfo } from '../types';
 import { Card } from './ui/Card';
 import { Spinner } from './ui/Spinner';
 import { useTheme } from '../contexts/ThemeContext';
+import { ToggleSwitch } from './ui/ToggleSwitch';
+import { updateCompetitionInfo } from '../services/databaseService';
+
 
 // --- ICONS ---
 const UsersIcon = () => (
@@ -42,6 +45,7 @@ interface AdminDashboardProps {
   events: SwimEvent[];
   competitionInfo: CompetitionInfo | null;
   isLoading: boolean;
+  onDataUpdate: () => void;
 }
 type ClubAnalysisData = { clubName: string; maleCount: number; femaleCount: number; total: number; percentage: number; };
 type SortableKey = keyof ClubAnalysisData;
@@ -49,11 +53,12 @@ type SortableKey = keyof ClubAnalysisData;
 // Since chart.js is loaded via a script tag, we declare it as a global variable for TypeScript.
 declare var Chart: any;
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events, competitionInfo, isLoading }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events, competitionInfo, isLoading, onDataUpdate }) => {
   const { theme } = useTheme();
   const chartRef = useRef<HTMLCanvasElement | null>(null);
   const chartInstance = useRef<any>(null); // To hold the chart instance
   const [sortConfig, setSortConfig] = useState<{ key: SortableKey; direction: 'asc' | 'desc' }>({ key: 'total', direction: 'desc' });
+  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
 
   const stats = useMemo(() => {
     const swimmerCount = swimmers.length;
@@ -177,6 +182,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
     };
   }, [chartData, isLoading, theme]);
 
+  const handleTogglePublicResults = async (enabled: boolean) => {
+    if (!competitionInfo || isUpdatingSettings) return;
+    setIsUpdatingSettings(true);
+    try {
+        const updatedInfo = { ...competitionInfo, isPublicResultsVisible: enabled };
+        await updateCompetitionInfo(updatedInfo);
+        onDataUpdate();
+    } catch (error) {
+        console.error("Gagal memperbarui visibilitas hasil publik:", error);
+    } finally {
+        setIsUpdatingSettings(false);
+    }
+  };
+
   const StatCard: React.FC<{ icon: React.ReactNode, label: string, value: number }> = ({ icon, label, value }) => (
     <Card>
         <div className="flex items-center space-x-4">
@@ -215,6 +234,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
             <StatCard icon={<ShieldIcon />} label="Total Klub" value={stats.clubCount} />
             <StatCard icon={<DocumentTextIcon />} label="Total Pendaftaran" value={stats.totalRegistrations} />
           </div>
+          
+          <Card className="mt-6">
+            <h2 className="text-xl font-bold mb-4">Pengaturan Cepat</h2>
+            <div className="space-y-4 max-w-md">
+                <ToggleSwitch
+                    label="Tampilkan 'Hasil Langsung' di Halaman Publik"
+                    enabled={competitionInfo?.isPublicResultsVisible ?? false}
+                    onChange={handleTogglePublicResults}
+                    enabledText="DITAMPILKAN"
+                    disabledText="DISEMBUNYIKAN"
+                />
+            </div>
+          </Card>
 
           <Card className="mt-6">
             <h2 className="text-xl font-bold mb-4">Analisis Klub</h2>

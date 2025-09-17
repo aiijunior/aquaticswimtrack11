@@ -15,6 +15,7 @@ const toCompetitionInfo = (data) => (data ? {
     eventLogo: data.event_logo,
     sponsorLogo: data.sponsor_logo,
     isRegistrationOpen: data.is_registration_open,
+    isPublicResultsVisible: data.is_public_results_visible,
     numberOfLanes: data.number_of_lanes,
     registrationDeadline: data.registration_deadline
 } : null);
