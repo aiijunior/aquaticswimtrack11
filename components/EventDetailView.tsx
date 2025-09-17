@@ -132,7 +132,15 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
         setIsGenerating(false);
     };
 
-    const sortedResults = event ? [...event.results].sort((a,b) => a.time - b.time) : [];
+    const sortedResults = event 
+        ? [...event.results].sort((a, b) => {
+            if (a.time < 0) return 1;
+            if (b.time < 0) return -1;
+            if (a.time === 0) return 1;
+            if (b.time === 0) return -1;
+            return a.time - b.time;
+          })
+        : [];
 
     if (isLoading) return <p>Memuat detail nomor lomba...</p>;
     if (!event) return <p>Nomor lomba tidak ditemukan.</p>;
@@ -191,9 +199,10 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                         <ol className="space-y-2">
                            {sortedResults.map((result, index) => {
                                const swimmer = detailedEntries.find(e => e.swimmerId === result.swimmerId)?.swimmer;
+                               const rank = result.time > 0 ? index + 1 : 0;
                                return (
                                    <li key={result.swimmerId} className="flex justify-between p-2 rounded-md bg-background">
-                                       <span><strong>{index + 1}.</strong> {swimmer?.name || 'Unknown'}</span>
+                                       <span><strong>{rank > 0 ? `${rank}.` : '-'}</strong> {swimmer?.name || 'Unknown'}</span>
                                        <span className="font-mono">{formatTime(result.time)}</span>
                                    </li>
                                )

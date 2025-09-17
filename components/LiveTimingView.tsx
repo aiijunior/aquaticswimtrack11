@@ -30,6 +30,7 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
     const [isSaving, setIsSaving] = useState(false);
     const [times, setTimes] = useState<Record<string, { min: string, sec: string, ms: string }>>({});
     const [dqSwimmers, setDqSwimmers] = useState(new Set<string>());
+    const [nsSwimmers, setNsSwimmers] = useState(new Set<string>());
     const [flashingLane, setFlashingLane] = useState<string | null>(null);
 
     // Stopwatch state
@@ -54,10 +55,17 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
 
             const initialTimes: Record<string, { min: string, sec: string, ms: string }> = {};
             const initialDq = new Set<string>();
+            const initialNs = new Set<string>();
             detailedEntries.forEach(entry => { 
                 const existingResult = eventData.results.find(r => r.swimmerId === entry.swimmerId);
                 if (existingResult) {
-                    if (existingResult.time < 0) {
+                    if (existingResult.time === -1) {
+                        initialDq.add(entry.swimmerId);
+                        initialTimes[entry.swimmerId] = { min: '0', sec: '0', ms: '000'};
+                    } else if (existingResult.time === -2) {
+                        initialNs.add(entry.swimmerId);
+                        initialTimes[entry.swimmerId] = { min: '0', sec: '0', ms: '000'};
+                    } else if (existingResult.time < 0) {
                         initialDq.add(entry.swimmerId);
                         initialTimes[entry.swimmerId] = { min: '0', sec: '0', ms: '000'};
                     } else {
@@ -69,6 +77,7 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
             });
             setTimes(initialTimes);
             setDqSwimmers(initialDq);
+            setNsSwimmers(initialNs);
         }
         setIsLoading(false);
     }, [eventId, swimmers, competitionInfo]);
@@ -133,12 +142,31 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
     };
     
     const handleToggleDq = (swimmerId: string) => {
-        setDqSwimmers(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(swimmerId)) newSet.delete(swimmerId);
-            else newSet.add(swimmerId);
-            return newSet;
-        });
+        const newDqSwimmers = new Set(dqSwimmers);
+        const newNsSwimmers = new Set(nsSwimmers);
+
+        if (newDqSwimmers.has(swimmerId)) {
+            newDqSwimmers.delete(swimmerId);
+        } else {
+            newDqSwimmers.add(swimmerId);
+            newNsSwimmers.delete(swimmerId); // Ensure NS is off
+        }
+        setDqSwimmers(newDqSwimmers);
+        setNsSwimmers(newNsSwimmers);
+    };
+    
+    const handleToggleNs = (swimmerId: string) => {
+        const newNsSwimmers = new Set(nsSwimmers);
+        const newDqSwimmers = new Set(dqSwimmers);
+        
+        if (newNsSwimmers.has(swimmerId)) {
+            newNsSwimmers.delete(swimmerId);
+        } else {
+            newNsSwimmers.add(swimmerId);
+            newDqSwimmers.delete(swimmerId); // Ensure DQ is off
+        }
+        setNsSwimmers(newNsSwimmers);
+        setDqSwimmers(newDqSwimmers);
     };
 
     const handleSaveResults = async () => {
@@ -151,6 +179,9 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
                 const time = times[a.entry.swimmerId];
                 if (dqSwimmers.has(a.entry.swimmerId)) {
                     return { swimmerId: a.entry.swimmerId, time: -1 };
+                }
+                 if (nsSwimmers.has(a.entry.swimmerId)) {
+                    return { swimmerId: a.entry.swimmerId, time: -2 };
                 }
                 if (!time) return { swimmerId: a.entry.swimmerId, time: 0 };
                 const ms = (parseInt(time.min || '0') * 60 * 1000) + (parseInt(time.sec || '0') * 1000) + parseInt(time.ms || '0');
@@ -203,21 +234,24 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
                 <div className="space-y-3">
                     {currentHeat.assignments.map(({ lane, entry }) => {
                         const isDq = dqSwimmers.has(entry.swimmer.id);
+                        const isNs = nsSwimmers.has(entry.swimmer.id);
+                        const isDisabled = isDq || isNs;
                          return (
-                         <div key={lane} className={`p-2 rounded-lg grid grid-cols-12 gap-x-3 items-center ${isDq ? 'bg-red-900/50' : 'bg-surface'} ${flashingLane === entry.swimmer.id ? 'flash-animation' : ''} border border-border`}>
+                         <div key={lane} className={`p-2 rounded-lg grid grid-cols-12 gap-x-3 items-center ${isDq ? 'bg-red-900/50' : isNs ? 'bg-gray-700/50' : 'bg-surface'} ${flashingLane === entry.swimmer.id ? 'flash-animation' : ''} border border-border`}>
                             <div className="col-span-1 font-bold text-2xl text-center text-text-secondary">{lane}</div>
                             <div className="col-span-11 sm:col-span-5">
                                 <p className="font-semibold text-lg text-text-primary">{entry.swimmer.name}</p>
                                 <p className="text-sm text-text-secondary">{entry.swimmer.club}</p>
                             </div>
                             <div className="col-span-8 sm:col-span-4 flex items-center bg-background rounded-md p-1 border border-border">
-                                <Input aria-label="Minutes" className="w-1/3" label="" id={`min-${entry.swimmer.id}`} type="number" min="0" value={times[entry.swimmer.id]?.min || '0'} onChange={e => handleTimeChange(entry.swimmer.id, 'min', e.target.value)} disabled={isDq} />
+                                <Input aria-label="Minutes" className="w-1/3" label="" id={`min-${entry.swimmer.id}`} type="number" min="0" value={times[entry.swimmer.id]?.min || '0'} onChange={e => handleTimeChange(entry.swimmer.id, 'min', e.target.value)} disabled={isDisabled} />
                                 <span className="px-1 text-text-secondary">:</span>
-                                <Input aria-label="Seconds" className="w-1/3" label="" id={`sec-${entry.swimmer.id}`} type="number" min="0" max="59" value={times[entry.swimmer.id]?.sec || '0'} onChange={e => handleTimeChange(entry.swimmer.id, 'sec', e.target.value)} disabled={isDq} />
+                                <Input aria-label="Seconds" className="w-1/3" label="" id={`sec-${entry.swimmer.id}`} type="number" min="0" max="59" value={times[entry.swimmer.id]?.sec || '0'} onChange={e => handleTimeChange(entry.swimmer.id, 'sec', e.target.value)} disabled={isDisabled} />
                                 <span className="px-1 text-text-secondary">.</span>
-                                <Input aria-label="Milliseconds" className="w-1/3" label="" id={`ms-${entry.swimmer.id}`} type="number" min="0" max="999" value={times[entry.swimmer.id]?.ms || '0'} onChange={e => handleTimeChange(entry.swimmer.id, 'ms', e.target.value)} disabled={isDq} />
+                                <Input aria-label="Milliseconds" className="w-1/3" label="" id={`ms-${entry.swimmer.id}`} type="number" min="0" max="999" value={times[entry.swimmer.id]?.ms || '0'} onChange={e => handleTimeChange(entry.swimmer.id, 'ms', e.target.value)} disabled={isDisabled} />
                             </div>
                             <div className="col-span-4 sm:col-span-2 flex items-center justify-end space-x-2">
+                                <Button onClick={() => handleToggleNs(entry.swimmer.id)} className={`px-4 py-2 ${isNs ? 'bg-slate-500' : 'bg-slate-700'}`}>NS</Button>
                                 <Button onClick={() => handleToggleDq(entry.swimmer.id)} className={`px-4 py-2 ${isDq ? 'bg-red-600' : 'bg-yellow-600'}`}>DQ</Button>
                                 <button
                                     onClick={() => handleTapLane(entry.swimmer.id)}

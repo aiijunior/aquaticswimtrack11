@@ -26,6 +26,7 @@ function usePrevious<T>(value: T): T | undefined {
 
 // --- Helper Components & Functions ---
 const formatTime = (ms: number) => {
+    if (ms === -2) return 'NS';
     if (ms < 0) return 'DQ';
     if (ms === 0) return 'NT';
     const totalSeconds = ms / 1000;
@@ -222,11 +223,13 @@ export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ onAdminLog
                                                         if (rank === 3) return 'border-l-4 border-orange-600 bg-orange-600/5';
                                                         return 'border-l-4 border-transparent';
                                                     };
-                                                    const isDq = result.time < 0;
+                                                    const isDq = result.time === -1;
+                                                    const isNs = result.time === -2;
                                                     return (
-                                                        <tr key={result.swimmerId} className={`border-b border-border last:border-b-0 ${isDq ? 'bg-red-500/10' : getRankClasses(result.rank)}`}>
+                                                        <tr key={result.swimmerId} className={`border-b border-border last:border-b-0 ${isDq ? 'bg-red-500/10' : isNs ? 'bg-gray-500/10' : getRankClasses(result.rank)}`}>
                                                             <td className="p-3 text-center font-bold text-lg">
-                                                                {isDq ? <span className="text-red-500">DQ</span> : 
+                                                                {isDq ? <span className="text-red-500">DQ</span> :
+                                                                 isNs ? <span className="text-gray-500">NS</span> :
                                                                 <>
                                                                 <span>{result.rank}</span>
                                                                 <Medal rank={result.rank} />

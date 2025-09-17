@@ -34,7 +34,8 @@ const romanize = (num: number): string => {
 
 const formatTime = (ms: number) => {
     if (ms === 0) return 'NT';
-    if (ms < 0) return 'DQ'
+    if (ms === -2) return 'NS';
+    if (ms < 0) return 'DQ';
     const totalSeconds = ms / 1000;
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = Math.floor(totalSeconds % 60);
