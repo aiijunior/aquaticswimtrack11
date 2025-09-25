@@ -343,11 +343,9 @@ const App: React.FC = () => {
                 <NavLink label="Daftar Perenang" icon={<UsersIcon />} isActive={currentView === View.SWIMMERS_LIST} onClick={() => navigateTo(View.SWIMMERS_LIST)}/>
                 <NavLink label="Hasil Lomba" icon={<MedalIcon />} isActive={currentView === View.RESULTS} onClick={() => navigateTo(View.RESULTS)}/>
                 <NavLink label="Unduh Laporan" icon={<PrintIcon />} isActive={currentView === View.PRINT_MENU} onClick={() => navigateTo(View.PRINT_MENU)}/>
+                <NavLink label="SQL Editor" icon={<DatabaseIcon />} isActive={currentView === View.SQL_EDITOR} onClick={() => navigateTo(View.SQL_EDITOR)}/>
                 {currentUser?.role === 'SUPER_ADMIN' && (
-                  <>
-                    <NavLink label="Manajemen Akun" icon={<AccountManagementIcon />} isActive={currentView === View.USER_MANAGEMENT} onClick={() => navigateTo(View.USER_MANAGEMENT)}/>
-                    <NavLink label="SQL Editor" icon={<DatabaseIcon />} isActive={currentView === View.SQL_EDITOR} onClick={() => navigateTo(View.SQL_EDITOR)}/>
-                  </>
+                  <NavLink label="Manajemen Akun" icon={<AccountManagementIcon />} isActive={currentView === View.USER_MANAGEMENT} onClick={() => navigateTo(View.USER_MANAGEMENT)}/>
                 )}
             </nav>
         </div>

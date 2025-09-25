@@ -67,6 +67,14 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
   const [uploadResult, setUploadResult] = useState<{ success: number; errors: string[] } | null>(null);
 
+  const hasSchemaError = useMemo(() => {
+    if (!uploadResult || !uploadResult.errors) return false;
+    return uploadResult.errors.some(err => 
+        err.toLowerCase().includes('skema database anda mungkin perlu diperbarui') ||
+        err.toLowerCase().includes('invalid input value for enum public.swim_style')
+    );
+  }, [uploadResult]);
+
   const sessions = useMemo(() => {
     if (!events) return { scheduled: [], unscheduledExists: false };
     const sessionNumbers = new Set(events.map(e => e.sessionNumber || 0));
@@ -607,16 +615,32 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
             </div>
 
             {uploadResult && (
-                <div className="mt-4 text-sm">
-                    {uploadResult.errors.length > 0 ? (
+                <div className="mt-4 text-sm space-y-2">
+                    {hasSchemaError ? (
+                        <div className="p-3 bg-red-900/20 border border-red-500/50 rounded-md">
+                            <h4 className="font-bold text-red-400">Tindakan Diperlukan: Perbarui Skema Database</h4>
+                            <p className="text-red-300/90 mt-1">
+                                Penyimpanan gagal karena gaya renang baru (seperti "Papan Luncur") belum ada di database Anda.
+                            </p>
+                            <p className="text-red-300/90 mt-2">
+                                Buka menu <strong className="font-semibold">"SQL Editor"</strong>, salin perintah perbaikan yang tersedia di sana, dan jalankan di Supabase untuk mengatasi masalah ini.
+                            </p>
+                        </div>
+                    ) : uploadResult.errors.length > 0 ? (
+                        <p className="text-red-500 font-bold">
+                            Ditemukan {uploadResult.errors.length} galat. {uploadResult.success > 0 ? `${uploadResult.success} nomor lomba berhasil ditambahkan.` : 'Tidak ada nomor lomba yang ditambahkan.'} Harap perbaiki file dan coba lagi.
+                        </p>
+                    ) : (
+                        <p className="text-green-500 font-bold">Berhasil! {uploadResult.success} nomor lomba baru telah ditambahkan.</p>
+                    )}
+                    
+                    {uploadResult.errors.length > 0 && (
                         <div>
-                            <p className="text-red-500 font-bold">Ditemukan {uploadResult.errors.length} galat. {uploadResult.success > 0 ? `${uploadResult.success} nomor lomba berhasil ditambahkan.` : 'Tidak ada nomor lomba yang ditambahkan.'} Harap perbaiki file dan coba lagi.</p>
+                            <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
                                 {uploadResult.errors.map((err, i) => <li key={i}>{err}</li>)}
                             </ul>
                         </div>
-                    ) : (
-                        <p className="text-green-500 font-bold">Berhasil! {uploadResult.success} nomor lomba baru telah ditambahkan.</p>
                     )}
                 </div>
             )}
