@@ -45,7 +45,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
         const clubMedals: Record<string, MedalCounts> = {};
         const individualMedals: Record<string, MedalCounts & { swimmer: Swimmer }> = {};
         const brokenRecordsList: BrokenRecord[] = [];
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        // FIX: Explicitly type the Map to ensure correct type inference for swimmer objects.
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
 
         // First, calculate all broken records across all events
         events.forEach(event => {

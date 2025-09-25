@@ -287,7 +287,7 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
 
 const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[], brokenRecords: BrokenRecord[] }> = ({ events, swimmers, info, records, brokenRecords }) => {
     const data = useMemo(() => {
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
         let globalEventCounter = 1;
         return events
             .filter(e => e.results && e.results.length > 0)
@@ -366,7 +366,7 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
 const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo }> = ({ events, swimmers, info }) => {
     const data = useMemo(() => {
         const clubMedals: Record<string, { gold: number, silver: number, bronze: number }> = {};
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
 
         events.forEach(event => {
             if (!event.results) return;
@@ -509,7 +509,7 @@ const TieBreakerAnalysisTable: React.FC<{ tiedAthletes: IndividualStandingData[]
 
 const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; info: CompetitionInfo; records: SwimRecord[] }> = ({ events, swimmers, info, records }) => {
     const processedData = useMemo(() => {
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
         const nationalRecordsMap = new Map(
             records.filter(r => r.type === RecordType.NASIONAL).map(r => {
                 const key = `${r.gender}_${r.distance}_${r.style}_${r.category ?? null}_${r.relayLegs ?? null}`;
@@ -749,7 +749,7 @@ const BrokenRecordsReport: React.FC<{ brokenRecords: BrokenRecord[], info: Compe
 // FIX: Corrected the type of the `swimmers` prop from `SwimEvent[]` to `Swimmer[]`.
 const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo }> = ({ events, swimmers, info }) => {
     const data = useMemo(() => {
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
         
         const getCategoryKey = (event: SwimEvent): string => {
             const category = event.category?.trim() || 'Umum';
@@ -844,7 +844,7 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
     };
 
     const data = useMemo(() => {
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
         const allMedals: MedalInfo[] = [];
 
         events.forEach(event => {
@@ -1232,7 +1232,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             if (rank === 1) return '🥇'; if (rank === 2) return '🥈'; if (rank === 3) return '🥉'; return '';
         };
 
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
         const NUM_COLS = 6;
         const headerInfo = getExcelHeaderAOA('Hasil Lomba per Nomor', NUM_COLS);
         const aoa: any[][] = headerInfo.aoa;
@@ -1276,7 +1276,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
     const downloadClubStandingsExcel = () => {
         if (!competitionInfo) return;
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
         const clubMedalsData = Object.entries(
             events.reduce((acc, event) => {
                 if (!event.results) return acc;
@@ -1319,7 +1319,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const downloadIndividualStandingsExcel = () => {
         if (!competitionInfo) return;
         const processedData = (() => { // Re-implementing tie-breaker logic inside function
-            const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+            const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
             const nationalRecordsMap = new Map(records.filter(r => r.type === RecordType.NASIONAL).map(r => [`${r.gender}_${r.distance}_${r.style}_${r.category ?? null}_${r.relayLegs ?? null}`, r]));
             const individualData: Record<string, IndividualStandingData> = {};
             events.filter(e => e.gender !== Gender.MIXED && e.results && e.results.length > 0).forEach(event => {
@@ -1415,7 +1415,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
     const downloadRekapJuaraKategoriExcel = () => {
         if (!competitionInfo) return;
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
          const getCategoryKey = (event: SwimEvent): string => {
             const category = event.category?.trim() || 'Umum'; return category;
         };
@@ -1457,7 +1457,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const downloadClubAthleteRecapExcel = () => {
         if (!competitionInfo) return;
         type MedalInfo = { club: string; event: string; athleteName: string; time: number; rank: number; recordBreakType: RecordType | null; };
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
         const allMedals: MedalInfo[] = [];
         events.forEach(event => {
             if (event.results && event.results.length > 0) {

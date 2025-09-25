@@ -93,10 +93,11 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         return acc;
     }, {} as Record<number, SwimEvent[]>);
 
-    // Sort events within each session
-    for (const sessionNum in grouped) {
-        grouped[sessionNum].sort((a, b) => (a.heatOrder ?? 999) - (b.heatOrder ?? 999));
-    }
+    // FIX: Replaced `for...in` loop with `Object.values().forEach()` to prevent type errors.
+    // This correctly infers the type of `sessionEvents` as `SwimEvent[]` for sorting.
+    Object.values(grouped).forEach(sessionEvents => {
+      sessionEvents.sort((a, b) => (a.heatOrder ?? 999) - (b.heatOrder ?? 999));
+    });
 
     const filteredAndGrouped: Record<string, SwimEvent[]> = {};
     const sessionKeys = Object.keys(grouped).map(Number).sort((a,b) => a-b);

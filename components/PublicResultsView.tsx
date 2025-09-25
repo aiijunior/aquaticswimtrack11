@@ -118,7 +118,7 @@ export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ onAdminLog
 
     const { eventsWithResults } = useMemo(() => {
         const brokenRecordsList: BrokenRecord[] = [];
-        const swimmersMap = new Map(localSwimmers.map(s => [s.id, s]));
+        const swimmersMap = new Map<string, Swimmer>(localSwimmers.map(s => [s.id, s]));
 
         localEvents.forEach(event => {
             if (event.results && event.results.length > 0) {
