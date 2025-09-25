@@ -20,6 +20,9 @@ WHERE club = 'Klub Cepat'
 ORDER BY birth_year DESC
 LIMIT 5;`;
 
+    const fixPapanLuncurQuery = `-- Menambahkan 'Papan Luncur' ke tipe data gaya renang
+ALTER TYPE public.swim_style ADD VALUE IF NOT EXISTS 'Papan Luncur';`;
+
     return (
         <div>
             <h1 className="text-3xl font-bold mb-6">SQL Editor</h1>
@@ -59,6 +62,17 @@ LIMIT 5;`;
                     </p>
                     <CodeBlock>{exampleQuery}</CodeBlock>
                 </div>
+            </Card>
+
+            <Card className="mt-6 border-orange-500/50 bg-orange-500/5">
+                <h3 className="text-lg font-semibold text-orange-600 dark:text-orange-400">Penyelesaian Masalah (Troubleshooting)</h3>
+                <p className="text-text-secondary mt-2">
+                    Jika Anda mengalami galat saat mencoba membuat atau mengunggah nomor lomba dengan gaya <strong>"Papan Luncur"</strong>, kemungkinan skema database Anda perlu diperbarui.
+                </p>
+                <p className="text-text-secondary mt-2">
+                    Jalankan perintah SQL berikut di Editor Supabase untuk memperbaikinya:
+                </p>
+                <CodeBlock>{fixPapanLuncurQuery}</CodeBlock>
             </Card>
         </div>
     );

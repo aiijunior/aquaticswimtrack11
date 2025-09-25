@@ -508,10 +508,11 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
 
     for (const [index, row] of data.entries()) {
         const rowNum = index + 2;
+        const styleStr = row['Gaya']?.trim();
 
         try {
             const distance = parseInt(row['Jarak (m)'], 10);
-            const styleStr = row['Gaya']?.trim();
+            
             const genderStr = row['Jenis Kelamin']?.trim();
             const category = toTitleCase(row['Kategori']?.toString().trim() || '') || null;
             const relayLegsStr = row['Jumlah Perenang']?.toString().trim();
@@ -531,7 +532,11 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
             });
             successCount++;
         } catch (error: any) {
-            errors.push(`Baris ${rowNum}: ${error.message}`);
+            let errorMessage = error.message;
+            if (errorMessage.toLowerCase().includes('invalid input value for enum public.swim_style')) {
+                errorMessage = `Gaya "${styleStr}" tidak valid di database. Skema database Anda mungkin perlu diperbarui. Coba jalankan perintah perbaikan dari menu "SQL Editor".`;
+            }
+            errors.push(`Baris ${rowNum}: ${errorMessage}`);
         }
     }
     

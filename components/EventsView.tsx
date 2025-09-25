@@ -141,7 +141,15 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         onDataUpdate();
     } catch (error) {
         console.error("Gagal menambahkan nomor lomba:", error);
-        setFormError(error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan.");
+        let errorMessage = "Terjadi kesalahan saat menyimpan.";
+        if (error instanceof Error) {
+            if (error.message.toLowerCase().includes('invalid input value for enum public.swim_style')) {
+                errorMessage = `Gagal menyimpan gaya "${translateSwimStyle(newEvent.style)}". Skema database Anda mungkin perlu diperbarui. Coba jalankan perintah perbaikan dari menu "SQL Editor".`;
+            } else {
+                errorMessage = error.message;
+            }
+        }
+        setFormError(errorMessage);
     }
   };
   
