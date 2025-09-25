@@ -116,7 +116,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
     const isFormValid = useMemo(() => {
         const hasPersonalInfo = formData.name.trim() !== '' && formData.club.trim() !== '';
-        // FIX: Explicitly type `e` to resolve 'unknown' type error.
         const hasSelectedEvent = Object.values(selectedEvents).some((e: { selected: boolean }) => e.selected);
         return hasPersonalInfo && hasSelectedEvent;
     }, [formData, selectedEvents]);
@@ -151,7 +150,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     }, [availableEvents]);
     
     const selectedEventCount = useMemo(() => {
-        // FIX: Explicitly type `e` to resolve 'unknown' type error.
         return Object.values(selectedEvents).filter((e: { selected: boolean }) => e.selected).length;
     }, [selectedEvents]);
 
@@ -182,8 +180,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     };
 
     const handleTimeChange = (eventId: string, part: keyof RegistrationTime, value: string) => {
-        // FIX: Rewrote state update to be safer and avoid spreading potentially undefined values,
-        // which could cause runtime errors and type issues.
         setSelectedEvents(prev => {
             const currentEvent = prev[eventId] || { selected: true, time: { min: '99', sec: '99', ms: '99' } };
             return {

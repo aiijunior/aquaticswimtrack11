@@ -28,7 +28,7 @@ const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     };
 
     return (
-        <div className="relative">
+        <div className="relative mt-2">
             <pre className="bg-background p-4 rounded-md text-sm text-text-primary whitespace-pre-wrap font-mono overflow-x-auto">
                 <code>{children}</code>
             </pre>
@@ -287,9 +287,9 @@ ON CONFLICT (id) DO NOTHING;`;
                     Buka Supabase SQL Editor
                 </Button>
             </Card>
-
-            <Card className="mt-6 border-orange-500/50 bg-orange-500/5">
-                <h3 className="text-lg font-semibold text-orange-600 dark:text-orange-400">Perbaikan Cepat: Gaya "Papan Luncur"</h3>
+            
+            <Card className="mt-6 border-primary/50 bg-primary/5">
+                <h3 className="text-lg font-semibold text-primary">Perbaikan Cepat: Gaya "Papan Luncur"</h3>
                 <p className="text-text-secondary mt-2">
                     Jika Anda mengalami galat saat mencoba membuat atau mengunggah nomor lomba dengan gaya <strong>"Papan Luncur"</strong>, kemungkinan skema database Anda perlu diperbarui.
                 </p>

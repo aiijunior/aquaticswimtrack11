@@ -746,7 +746,6 @@ const BrokenRecordsReport: React.FC<{ brokenRecords: BrokenRecord[], info: Compe
     );
 };
 
-// FIX: Corrected the type of the `swimmers` prop from `SwimEvent[]` to `Swimmer[]`.
 const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo }> = ({ events, swimmers, info }) => {
     const data = useMemo(() => {
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
