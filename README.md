@@ -24,6 +24,21 @@ Aquatic Swimtrack 11 adalah aplikasi modern, *offline-first*, dan *real-time* ya
 Catatan ini melacak semua perubahan signifikan yang diterapkan pada aplikasi Aquatic Swimtrack 11.
 
 ---
+### **Versi 1.1.5: Fitur SQL Editor & Perbaikan Tipe Data**
+*Tanggal Rilis: Sesuai pembaruan terakhir*
+
+Pembaruan ini memperkenalkan fitur baru untuk administrator tingkat lanjut dan memperbaiki masalah terkait penyimpanan data.
+
+- **Fitur Baru: SQL Editor (Khusus Super Admin)**
+  - Menambahkan tautan "SQL Editor" baru di menu samping untuk pengguna dengan peran Super Admin.
+  - Untuk menjaga keamanan, fitur ini tidak menjalankan kueri dari dalam aplikasi. Sebaliknya, fitur ini memberikan tautan aman langsung ke editor SQL di dasbor Supabase proyek Anda.
+  - Halaman ini menyertakan peringatan keamanan dan contoh kueri untuk memandu administrator.
+
+- **Perbaikan: Tipe Data 'Papan Luncur'**
+  - Memperbaiki bug kritis di mana nomor lomba dengan gaya "Papan Luncur" tidak dapat disimpan ke database.
+  - Skrip SQL di README.md telah diperbarui untuk menyertakan "Papan Luncur" sebagai tipe `swim_style` yang valid. Pengguna baru atau yang mengatur ulang database harus menjalankan skrip terbaru.
+
+---
 ### **Versi 1.1.4 (Pembaruan Terkini): Dasbor Analitik & Peningkatan UI**
 *Tanggal Rilis: Sesuai pembaruan terakhir*
 
@@ -127,6 +142,10 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
             CREATE TYPE public.user_role AS ENUM ('SUPER_ADMIN', 'ADMIN');
         END IF;
     END $$;
+
+    -- If the 'swim_style' type already exists, add the new value.
+    -- This command will fail gracefully if the type or value already exists.
+    ALTER TYPE public.swim_style ADD VALUE IF NOT EXISTS 'Papan Luncur';
 
     -- Table for Competition Information
     CREATE TABLE IF NOT EXISTS public.competition_info (
