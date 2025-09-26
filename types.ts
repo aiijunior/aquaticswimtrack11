@@ -1,4 +1,3 @@
-
 // We are removing the import of SupabaseUser to break a circular dependency.
 // import type { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -8,7 +7,7 @@ export enum SwimStyle {
   BREASTSTROKE = 'Breaststroke',
   BUTTERFLY = 'Butterfly',
   MEDLEY = 'Medley',
-  PAPAN_LUNCUR = 'Gaya Papan Luncur',
+  PAPAN_LUNCUR = 'Papan Luncur',
 }
 
 export enum Gender {

@@ -1,4 +1,3 @@
-
 import { SwimStyle, Gender, RecordType } from './types';
 import type { SwimEvent, SwimRecord, FormattableEvent, Entry, Heat, LaneAssignment } from './types';
 
@@ -19,7 +18,7 @@ export const SWIM_STYLE_TRANSLATIONS: Record<SwimStyle, string> = {
     [SwimStyle.BREASTSTROKE]: "Gaya Dada",
     [SwimStyle.BUTTERFLY]: "Gaya Kupu-kupu",
     [SwimStyle.MEDLEY]: "Gaya Ganti",
-    [SwimStyle.PAPAN_LUNCUR]: "Gaya Papan Luncur",
+    [SwimStyle.PAPAN_LUNCUR]: "Papan Luncur",
 };
 
 export const translateGender = (gender: Gender): string => GENDER_TRANSLATIONS[gender] || gender;

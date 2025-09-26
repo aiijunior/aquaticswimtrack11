@@ -1,4 +1,3 @@
-
 export type Database = {
   public: {
     Tables: {
@@ -39,7 +38,7 @@ export type Database = {
         Row: {
           id: string
           distance: number
-          style: "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "Medley" | "Gaya Papan Luncur"
+          style: "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "Medley" | "Papan Luncur"
           gender: "Men's" | "Women's" | "Mixed"
           session_number: number | null
           heat_order: number | null
@@ -50,7 +49,7 @@ export type Database = {
         Insert: {
           id?: string
           distance: number
-          style: "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "Medley" | "Gaya Papan Luncur"
+          style: "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "Medley" | "Papan Luncur"
           gender: "Men's" | "Women's" | "Mixed"
           session_number?: number | null
           heat_order?: number | null
@@ -61,7 +60,7 @@ export type Database = {
         Update: {
           id?: string
           distance?: number
-          style?: "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "Medley" | "Gaya Papan Luncur"
+          style?: "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "Medley" | "Papan Luncur"
           gender?: "Men's" | "Women's" | "Mixed"
           session_number?: number | null
           heat_order?: number | null
@@ -143,7 +142,7 @@ export type Database = {
           type: "PORPROV" | "Nasional"
           gender: "Men's" | "Women's" | "Mixed"
           distance: number
-          style: "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "Medley" | "Gaya Papan Luncur"
+          style: "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "Medley" | "Papan Luncur"
           time: number
           holder_name: string
           year_set: number
@@ -156,7 +155,7 @@ export type Database = {
           type: "PORPROV" | "Nasional"
           gender: "Men's" | "Women's" | "Mixed"
           distance: number
-          style: "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "Medley" | "Gaya Papan Luncur"
+          style: "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "Medley" | "Papan Luncur"
           time: number
           holder_name: string
           year_set: number
@@ -169,7 +168,7 @@ export type Database = {
           type?: "PORPROV" | "Nasional"
           gender?: "Men's" | "Women's" | "Mixed"
           distance?: number
-          style?: "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "Medley" | "Gaya Papan Luncur"
+          style?: "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "Medley" | "Papan Luncur"
           time?: number
           holder_name?: string
           year_set?: number

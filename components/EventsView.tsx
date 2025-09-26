@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import type { SwimEvent } from '../types';
 import { SwimStyle, Gender } from '../types';
@@ -94,7 +93,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         return acc;
     }, {} as Record<number, SwimEvent[]>);
 
-    // Sort events within each session by heatOrder
+    // FIX: Replaced `for...in` loop with `Object.values().forEach()` to prevent type errors.
+    // This correctly infers the type of `sessionEvents` as `SwimEvent[]` for sorting.
     Object.values(grouped).forEach(sessionEvents => {
       sessionEvents.sort((a, b) => (a.heatOrder ?? 999) - (b.heatOrder ?? 999));
     });
@@ -291,7 +291,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         },
         {
             "Jarak (m)": 25,
-            "Gaya": "Gaya Papan Luncur",
+            "Gaya": "Papan Luncur",
             "Jenis Kelamin": "Putra",
             "Kategori": "KU-4",
             "Jumlah Perenang": ""
@@ -548,6 +548,105 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
           </div>
         )}
       </Modal>
+
+      <Modal isOpen={isDeleteAllModalOpen} onClose={() => setIsDeleteAllModalOpen(false)} title="Konfirmasi Hapus Semua Nomor Lomba">
+            <div className="space-y-6">
+                <p className="text-text-secondary">
+                    Anda benar-benar yakin ingin menghapus <strong className="text-text-primary">SEMUA</strong> data nomor lomba?
+                    <br/><br/>
+                    Tindakan ini akan <strong className="text-red-500">menghapus permanen</strong> semua nomor lomba beserta data pendaftaran dan hasil yang terkait.
+                    <br />
+                    Tindakan ini <strong className="font-bold">TIDAK DAPAT DIBATALKAN</strong>.
+                </p>
+                <div className="flex justify-end space-x-4">
+                    <Button variant="secondary" onClick={() => setIsDeleteAllModalOpen(false)}>Batal</Button>
+                    <Button variant="danger" onClick={handleConfirmDeleteAll}>Ya, Hapus Semua</Button>
+                </div>
+            </div>
+      </Modal>
+
+      <Modal isOpen={isUploadModalOpen} onClose={closeUploadModal} title="Unggah Nomor Lomba dari Excel">
+        <div className="space-y-4">
+            <div>
+                <p className="text-text-secondary mb-2">Unggah file Excel (.xlsx) untuk menambahkan beberapa nomor lomba sekaligus. File harus memiliki kolom berikut:</p>
+                <code className="block text-sm bg-surface p-2 rounded-md whitespace-pre">Jarak (m) | Gaya | Jenis Kelamin | Kategori | Jumlah Perenang</code>
+                <p className="text-xs text-text-secondary mt-1">Kolom 'Kategori' dan 'Jumlah Perenang' bersifat opsional.</p>
+                
+                <div className="mt-4 pt-4 border-t border-border">
+                    <p className="text-sm font-semibold text-text-secondary mb-2">Contoh untuk nomor estafet (misal: 4x100m Estafet Gaya Ganti Campuran KU-3):</p>
+                    <div className="bg-background p-2 rounded">
+                        <table className="w-full text-xs text-left">
+                            <thead>
+                                <tr>
+                                    <th className="p-1 font-semibold">Jarak (m)</th>
+                                    <th className="p-1 font-semibold">Gaya</th>
+                                    <th className="p-1 font-semibold">Jenis Kelamin</th>
+                                    <th className="p-1 font-semibold">Kategori</th>
+                                    <th className="p-1 font-semibold">Jumlah Perenang</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr className="font-mono">
+                                    <td className="p-1">100</td>
+                                    <td className="p-1">Gaya Ganti</td>
+                                    <td className="p-1">Campuran</td>
+                                    <td className="p-1">KU-3</td>
+                                    <td className="p-1">4</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <Button variant="secondary" onClick={handleDownloadTemplate}>
+                Unduh Template
+            </Button>
+
+            <div className="flex items-center space-x-4 pt-4">
+                <input type="file" id="event-upload" accept=".xlsx, .xls" className="hidden" onChange={handleFileChange} />
+                <Button type="button" onClick={() => document.getElementById('event-upload')?.click()}>Pilih File</Button>
+                {uploadFile && <span className="text-text-secondary text-sm">{uploadFile.name}</span>}
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-border">
+                <Button onClick={handleProcessUpload} disabled={!uploadFile || isProcessingUpload}>
+                    {isProcessingUpload ? <Spinner /> : 'Proses & Tambahkan'}
+                </Button>
+            </div>
+
+            {uploadResult && (
+                <div className="mt-4 text-sm space-y-2">
+                    {hasSchemaError ? (
+                        <div className="p-3 bg-red-900/20 border border-red-500/50 rounded-md">
+                            <h4 className="font-bold text-red-400">Tindakan Diperlukan: Perbarui Skema Database</h4>
+                            <p className="text-red-300/90 mt-1">
+                                Penyimpanan gagal karena gaya renang baru (seperti "Papan Luncur") belum ada di database Anda.
+                            </p>
+                            <p className="text-red-300/90 mt-2">
+                                Buka menu <strong className="font-semibold">"SQL Editor"</strong>, salin perintah perbaikan yang tersedia di sana, dan jalankan di Supabase untuk mengatasi masalah ini.
+                            </p>
+                        </div>
+                    ) : uploadResult.errors.length > 0 ? (
+                        <p className="text-red-500 font-bold">
+                            Ditemukan {uploadResult.errors.length} galat. {uploadResult.success > 0 ? `${uploadResult.success} nomor lomba berhasil ditambahkan.` : 'Tidak ada nomor lomba yang ditambahkan.'} Harap perbaiki file dan coba lagi.
+                        </p>
+                    ) : (
+                        <p className="text-green-500 font-bold">Berhasil! {uploadResult.success} nomor lomba baru telah ditambahkan.</p>
+                    )}
+                    
+                    {uploadResult.errors.length > 0 && (
+                        <div>
+                            <p className="font-semibold text-text-secondary">Detail Galat:</p>
+                            <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
+                                {uploadResult.errors.map((err, i) => <li key={i}>{err}</li>)}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    </Modal>
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -29,7 +28,7 @@ const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     };
 
     return (
-        <div className="relative mt-2">
+        <div className="relative">
             <pre className="bg-background p-4 rounded-md text-sm text-text-primary whitespace-pre-wrap font-mono overflow-x-auto">
                 <code>{children}</code>
             </pre>
@@ -48,13 +47,13 @@ export const SqlEditorView: React.FC = () => {
     const projectRef = config.supabase.url.replace('https://', '').split('.')[0];
     const supabaseSqlEditorUrl = `https://app.supabase.com/project/${projectRef}/sql/new`;
 
-    const fixPapanLuncurQuery = `-- Menambahkan 'Gaya Papan Luncur' ke tipe data gaya renang
-ALTER TYPE public.swim_style ADD VALUE IF NOT EXISTS 'Gaya Papan Luncur';`;
+    const fixPapanLuncurQuery = `-- Menambahkan 'Papan Luncur' ke tipe data gaya renang
+ALTER TYPE public.swim_style ADD VALUE IF NOT EXISTS 'Papan Luncur';`;
 
     const fullSetupScript = `-- Create custom types for enums, but only if they don't already exist.
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'swim_style') THEN
-        CREATE TYPE public.swim_style AS ENUM ('Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Medley', 'Gaya Papan Luncur');
+        CREATE TYPE public.swim_style AS ENUM ('Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Medley', 'Papan Luncur');
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'gender') THEN
         CREATE TYPE public.gender AS ENUM ('Men''s', 'Women''s', 'Mixed');
@@ -72,7 +71,7 @@ END $$;
 
 -- If the 'swim_style' type already exists, add the new value.
 -- This command will fail gracefully if the type or value already exists.
-ALTER TYPE public.swim_style ADD VALUE IF NOT EXISTS 'Gaya Papan Luncur';
+ALTER TYPE public.swim_style ADD VALUE IF NOT EXISTS 'Papan Luncur';
 
 -- Table for Competition Information
 CREATE TABLE IF NOT EXISTS public.competition_info (
@@ -288,11 +287,11 @@ ON CONFLICT (id) DO NOTHING;`;
                     Buka Supabase SQL Editor
                 </Button>
             </Card>
-            
-            <Card className="mt-6 border-primary/50 bg-primary/5">
-                <h3 className="text-lg font-semibold text-primary">Perbaikan Cepat: Gaya "Gaya Papan Luncur"</h3>
+
+            <Card className="mt-6 border-orange-500/50 bg-orange-500/5">
+                <h3 className="text-lg font-semibold text-orange-600 dark:text-orange-400">Perbaikan Cepat: Gaya "Papan Luncur"</h3>
                 <p className="text-text-secondary mt-2">
-                    Jika Anda mengalami galat saat mencoba membuat atau mengunggah nomor lomba dengan gaya <strong>"Gaya Papan Luncur"</strong>, kemungkinan skema database Anda perlu diperbarui.
+                    Jika Anda mengalami galat saat mencoba membuat atau mengunggah nomor lomba dengan gaya <strong>"Papan Luncur"</strong>, kemungkinan skema database Anda perlu diperbarui.
                 </p>
                 <p className="text-text-secondary mt-2">
                     Jalankan perintah SQL berikut di Editor Supabase untuk memperbaikinya:
