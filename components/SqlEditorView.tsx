@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -47,13 +48,13 @@ export const SqlEditorView: React.FC = () => {
     const projectRef = config.supabase.url.replace('https://', '').split('.')[0];
     const supabaseSqlEditorUrl = `https://app.supabase.com/project/${projectRef}/sql/new`;
 
-    const fixPapanLuncurQuery = `-- Menambahkan 'Papan Luncur' ke tipe data gaya renang
-ALTER TYPE public.swim_style ADD VALUE IF NOT EXISTS 'Papan Luncur';`;
+    const fixPapanLuncurQuery = `-- Menambahkan 'Gaya Papan Luncur' ke tipe data gaya renang
+ALTER TYPE public.swim_style ADD VALUE IF NOT EXISTS 'Gaya Papan Luncur';`;
 
     const fullSetupScript = `-- Create custom types for enums, but only if they don't already exist.
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'swim_style') THEN
-        CREATE TYPE public.swim_style AS ENUM ('Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Medley', 'Papan Luncur');
+        CREATE TYPE public.swim_style AS ENUM ('Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Medley', 'Gaya Papan Luncur');
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'gender') THEN
         CREATE TYPE public.gender AS ENUM ('Men''s', 'Women''s', 'Mixed');
@@ -71,7 +72,7 @@ END $$;
 
 -- If the 'swim_style' type already exists, add the new value.
 -- This command will fail gracefully if the type or value already exists.
-ALTER TYPE public.swim_style ADD VALUE IF NOT EXISTS 'Papan Luncur';
+ALTER TYPE public.swim_style ADD VALUE IF NOT EXISTS 'Gaya Papan Luncur';
 
 -- Table for Competition Information
 CREATE TABLE IF NOT EXISTS public.competition_info (
@@ -289,9 +290,9 @@ ON CONFLICT (id) DO NOTHING;`;
             </Card>
             
             <Card className="mt-6 border-primary/50 bg-primary/5">
-                <h3 className="text-lg font-semibold text-primary">Perbaikan Cepat: Gaya "Papan Luncur"</h3>
+                <h3 className="text-lg font-semibold text-primary">Perbaikan Cepat: Gaya "Gaya Papan Luncur"</h3>
                 <p className="text-text-secondary mt-2">
-                    Jika Anda mengalami galat saat mencoba membuat atau mengunggah nomor lomba dengan gaya <strong>"Papan Luncur"</strong>, kemungkinan skema database Anda perlu diperbarui.
+                    Jika Anda mengalami galat saat mencoba membuat atau mengunggah nomor lomba dengan gaya <strong>"Gaya Papan Luncur"</strong>, kemungkinan skema database Anda perlu diperbarui.
                 </p>
                 <p className="text-text-secondary mt-2">
                     Jalankan perintah SQL berikut di Editor Supabase untuk memperbaikinya:

@@ -25,6 +25,19 @@ Aquatic Swimtrack 11 adalah aplikasi modern, *offline-first*, dan *real-time* ya
 Catatan ini melacak semua perubahan signifikan yang diterapkan pada aplikasi Aquatic Swimtrack 11.
 
 ---
+### **Versi 1.1.6 (Pembaruan Terkini): Konsistensi Gaya Papan Luncur & Perbaikan Bug**
+*Tanggal Rilis: Sesuai pembaruan terakhir*
+
+Pembaruan ini memastikan konsistensi penuh untuk "Gaya Papan Luncur" di seluruh aplikasi dan database, serta memperbaiki bug minor.
+
+- **Perbaikan Menyeluruh: 'Gaya Papan Luncur'**
+  - **Skema Database**: Skrip SQL di **README** dan halaman **SQL Editor** telah diperbarui sepenuhnya untuk menggunakan `'Gaya Papan Luncur'` (sebelumnya `'Papan Luncur'`). Ini menyelesaikan masalah inti yang menyebabkan error saat menyimpan nomor lomba dengan gaya ini.
+  - **Template Excel**: Template Excel yang diunduh dari menu "Nomor Lomba" sekarang menggunakan "Gaya Papan Luncur" sebagai contoh dan pilihan yang valid.
+
+- **Perbaikan Bug Minor**:
+  - **Modal Hapus Nomor Lomba**: Memperbaiki bug di halaman "Nomor Lomba" di mana tombol konfirmasi hapus pada modal tidak berfungsi.
+
+---
 ### **Versi 1.1.5: Fitur SQL Editor & Perbaikan Tipe Data**
 *Tanggal Rilis: Sesuai pembaruan terakhir*
 
@@ -40,7 +53,7 @@ Pembaruan ini memperkenalkan fitur baru untuk administrator tingkat lanjut dan m
   - Skrip SQL di README.md telah diperbarui untuk menyertakan "Gaya Papan Luncur" sebagai tipe `swim_style` yang valid. Pengguna baru atau yang mengatur ulang database harus menjalankan skrip terbaru.
 
 ---
-### **Versi 1.1.4 (Pembaruan Terkini): Dasbor Analitik & Peningkatan UI**
+### **Versi 1.1.4: Dasbor Analitik & Peningkatan UI**
 *Tanggal Rilis: Sesuai pembaruan terakhir*
 
 Pembaruan ini berfokus pada perombakan dasbor admin untuk memberikan wawasan data yang lebih kaya dan meningkatkan pengalaman pengguna secara keseluruhan.
@@ -52,28 +65,6 @@ Pembaruan ini berfokus pada perombakan dasbor admin untuk memberikan wawasan dat
 - **Penyempurnaan UI/UX**:
   - **Tata Letak Dasbor Baru**: Mengatur ulang tata letak dasbor untuk tampilan yang lebih modern, bersih, dan fokus pada data.
   - **Integrasi Grafik**: Menambahkan pustaka `Chart.js` untuk memastikan visualisasi data yang andal dan responsif, serta mendukung mode terang dan gelap.
-
----
-### **Versi 1.1.3: Perbaikan Stabilitas & Notifikasi**
-
-Versi ini mengatasi beberapa masalah mendasar terkait interaksi pengguna dan memperkaya alur kerja pendaftaran.
-
-- **Perbaikan: Stabilitas Tombol Aplikasi**
-  - Memperbaiki masalah kritis di mana tombol di dalam formulir (seperti 'Hapus', 'Tambah', atau 'Buka Modal') secara tidak sengaja bertindak sebagai tombol 'submit', yang menyebabkan perilaku aplikasi yang tidak diharapkan. Semua tombol sekarang secara default diatur ke `type="button"`, kecuali jika secara eksplisit ditujukan untuk mengirimkan formulir.
-
-- **Perbaikan: Notifikasi Pendaftaran yang Lebih Informatif**
-  - Notifikasi keberhasilan pendaftaran online sekarang telah disempurnakan. Selain menampilkan nomor lomba yang baru didaftarkan, notifikasi kini juga mencantumkan riwayat nomor lomba yang sudah pernah didaftarkan oleh perenang tersebut sebelumnya, memberikan konfirmasi yang lebih lengkap kepada pengguna.
-
----
-### **Versi 1.1.2: Optimasi Kinerja & Keamanan**
-
-Pembaruan ini berfokus pada peningkatan kecepatan dan perbaikan keamanan di level database.
-
-- **Peningkatan: Kinerja Halaman Pendaftaran Online**
-  - Mengatasi kelambatan pada menu pendaftaran online dengan mengoptimalkan kueri data. Halaman sekarang hanya memuat informasi yang relevan untuk pendaftaran (info acara dan entri) tanpa mengambil data hasil lomba yang besar, sehingga waktu muat menjadi jauh lebih cepat.
-
-- **Perbaikan: Kebijakan Keamanan Database (RLS)**
-  - Menambahkan kebijakan Row Level Security (RLS) yang hilang untuk operasi `INSERT` pada tabel `competition_info`. Hal ini memperbaiki error `new row violates row-level security policy` yang terjadi saat aplikasi mencoba membuat data kompetisi untuk pertama kalinya (misalnya, setelah menghapus semua data).
 
 ---
 ## Tindakan yang Diperlukan

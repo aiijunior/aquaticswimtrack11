@@ -541,7 +541,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
               <Button variant="secondary" onClick={closeDeleteConfirm}>
                 Batal
               </Button>
-              {/* FIX: Changed onClick handler to the correct `handleDeleteEvent` function and added children to the Button. */}
               <Button variant="danger" onClick={handleDeleteEvent}>
                 Ya, Hapus
               </Button>
