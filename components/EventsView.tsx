@@ -59,7 +59,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     relayLegs: 4,
     category: '',
   });
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<{ message: string; isSchemaError?: boolean } | null>(null);
   
   // State for upload modal
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -125,7 +125,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newEvent.distance <= 0) {
-        setFormError("Jarak lomba harus lebih besar dari 0.");
+        setFormError({ message: "Jarak lomba harus lebih besar dari 0." });
         return;
     }
     setFormError(null);
@@ -151,16 +151,18 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     } catch (error) {
         console.error("Gagal menambahkan nomor lomba:", error);
         let errorMessage = "Terjadi kesalahan saat menyimpan.";
+        let isSchemaError = false;
         if (error instanceof Error) {
             const lowerMessage = error.message.toLowerCase();
             if (lowerMessage.includes('invalid input value for enum public.swim_style') ||
                 (lowerMessage.includes('violates check constraint') && lowerMessage.includes('events_style_check'))) {
-                errorMessage = `Gagal menyimpan gaya "${translateSwimStyle(newEvent.style)}". Skema database Anda mungkin perlu diperbarui. Coba jalankan perintah perbaikan dari menu "SQL Editor".`;
+                errorMessage = `Gagal menyimpan gaya "${translateSwimStyle(newEvent.style)}". Skema database Anda mungkin perlu diperbarui.`;
+                isSchemaError = true;
             } else {
                 errorMessage = error.message;
             }
         }
-        setFormError(errorMessage);
+        setFormError({ message: errorMessage, isSchemaError });
     }
   };
   
@@ -293,7 +295,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         },
         {
             "Jarak (m)": 25,
-            "Gaya": "Papan Luncur",
+            "Gaya": "Papan Luncur / Kickboard",
             "Jenis Kelamin": "Putra",
             "Kategori": "KU-4",
             "Jumlah Perenang": ""
@@ -301,7 +303,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     ];
 
     const ws = XLSX.utils.json_to_sheet(templateData);
-    ws['!cols'] = [ { wch: 10 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 20 }];
+    ws['!cols'] = [ { wch: 10 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 20 }];
 
     // Add Data Validation to Sheet 1
     const maxRows = 1000;
@@ -515,7 +517,16 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 </option>
                 ))}
             </Select>
-            {formError && <p className="text-red-500 text-sm text-center">{formError}</p>}
+            {formError && (
+                <div className={`p-3 rounded-md text-sm text-center ${formError.isSchemaError ? 'bg-red-900/20 border border-red-500/50 text-red-300/90' : 'bg-red-500/10 text-red-500'}`}>
+                    <p className="font-semibold">{formError.message}</p>
+                    {formError.isSchemaError && (
+                        <p className="mt-1">
+                            Buka menu <strong className="font-semibold">"SQL Editor"</strong>, salin perintah perbaikan, dan jalankan di Supabase.
+                        </p>
+                    )}
+                </div>
+            )}
             <div className="flex justify-end pt-2">
                 <Button type="submit">Buat Nomor Lomba</Button>
             </div>
