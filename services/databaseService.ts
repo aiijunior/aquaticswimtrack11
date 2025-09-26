@@ -533,7 +533,10 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
             successCount++;
         } catch (error: any) {
             let errorMessage = error.message;
-            if (errorMessage.toLowerCase().includes('invalid input value for enum public.swim_style')) {
+            const lowerErrorMessage = errorMessage.toLowerCase();
+            // Catch both common enum-related error messages from Postgres/Supabase
+            if (lowerErrorMessage.includes('invalid input value for enum public.swim_style') || 
+                (lowerErrorMessage.includes('violates check constraint') && lowerErrorMessage.includes('events_style_check'))) {
                 errorMessage = `Gaya "${styleStr}" tidak valid di database. Skema database Anda mungkin perlu diperbarui. Coba jalankan perintah perbaikan dari menu "SQL Editor".`;
             }
             errors.push(`Baris ${rowNum}: ${errorMessage}`);
