@@ -84,7 +84,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
   }, [events]);
 
   const groupedEvents = useMemo(() => {
-    const grouped = events.reduce((acc, event) => {
+    // FIX: Add explicit type for the accumulator in reduce to prevent type inference issues.
+    const grouped = events.reduce((acc: Record<number, SwimEvent[]>, event) => {
         const sessionNum = event.sessionNumber || 0;
         if (!acc[sessionNum]) {
             acc[sessionNum] = [];
@@ -93,14 +94,15 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         return acc;
     }, {} as Record<number, SwimEvent[]>);
 
-    // FIX: Replaced `for...in` loop with `Object.values().forEach()` to prevent type errors.
     // This correctly infers the type of `sessionEvents` as `SwimEvent[]` for sorting.
-    Object.values(grouped).forEach(sessionEvents => {
+    // FIX: Add explicit type to forEach callback parameter to avoid potential mis-inference.
+    Object.values(grouped).forEach((sessionEvents: SwimEvent[]) => {
       sessionEvents.sort((a, b) => (a.heatOrder ?? 999) - (b.heatOrder ?? 999));
     });
 
     const filteredAndGrouped: Record<string, SwimEvent[]> = {};
-    const sessionKeys = Object.keys(grouped).map(Number).sort((a,b) => a-b);
+    // FIX: Add explicit types for sort callback parameters to ensure they are treated as numbers.
+    const sessionKeys = Object.keys(grouped).map(Number).sort((a: number, b: number) => a - b);
     
     sessionKeys.forEach(sessionNum => {
         const sessionMatch = selectedSession === 0 ||

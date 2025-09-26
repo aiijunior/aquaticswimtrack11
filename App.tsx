@@ -14,7 +14,6 @@ import { PrintView } from './components/PrintView';
 import { PublicResultsView } from './components/PublicResultsView';
 import { UserManagementView } from './components/UserManagementView';
 import { OnlineRegistrationView } from './components/OnlineRegistrationView';
-import { SqlEditorView } from './components/SqlEditorView';
 import { logout, getCurrentUser } from './services/authService';
 import { getPublicData } from './services/databaseService';
 import { Button } from './components/ui/Button';
@@ -52,7 +51,6 @@ const PrintIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w
 const LogoutIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>;
 const AccountManagementIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.124-1.283-.356-1.857M7 20v-2c0-.653.124-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>;
 const HamburgerIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>;
-const DatabaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7a8 8 0 0116 0M12 11a4 4 0 100-8 4 4 0 000 8z" /></svg>;
 
 
 const App: React.FC = () => {
@@ -294,8 +292,6 @@ const App: React.FC = () => {
           return <PrintView events={events} swimmers={swimmers} competitionInfo={competitionInfo} isLoading={isLoading} />;
       case View.USER_MANAGEMENT:
           return <UserManagementView onDataUpdate={refreshData} />;
-      case View.SQL_EDITOR:
-          return <SqlEditorView />;
       default:
         return <AdminDashboard swimmers={swimmers} events={events} competitionInfo={competitionInfo} isLoading={isLoading}/>;
     }
@@ -343,7 +339,6 @@ const App: React.FC = () => {
                 <NavLink label="Daftar Perenang" icon={<UsersIcon />} isActive={currentView === View.SWIMMERS_LIST} onClick={() => navigateTo(View.SWIMMERS_LIST)}/>
                 <NavLink label="Hasil Lomba" icon={<MedalIcon />} isActive={currentView === View.RESULTS} onClick={() => navigateTo(View.RESULTS)}/>
                 <NavLink label="Unduh Laporan" icon={<PrintIcon />} isActive={currentView === View.PRINT_MENU} onClick={() => navigateTo(View.PRINT_MENU)}/>
-                <NavLink label="SQL Editor" icon={<DatabaseIcon />} isActive={currentView === View.SQL_EDITOR} onClick={() => navigateTo(View.SQL_EDITOR)}/>
                 {currentUser?.role === 'SUPER_ADMIN' && (
                   <NavLink label="Manajemen Akun" icon={<AccountManagementIcon />} isActive={currentView === View.USER_MANAGEMENT} onClick={() => navigateTo(View.USER_MANAGEMENT)}/>
                 )}

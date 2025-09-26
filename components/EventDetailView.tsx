@@ -97,10 +97,9 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
 
     const handleRecordTimes = async () => {
-        const results: Result[] = Object.entries(times).map(([swimmerId, time]) => {
-            // FIX: The `time` variable was being inferred as 'unknown'. Explicitly typing it resolves the issue.
-            const typedTime = time as { min: string; sec: string; ms: string };
-            const ms = (parseInt(typedTime.min || '0') * 60 * 1000) + (parseInt(typedTime.sec || '0') * 1000) + parseInt(typedTime.ms || '0');
+        // FIX: Add explicit type annotation to the map parameters to resolve type inference issues where `time` was `unknown`.
+        const results: Result[] = Object.entries(times).map(([swimmerId, time]: [string, { min: string; sec: string; ms: string }]) => {
+            const ms = (parseInt(time.min || '0') * 60 * 1000) + (parseInt(time.sec || '0') * 1000) + parseInt(time.ms || '0');
             return { swimmerId, time: ms };
         }).filter(r => r.time > 0);
         

@@ -356,7 +356,8 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
 
         for (const event of events) {
             for (const entry of event.entries) {
-                const swimmer = swimmersMap.get(entry.swimmerId);
+                // FIX: Explicitly type `swimmer` to ensure correct type inference and resolve property access errors.
+                const swimmer: Swimmer | undefined = swimmersMap.get(entry.swimmerId);
                 if (swimmer) {
                     dataToExport.push({
                         "Nama Peserta": swimmer.name,
@@ -410,7 +411,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
       const swimmer = swimmers.find(s => s.id === manualForm.swimmerId);
       if (!swimmer) return [];
 
-      const registeredEventIds = new Set(
+      const registeredEventIds = new Set<string>(
           events.filter(e => e.entries.some(en => en.swimmerId === swimmer.id)).map(e => e.id)
       );
 

@@ -140,7 +140,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     }, [localEvents, formData.gender, existingSwimmer]);
 
     const groupedAvailableEvents = useMemo(() => {
-        return availableEvents.reduce((acc, event) => {
+        // FIX: Add explicit type to the reduce accumulator to ensure correct type inference.
+        return availableEvents.reduce((acc: Record<SwimStyle, SwimEvent[]>, event) => {
             const style = event.style;
             if (!acc[style]) {
                 acc[style] = [];
@@ -182,8 +183,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     };
 
     const handleTimeChange = (eventId: string, part: keyof RegistrationTime, value: string) => {
-        // FIX: Rewrote state update to be safer and avoid spreading potentially undefined values,
-        // which could cause runtime errors and type issues.
+        // FIX: Rewrote state update to be safer and avoid spreading potentially undefined values, which could cause runtime errors and type issues.
         setSelectedEvents(prev => {
             const currentEvent = prev[eventId] || { selected: true, time: { min: '99', sec: '99', ms: '99' } };
             return {
@@ -248,10 +248,12 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
         const registrationsToSubmit = [];
         for (const [eventId, val] of Object.entries(selectedEvents)) {
-            if (val.selected) {
-                const min = parseInt(val.time.min, 10) || 0;
-                const sec = parseInt(val.time.sec, 10) || 0;
-                const ms = parseInt(val.time.ms, 10) || 0;
+            // FIX: Explicitly type `val` to resolve `unknown` type errors.
+            const eventValue = val as { selected: boolean; time: RegistrationTime };
+            if (eventValue.selected) {
+                const min = parseInt(eventValue.time.min, 10) || 0;
+                const sec = parseInt(eventValue.time.sec, 10) || 0;
+                const ms = parseInt(eventValue.time.ms, 10) || 0;
 
                 if (sec >= 60 && !(min === 99 && sec === 99 && ms === 99)) {
                     const eventDetails = availableEvents.find(e => e.id === eventId);
@@ -263,7 +265,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
                 registrationsToSubmit.push({
                     eventId,
-                    seedTime: parseTimeToMs(val.time),
+                    seedTime: parseTimeToMs(eventValue.time),
                 });
             }
         }

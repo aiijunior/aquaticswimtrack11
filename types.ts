@@ -81,7 +81,6 @@ export enum View {
   USER_MANAGEMENT,
   PUBLIC_RESULTS,
   ONLINE_REGISTRATION,
-  SQL_EDITOR,
 }
 
 // --- User Management Types ---
