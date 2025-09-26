@@ -503,30 +503,34 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
     const errors: string[] = [];
     let successCount = 0;
     
-    const styleReverseMap = new Map(Object.entries(SWIM_STYLE_TRANSLATIONS).map(([key, value]) => [value, key as SwimStyle]));
-    const genderReverseMap = new Map(Object.entries(GENDER_TRANSLATIONS).map(([key, value]) => [value, key as Gender]));
+    const styleReverseMap = new Map(Object.entries(SWIM_STYLE_TRANSLATIONS).map(([key, value]) => [value.toLowerCase(), key as SwimStyle]));
+    styleReverseMap.set('kickboard', SwimStyle.PAPAN_LUNCUR); // Alias for Kickboard
+    const genderReverseMap = new Map(Object.entries(GENDER_TRANSLATIONS).map(([key, value]) => [value.toLowerCase(), key as Gender]));
 
     for (const [index, row] of data.entries()) {
         const rowNum = index + 2;
         const styleStr = row['Gaya']?.trim();
+        const genderStr = row['Jenis Kelamin']?.trim();
 
         try {
             const distance = parseInt(row['Jarak (m)'], 10);
             
-            const genderStr = row['Jenis Kelamin']?.trim();
             const category = toTitleCase(row['Kategori']?.toString().trim() || '') || null;
             const relayLegsStr = row['Jumlah Perenang']?.toString().trim();
             const relayLegs = relayLegsStr ? parseInt(relayLegsStr, 10) : null;
+            
+            const lowerStyleStr = styleStr?.toLowerCase();
+            const lowerGenderStr = genderStr?.toLowerCase();
 
             if (!distance || isNaN(distance) || distance <= 0) throw new Error("'Jarak (m)' harus berupa angka positif.");
-            if (!styleStr || !styleReverseMap.has(styleStr)) throw new Error(`'Gaya' tidak valid. Gunakan salah satu dari: ${Object.values(SWIM_STYLE_TRANSLATIONS).join(', ')}.`);
-            if (!genderStr || !genderReverseMap.has(genderStr)) throw new Error(`'Jenis Kelamin' tidak valid. Gunakan salah satu dari: ${Object.values(GENDER_TRANSLATIONS).join(', ')}.`);
+            if (!lowerStyleStr || !styleReverseMap.has(lowerStyleStr)) throw new Error(`'Gaya' tidak valid. Gunakan salah satu dari: ${[...Object.values(SWIM_STYLE_TRANSLATIONS), 'Kickboard'].join(', ')}.`);
+            if (!lowerGenderStr || !genderReverseMap.has(lowerGenderStr)) throw new Error(`'Jenis Kelamin' tidak valid. Gunakan salah satu dari: ${Object.values(GENDER_TRANSLATIONS).join(', ')}.`);
             if (relayLegs !== null && (isNaN(relayLegs) || relayLegs <= 1)) throw new Error("'Jumlah Perenang' harus berupa angka lebih dari 1 untuk estafet.");
 
             await addEvent({
                 distance,
-                style: styleReverseMap.get(styleStr)!,
-                gender: genderReverseMap.get(genderStr)!,
+                style: styleReverseMap.get(lowerStyleStr)!,
+                gender: genderReverseMap.get(lowerGenderStr)!,
                 relayLegs: relayLegs,
                 category: category,
             });
@@ -536,7 +540,7 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
             const lowerErrorMessage = errorMessage.toLowerCase();
             // Catch both common enum-related error messages from Postgres/Supabase
             if (lowerErrorMessage.includes('invalid input value for enum public.swim_style') || 
-                (lowerErrorMessage.includes('violates check constraint') && lowerErrorMessage.includes('events_style_check'))) {
+                (lowerErrorMessage.includes('violates check constraint') && (lowerErrorMessage.includes('events_style_check') || lowerErrorMessage.includes('"events_style_check"')))) {
                 errorMessage = `Gaya "${styleStr}" tidak valid di database. Skema database Anda mungkin perlu diperbarui. Coba jalankan perintah perbaikan dari menu "SQL Editor".`;
             }
             errors.push(`Baris ${rowNum}: ${errorMessage}`);
@@ -552,8 +556,9 @@ export const processRecordUpload = async (data: any[]): Promise<{ success: numbe
 
     await deleteAllRecords();
     
-    const styleReverseMap = new Map(Object.entries(SWIM_STYLE_TRANSLATIONS).map(([key, value]) => [value, key as SwimStyle]));
-    const genderReverseMap = new Map(Object.entries(GENDER_TRANSLATIONS).map(([key, value]) => [value, key as Gender]));
+    const styleReverseMap = new Map(Object.entries(SWIM_STYLE_TRANSLATIONS).map(([key, value]) => [value.toLowerCase(), key as SwimStyle]));
+    styleReverseMap.set('kickboard', SwimStyle.PAPAN_LUNCUR); // Alias for Kickboard
+    const genderReverseMap = new Map(Object.entries(GENDER_TRANSLATIONS).map(([key, value]) => [value.toLowerCase(), key as Gender]));
 
     for (const [index, row] of data.entries()) {
         const rowNum = index + 2;
@@ -571,10 +576,13 @@ export const processRecordUpload = async (data: any[]): Promise<{ success: numbe
             const relayLegs = relayLegsStr ? parseInt(relayLegsStr, 10) : null;
             const locationSet = toTitleCase(row['Lokasi']?.toString().trim() || '') || null;
 
+            const lowerStyleStr = styleStr?.toLowerCase();
+            const lowerGenderStr = genderStr?.toLowerCase();
+
             if (!typeStr || !['PORPROV', 'NASIONAL'].includes(typeStr)) throw new Error("'Tipe Rekor' harus 'PORPROV' atau 'Nasional'.");
             if (!distance || isNaN(distance) || distance <= 0) throw new Error("'Jarak (m)' harus berupa angka positif.");
-            if (!styleStr || !styleReverseMap.has(styleStr)) throw new Error(`'Gaya' tidak valid.`);
-            if (!genderStr || !genderReverseMap.has(genderStr)) throw new Error(`'Jenis Kelamin' tidak valid.`);
+            if (!lowerStyleStr || !styleReverseMap.has(lowerStyleStr)) throw new Error(`'Gaya' tidak valid. Gunakan salah satu dari: ${[...Object.values(SWIM_STYLE_TRANSLATIONS), 'Kickboard'].join(', ')}.`);
+            if (!lowerGenderStr || !genderReverseMap.has(lowerGenderStr)) throw new Error(`'Jenis Kelamin' tidak valid. Gunakan salah satu dari: ${Object.values(GENDER_TRANSLATIONS).join(', ')}.`);
             if (!timeStr) throw new Error("'Waktu (mm:ss.SS)' wajib diisi.");
             if (!holderName) throw new Error("'Nama Pemegang Rekor' wajib diisi.");
             if (!yearSet || isNaN(yearSet) || yearSet < 1900 || yearSet > 2100) throw new Error("'Tahun' harus berupa angka yang valid.");
@@ -584,8 +592,8 @@ export const processRecordUpload = async (data: any[]): Promise<{ success: numbe
             const [, min, sec, ms] = timeParts.map(Number);
             const timeInMillis = (min * 60 * 1000) + (sec * 1000) + (ms * 10);
 
-            const gender = genderReverseMap.get(genderStr)!;
-            const style = styleReverseMap.get(styleStr)!;
+            const gender = genderReverseMap.get(lowerGenderStr)!;
+            const style = styleReverseMap.get(lowerStyleStr)!;
             const type = typeStr === 'PORPROV' ? RecordType.PORPROV : RecordType.NASIONAL;
             const recordId = `${type.toUpperCase()}_${gender}_${distance}_${style}` + (category ? `_${category}` : '') + (relayLegs ? `_R${relayLegs}` : '');
             
