@@ -28,7 +28,7 @@ const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     };
 
     return (
-        <div className="relative">
+        <div className="relative mt-4">
             <pre className="bg-background p-4 rounded-md text-sm text-text-primary whitespace-pre-wrap font-mono overflow-x-auto">
                 <code>{children}</code>
             </pre>
