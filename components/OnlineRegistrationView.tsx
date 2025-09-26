@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { CompetitionInfo, SwimEvent, Swimmer } from '../types';
+import type { CompetitionInfo, SwimEvent, Swimmer, FormattableEvent } from '../types';
 import { getEventsForRegistration, processOnlineRegistration, findSwimmerByName } from '../services/databaseService';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -7,7 +7,7 @@ import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Spinner } from './ui/Spinner';
 import { formatEventName, toTitleCase, formatTime, translateSwimStyle } from '../constants';
-import { SwimStyle } from '../types';
+import { SwimStyle, Gender } from '../types';
 
 interface OnlineRegistrationViewProps {
     competitionInfo: CompetitionInfo | null;
@@ -17,6 +17,14 @@ interface OnlineRegistrationViewProps {
 
 type RegistrationTime = { min: string; sec: string; ms: string };
 type SelectedEvents = Record<string, { selected: boolean; time: RegistrationTime }>;
+
+// FIX: Define the response type for processOnlineRegistration to ensure type safety.
+interface OnlineRegistrationResponse {
+    success: boolean;
+    message: string;
+    swimmer: Swimmer | null;
+    previouslyRegisteredEvents?: FormattableEvent[];
+}
 
 const parseTimeToMs = (time: RegistrationTime): number => {
     const minutes = parseInt(time.min, 10) || 0;
@@ -276,7 +284,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             return;
         }
 
-        const result = await processOnlineRegistration(formData, registrationsToSubmit);
+        const result: OnlineRegistrationResponse = await processOnlineRegistration(formData, registrationsToSubmit);
         setIsSubmitting(false);
 
         if (result.success && result.swimmer) {
@@ -292,7 +300,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
             // Previously registered events (without seed time, as we don't have it easily)
             const previouslyRegisteredEventsList = (result.previouslyRegisteredEvents || []).map(event => {
-                const formattableEvent = {
+                const formattableEvent: FormattableEvent = {
                     distance: event.distance,
                     style: event.style,
                     gender: event.gender,

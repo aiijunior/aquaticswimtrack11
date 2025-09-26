@@ -78,14 +78,15 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
   const sessions = useMemo(() => {
     if (!events) return { scheduled: [], unscheduledExists: false };
     const sessionNumbers = new Set(events.map(e => e.sessionNumber || 0));
-    const scheduled = Array.from(sessionNumbers).filter(s => s > 0).sort((a, b) => a - b);
+    // FIX: Add explicit types to sort callback parameters to resolve type errors.
+    const scheduled = Array.from(sessionNumbers).filter(s => s > 0).sort((a: number, b: number) => a - b);
     const unscheduledExists = sessionNumbers.has(0);
     return { scheduled, unscheduledExists };
   }, [events]);
 
   const groupedEvents = useMemo(() => {
     // FIX: Add explicit type for the accumulator in reduce to prevent type inference issues.
-    const grouped = events.reduce((acc: Record<number, SwimEvent[]>, event) => {
+    const grouped = events.reduce((acc: Record<number, SwimEvent[]>, event: SwimEvent) => {
         const sessionNum = event.sessionNumber || 0;
         if (!acc[sessionNum]) {
             acc[sessionNum] = [];

@@ -865,6 +865,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                             value={info.numberOfLanes || 8}
                             onChange={(e) => setInfo({ ...info, numberOfLanes: parseInt(e.target.value, 10) })}
                         >
+                            <option value="5">5 Lintasan</option>
                             <option value="6">6 Lintasan</option>
                             <option value="8">8 Lintasan</option>
                             <option value="10">10 Lintasan</option>
