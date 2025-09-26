@@ -1,3 +1,4 @@
+
 # Aquatic Swimtrack 11
 
 Aquatic Swimtrack 11 adalah aplikasi modern, *offline-first*, dan *real-time* yang dirancang untuk mengelola kompetisi renang secara komprehensif. Mulai dari pendaftaran atlet, penjadwalan nomor lomba, hingga pencatatan waktu langsung (*live timing*), publikasi hasil, dan pembuatan komentar berbasis AI, aplikasi ini menyediakan semua yang dibutuhkan oleh panitia penyelenggara.
@@ -34,9 +35,9 @@ Pembaruan ini memperkenalkan fitur baru untuk administrator tingkat lanjut dan m
   - Untuk menjaga keamanan, fitur ini tidak menjalankan kueri dari dalam aplikasi. Sebaliknya, fitur ini memberikan tautan aman langsung ke editor SQL di dasbor Supabase proyek Anda.
   - Halaman ini menyertakan peringatan keamanan dan contoh kueri untuk memandu administrator.
 
-- **Perbaikan: Tipe Data 'Papan Luncur'**
-  - Memperbaiki bug kritis di mana nomor lomba dengan gaya "Papan Luncur" tidak dapat disimpan ke database.
-  - Skrip SQL di README.md telah diperbarui untuk menyertakan "Papan Luncur" sebagai tipe `swim_style` yang valid. Pengguna baru atau yang mengatur ulang database harus menjalankan skrip terbaru.
+- **Perbaikan: Tipe Data 'Gaya Papan Luncur'**
+  - Memperbaiki bug kritis di mana nomor lomba dengan gaya "Gaya Papan Luncur" tidak dapat disimpan ke database.
+  - Skrip SQL di README.md telah diperbarui untuk menyertakan "Gaya Papan Luncur" sebagai tipe `swim_style` yang valid. Pengguna baru atau yang mengatur ulang database harus menjalankan skrip terbaru.
 
 ---
 ### **Versi 1.1.4 (Pembaruan Terkini): Dasbor Analitik & Peningkatan UI**
@@ -127,7 +128,7 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
     -- Create custom types for enums, but only if they don't already exist.
     DO $$ BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'swim_style') THEN
-            CREATE TYPE public.swim_style AS ENUM ('Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Medley', 'Papan Luncur');
+            CREATE TYPE public.swim_style AS ENUM ('Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Medley', 'Gaya Papan Luncur');
         END IF;
         IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'gender') THEN
             CREATE TYPE public.gender AS ENUM ('Men''s', 'Women''s', 'Mixed');
@@ -145,7 +146,7 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
 
     -- If the 'swim_style' type already exists, add the new value.
     -- This command will fail gracefully if the type or value already exists.
-    ALTER TYPE public.swim_style ADD VALUE IF NOT EXISTS 'Papan Luncur';
+    ALTER TYPE public.swim_style ADD VALUE IF NOT EXISTS 'Gaya Papan Luncur';
 
     -- Table for Competition Information
     CREATE TABLE IF NOT EXISTS public.competition_info (
