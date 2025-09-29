@@ -39,7 +39,7 @@ export const formatTime = (ms: number): string => {
     if (ms === -1) return 'DQ';
     if (ms === -2) return 'NS';
     if (ms < 0) return 'DQ'; // Fallback for any other negative value
-    if (ms === 0) return 'NT';
+    if (ms === 0) return '99:99.99';
     const totalSeconds = ms / 1000;
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = Math.floor(totalSeconds % 60);

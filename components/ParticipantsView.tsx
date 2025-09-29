@@ -352,11 +352,11 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
 
     try {
         const dataToExport = [];
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        // FIX: Explicitly typed the Map to ensure correct type inference for the swimmer object.
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
 
         for (const event of events) {
             for (const entry of event.entries) {
-                // FIX: Explicitly type `swimmer` to ensure correct type inference and resolve property access errors.
                 const swimmer: Swimmer | undefined = swimmersMap.get(entry.swimmerId);
                 if (swimmer) {
                     dataToExport.push({

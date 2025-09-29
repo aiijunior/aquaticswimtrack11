@@ -1,6 +1,6 @@
 
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { SwimEvent, Swimmer, Result, Heat, Entry, CompetitionInfo } from '../types';
 import { getEventById, addOrUpdateEventResults } from '../services/databaseService';
 import { Button } from './ui/Button';
@@ -183,8 +183,13 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
                  if (nsSwimmers.has(a.entry.swimmerId)) {
                     return { swimmerId: a.entry.swimmerId, time: -2 };
                 }
-                if (!time) return { swimmerId: a.entry.swimmerId, time: 0 };
+                if (!time) return { swimmerId: a.entry.swimmerId, time: -2 }; // Default to NS if no time object
                 const ms = (parseInt(time.min || '0') * 60 * 1000) + (parseInt(time.sec || '0') * 1000) + parseInt(time.ms || '0');
+                
+                // Treat a final time of 0 as a "No Show" or invalid time, rather than a valid result.
+                if (ms === 0) {
+                    return { swimmerId: a.entry.swimmerId, time: -2 }; // NS
+                }
                 return { swimmerId: a.entry.swimmerId, time: ms };
             });
         
@@ -193,6 +198,13 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
         await fetchAndSetupEvent();
         setIsSaving(false);
     };
+
+    const formattedStopwatchTime = useMemo(() => {
+        if (stopwatchTime === 0 && !isStopwatchRunning) {
+            return '00:00.00';
+        }
+        return formatTime(stopwatchTime);
+    }, [stopwatchTime, isStopwatchRunning]);
 
     if (isLoading) return <div className="flex justify-center mt-8"><Spinner /></div>;
     if (!event) return <p>Nomor lomba tidak ditemukan.</p>;
@@ -207,7 +219,7 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
             
             <Card className="my-6">
                 <div className="text-center">
-                    <p className="text-8xl font-mono tracking-tighter text-primary">{formatTime(stopwatchTime)}</p>
+                    <p className="text-8xl font-mono tracking-tighter text-primary">{formattedStopwatchTime}</p>
                     <div className="flex justify-center space-x-4 mt-4">
                         <Button onClick={handleStartStop} className="px-6 py-3 text-lg">
                             {isStopwatchRunning ? <PauseIcon /> : <PlayIcon />}
