@@ -149,7 +149,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
     const groupedAvailableEvents = useMemo(() => {
         // FIX: Add explicit type to the reduce accumulator to ensure correct type inference.
-        return availableEvents.reduce((acc: Record<SwimStyle, SwimEvent[]>, event) => {
+        return availableEvents.reduce((acc: Record<SwimStyle, SwimEvent[]>, event: SwimEvent) => {
             const style = event.style;
             if (!acc[style]) {
                 acc[style] = [];
@@ -300,7 +300,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
             // Previously registered events (without seed time, as we don't have it easily)
             // FIX: Cast `result.previouslyRegisteredEvents` to resolve 'unknown' type error on `.map`.
-            const previouslyRegisteredEventsList = ((result.previouslyRegisteredEvents || []) as FormattableEvent[]).map(event => {
+            const previouslyRegisteredEventsList = ((result.previouslyRegisteredEvents || []) as FormattableEvent[]).map((event: FormattableEvent) => {
                 const formattableEvent: FormattableEvent = {
                     distance: event.distance,
                     style: event.style,

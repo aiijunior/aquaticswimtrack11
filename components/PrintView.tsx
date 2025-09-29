@@ -200,7 +200,7 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
             const sessionName = `Sesi ${romanize(event.sessionNumber!)}`;
             if (!acc[sessionName]) acc[sessionName] = [];
             
-            const eventEntries = event.entries.map((entry) => {
+            const eventEntries = event.entries.map((entry: EventEntry) => {
                 const swimmer = swimmers.find(s => s.id === entry.swimmerId);
                 return swimmer ? { ...entry, swimmer } : null;
             }).filter((e): e is Entry => e !== null);
@@ -339,22 +339,29 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                             </colgroup>
                             <thead><tr><th className="text-center">RANK</th><th>Nama</th><th>Klub</th><th className="text-right">Waktu</th><th className="text-center">Medali</th></tr></thead>
                             <tbody>
-                                {event.sortedResults.map(res => (
-                                    <tr key={res.swimmerId}>
-                                        <td className="text-center font-bold">{res.rank > 0 ? res.rank : '-'}</td>
-                                        <td>{res.swimmer?.name || 'N/A'}</td>
-                                        <td>{res.swimmer?.club || 'N/A'}</td>
-                                        <td className="text-right font-mono">
-                                            {formatTime(res.time)}
-                                            {res.recordsBroken.map(br => (
-                                                <span key={br.record.id} className={`record-badge ${br.record.type.toLowerCase()}`}>
-                                                    {br.record.type}
-                                                </span>
-                                            ))}
-                                        </td>
-                                        <td className="text-center"><Medal rank={res.rank} /></td>
-                                    </tr>
-                                ))}
+                                {event.sortedResults.map(res => {
+                                    let rankClass = '';
+                                    if (res.rank === 1) rankClass = 'print-gold-medal';
+                                    else if (res.rank === 2) rankClass = 'print-silver-medal';
+                                    else if (res.rank === 3) rankClass = 'print-bronze-medal';
+
+                                    return (
+                                        <tr key={res.swimmerId} className={rankClass}>
+                                            <td className="text-center font-bold">{res.rank > 0 ? res.rank : '-'}</td>
+                                            <td>{res.swimmer?.name || 'N/A'}</td>
+                                            <td>{res.swimmer?.club || 'N/A'}</td>
+                                            <td className="text-right font-mono">
+                                                {formatTime(res.time)}
+                                                {res.recordsBroken.map(br => (
+                                                    <span key={br.record.id} className={`record-badge ${br.record.type.toLowerCase()}`}>
+                                                        {br.record.type}
+                                                    </span>
+                                                ))}
+                                            </td>
+                                            <td className="text-center"><Medal rank={res.rank} /></td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </section>
@@ -1150,7 +1157,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             return scheduledEvents.reduce((acc: Record<string, (SwimEvent & { detailedEntries: Entry[] })[]>, event: SwimEvent) => {
                 const sessionName = `Sesi ${romanize(event.sessionNumber!)}`;
                 if (!acc[sessionName]) acc[sessionName] = [];
-                const eventEntries = event.entries.map(entry => {
+                const eventEntries = event.entries.map((entry: EventEntry) => {
                     const swimmer = swimmers.find(s => s.id === entry.swimmerId);
                     return swimmer ? { ...entry, swimmer } : null;
                 }).filter((e): e is Entry => e !== null);
@@ -1309,7 +1316,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         });
         
         // FIX: Explicitly type reduce callback parameters to ensure correct type inference.
-        const grandTotal = clubMedalsData.reduce((acc, [, medals]: [string, { gold: number, silver: number, bronze: number }]) => {
+        const grandTotal = clubMedalsData.reduce((acc: { gold: number, silver: number, bronze: number }, [, medals]: [string, { gold: number, silver: number, bronze: number }]) => {
             acc.gold += medals.gold; acc.silver += medals.silver; acc.bronze += medals.bronze; return acc;
         }, { gold: 0, silver: 0, bronze: 0 });
 
