@@ -125,7 +125,6 @@ const ScheduleOfEvents: React.FC<{ events: SwimEvent[] }> = ({ events }) => {
                 return (a.heatOrder ?? 0) - (b.heatOrder ?? 0);
             });
 
-        // FIX: Add explicit type to the reduce accumulator to ensure correct type inference.
         const groupedByDate = scheduledEvents.reduce((acc: Record<string, SwimEvent[]>, event: SwimEvent) => {
             const dateStr = new Date(event.sessionDateTime!).toLocaleDateString('id-ID', {
                 weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -298,7 +297,6 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                 ...event,
                 globalEventNumber: globalEventCounter++,
                 sortedResults: [...event.results]
-                    // FIX: Add explicit types to sort callback parameters to resolve type errors.
                     .sort((a: Result,b: Result) => {
                         if (a.time < 0) return 1; // DQ at the end
                         if (b.time < 0) return -1;
@@ -341,29 +339,22 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                             </colgroup>
                             <thead><tr><th className="text-center">RANK</th><th>Nama</th><th>Klub</th><th className="text-right">Waktu</th><th className="text-center">Medali</th></tr></thead>
                             <tbody>
-                                {event.sortedResults.map(res => {
-                                    const rankClasses = 
-                                        res.rank === 1 ? 'bg-amber-100 dark:bg-amber-900/50' :
-                                        res.rank === 2 ? 'bg-slate-200 dark:bg-slate-700/50' :
-                                        res.rank === 3 ? 'bg-orange-200 dark:bg-orange-800/50' :
-                                        '';
-                                    return (
-                                        <tr key={res.swimmerId} className={rankClasses}>
-                                            <td className="text-center font-bold">{res.rank > 0 ? res.rank : '-'}</td>
-                                            <td>{res.swimmer?.name || 'N/A'}</td>
-                                            <td>{res.swimmer?.club || 'N/A'}</td>
-                                            <td className="text-right font-mono">
-                                                {formatTime(res.time)}
-                                                {res.recordsBroken.map(br => (
-                                                    <span key={br.record.id} className={`record-badge ${br.record.type.toLowerCase()}`}>
-                                                        {br.record.type}
-                                                    </span>
-                                                ))}
-                                            </td>
-                                            <td className="text-center"><Medal rank={res.rank} /></td>
-                                        </tr>
-                                    );
-                                })}
+                                {event.sortedResults.map(res => (
+                                    <tr key={res.swimmerId}>
+                                        <td className="text-center font-bold">{res.rank > 0 ? res.rank : '-'}</td>
+                                        <td>{res.swimmer?.name || 'N/A'}</td>
+                                        <td>{res.swimmer?.club || 'N/A'}</td>
+                                        <td className="text-right font-mono">
+                                            {formatTime(res.time)}
+                                            {res.recordsBroken.map(br => (
+                                                <span key={br.record.id} className={`record-badge ${br.record.type.toLowerCase()}`}>
+                                                    {br.record.type}
+                                                </span>
+                                            ))}
+                                        </td>
+                                        <td className="text-center"><Medal rank={res.rank} /></td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </section>
@@ -891,7 +882,6 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
             }
         });
 
-        // FIX: Add explicit type to the reduce accumulator to ensure correct type inference.
         const groupedByClub = allMedals.reduce((acc: Record<string, MedalInfo[]>, medal: MedalInfo) => {
             if (!acc[medal.club]) acc[medal.club] = [];
             acc[medal.club].push(medal);
@@ -1100,7 +1090,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
         let globalEventCounter = 1;
         const scheduledEvents = events.filter(e => e.sessionNumber && e.sessionNumber > 0 && e.sessionDateTime).sort((a,b) => new Date(a.sessionDateTime!).getTime() - new Date(b.sessionDateTime!).getTime() || (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
-        // FIX: Add explicit type to the reduce accumulator to ensure correct type inference.
         const groupedByDate = scheduledEvents.reduce((acc: Record<string, SwimEvent[]>,event: SwimEvent) => {
             const dateStr = new Date(event.sessionDateTime!).toLocaleDateString('id-ID',{weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'});
             if(!acc[dateStr]) acc[dateStr] = [];
@@ -1264,7 +1253,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             aoa.push(['Peringkat', 'Medali', 'Nama Peserta', 'Klub', 'Waktu', 'Catatan']);
             currentRow++;
             
-            // FIX: Add explicit types to sort callback parameters to resolve type errors.
             const sortedResults = [...event.results].sort((a: Result,b: Result) => {
                 if (a.time < 0) return 1; if (b.time < 0) return -1; if (a.time === 0) return 1; if (b.time === 0) return -1; return a.time - b.time;
             });
@@ -1316,12 +1304,12 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         const aoa: any[][] = headerInfo.aoa;
         aoa.push(['Peringkat', 'Klub', 'Emas 🥇', 'Perak 🥈', 'Perunggu 🥉', 'Total']);
         // FIX: Explicitly type forEach callback parameters to ensure correct type inference.
-        clubMedalsData.forEach(([club, medals]: [string, { gold: number, silver: number, bronze: number }], i: number) => {
+        clubMedalsData.forEach(([club, medals]: [string, { gold: number, silver: number, bronze: number }], i) => {
             aoa.push([i + 1, club, medals.gold, medals.silver, medals.bronze, medals.gold + medals.silver + medals.bronze]);
         });
         
         // FIX: Explicitly type reduce callback parameters to ensure correct type inference.
-        const grandTotal = clubMedalsData.reduce((acc: { gold: number, silver: number, bronze: number }, [, medals]: [string, { gold: number, silver: number, bronze: number }]) => {
+        const grandTotal = clubMedalsData.reduce((acc, [, medals]: [string, { gold: number, silver: number, bronze: number }]) => {
             acc.gold += medals.gold; acc.silver += medals.silver; acc.bronze += medals.bronze; return acc;
         }, { gold: 0, silver: 0, bronze: 0 });
 
