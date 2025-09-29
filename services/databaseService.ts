@@ -646,10 +646,18 @@ export const processParticipantUpload = async (data: any[]): Promise<{ newSwimme
             let seedTimeMs = 0;
             if (seedTimeStr && seedTimeStr.toUpperCase() !== 'NT') {
                 const timeParts = seedTimeStr.match(/^(\d{1,2}):(\d{2})\.(\d{2})$/);
-                if (!timeParts) throw new Error("Format 'Waktu Unggulan' harus mm:ss.SS (contoh: 01:23.45).");
+                if (!timeParts) {
+                    throw new Error("Format 'Waktu Unggulan' harus mm:ss.SS (contoh: 01:23.45), 99:99.99 untuk NT, atau NT.");
+                }
                 const [, min, sec, ms] = timeParts.map(Number);
-                if (sec >= 60) throw new Error("'Detik' pada Waktu Unggulan tidak boleh lebih dari 59.");
-                seedTimeMs = (min * 60 * 1000) + (sec * 1000) + (ms * 10);
+                if (min === 99 && sec === 99 && ms === 99) {
+                    seedTimeMs = 0;
+                } else {
+                    if (sec >= 60) {
+                        throw new Error("'Detik' pada Waktu Unggulan tidak boleh lebih dari 59.");
+                    }
+                    seedTimeMs = (min * 60 * 1000) + (sec * 1000) + (ms * 10);
+                }
             }
 
             const swimmerKey = `${name.toLowerCase()}_${club.toLowerCase()}_${birthYear}_${gender}`;

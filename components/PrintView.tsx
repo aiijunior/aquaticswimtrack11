@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { CompetitionInfo, SwimEvent, Swimmer, Entry, Heat, Result, BrokenRecord, SwimRecord } from '../types';
+import type { CompetitionInfo, SwimEvent, Swimmer, Entry, Heat, Result, BrokenRecord, SwimRecord, EventEntry } from '../types';
 import { Gender, RecordType } from '../types';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -111,7 +111,8 @@ const PrintRecordRow: React.FC<{ record: SwimRecord | undefined; type: string; }
 const ScheduleOfEvents: React.FC<{ events: SwimEvent[] }> = ({ events }) => {
     const processedData = useMemo(() => {
         let globalEventCounter = 1;
-        const scheduledEvents = events
+        // FIX: Explicitly type scheduledEvents to ensure it is treated as an array.
+        const scheduledEvents: SwimEvent[] = events
             .filter(e => e.sessionNumber && e.sessionNumber > 0 && e.sessionDateTime)
             .sort((a, b) => {
                 const dateA = new Date(a.sessionDateTime!).getTime();
@@ -199,7 +200,7 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
             const sessionName = `Sesi ${romanize(event.sessionNumber!)}`;
             if (!acc[sessionName]) acc[sessionName] = [];
             
-            const eventEntries = event.entries.map((entry: EventEntry) => {
+            const eventEntries = event.entries.map((entry) => {
                 const swimmer = swimmers.find(s => s.id === entry.swimmerId);
                 return swimmer ? { ...entry, swimmer } : null;
             }).filter((e): e is Entry => e !== null);
@@ -389,6 +390,7 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
     }, [events, swimmers]);
 
     const grandTotal = useMemo(() => {
+        // FIX: Add explicit types to reduce callback parameters.
         return data.reduce((acc: { gold: number, silver: number, bronze: number }, [, medals]: [string, { gold: number, silver: number, bronze: number }]) => {
             acc.gold += medals.gold;
             acc.silver += medals.silver;
@@ -847,6 +849,7 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
         const allMedals: MedalInfo[] = [];
 
+        // FIX: Explicitly type the forEach parameter to ensure correct type inference.
         events.forEach((event: SwimEvent) => {
             if (event.results && event.results.length > 0) {
                 const winners = [...event.results]
@@ -1242,6 +1245,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         const sortedEvents = events.filter(e => e.results && e.results.length > 0)
             .sort((a,b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
 
+        // FIX: Explicitly type forEach parameter to ensure correct type inference.
         sortedEvents.forEach((event: SwimEvent) => {
             aoa.push([formatEventName(event)]);
             merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
@@ -1253,6 +1257,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 if (a.time < 0) return 1; if (b.time < 0) return -1; if (a.time === 0) return 1; if (b.time === 0) return -1; return a.time - b.time;
             });
 
+            // FIX: Explicitly type forEach parameter to ensure correct type inference.
             sortedResults.forEach((res: Result, i: number) => {
                 const swimmer = swimmersMap.get(res.swimmerId);
                 const rankNumber = res.time > 0 ? i + 1 : 0;
@@ -1278,6 +1283,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         if (!competitionInfo) return;
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
         const clubMedalsData = Object.entries(
+            // FIX: Explicitly type reduce callback parameter to ensure correct type inference.
             events.reduce((acc: Record<string, { gold: number; silver: number; bronze: number }>, event: SwimEvent) => {
                 if (!event.results) return acc;
                 [...event.results].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => {
@@ -1297,11 +1303,13 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         const headerInfo = getExcelHeaderAOA('Rekapitulasi Medali Klub', NUM_COLS);
         const aoa: any[][] = headerInfo.aoa;
         aoa.push(['Peringkat', 'Klub', 'Emas 🥇', 'Perak 🥈', 'Perunggu 🥉', 'Total']);
-        clubMedalsData.forEach(([club, medals], i) => {
+        // FIX: Explicitly type forEach callback parameters to ensure correct type inference.
+        clubMedalsData.forEach(([club, medals]: [string, { gold: number, silver: number, bronze: number }], i) => {
             aoa.push([i + 1, club, medals.gold, medals.silver, medals.bronze, medals.gold + medals.silver + medals.bronze]);
         });
         
-        const grandTotal = clubMedalsData.reduce((acc, [, medals]) => {
+        // FIX: Explicitly type reduce callback parameters to ensure correct type inference.
+        const grandTotal = clubMedalsData.reduce((acc, [, medals]: [string, { gold: number, silver: number, bronze: number }]) => {
             acc.gold += medals.gold; acc.silver += medals.silver; acc.bronze += medals.bronze; return acc;
         }, { gold: 0, silver: 0, bronze: 0 });
 
@@ -1432,7 +1440,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         const merges: any[] = headerInfo.merges;
         let currentRow = headerInfo.currentRow;
         
-        sortedGroupedData.forEach(([categoryKey, categoryEvents]) => {
+        // FIX: Explicitly type forEach parameter to ensure correct type inference.
+        sortedGroupedData.forEach(([categoryKey, categoryEvents]: [string, (SwimEvent & { winners: any[], categoryKey: string })[]]) => {
             aoa.push([]); currentRow++;
             aoa.push([categoryKey]); merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } }); currentRow++;
             aoa.push([]); currentRow++;

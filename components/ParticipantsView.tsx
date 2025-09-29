@@ -107,7 +107,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                     "Jenis Kelamin (L/P)": "L",
                     "Klub/Tim": "Klub Cepat",
                     "Nomor Lomba": formatEventName(event),
-                    "Waktu Unggulan (mm:ss.SS)": index === 0 ? "01:05.50" : "00:28.10"
+                    "Waktu Unggulan (mm:ss.SS)": index === 0 ? "01:05.50" : "99:99.99"
                 });
             });
             templateData.push(columnHeaders); // Spacer

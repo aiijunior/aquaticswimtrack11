@@ -79,7 +79,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     if (!events) return { scheduled: [], unscheduledExists: false };
     const sessionNumbers = new Set(events.map(e => e.sessionNumber || 0));
     // FIX: Add explicit types to sort callback parameters to resolve type errors.
-    const scheduled = Array.from(sessionNumbers).filter(s => s > 0).sort((a: number, b: number) => a - b);
+    const scheduled = Array.from(sessionNumbers).filter((s: number) => s > 0).sort((a: number, b: number) => a - b);
     const unscheduledExists = sessionNumbers.has(0);
     return { scheduled, unscheduledExists };
   }, [events]);
@@ -261,8 +261,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         ["Gaya", "Jenis Kelamin"],
     ];
 
-    const styles = Object.values(SWIM_STYLE_TRANSLATIONS);
-    const genders = Object.values(GENDER_TRANSLATIONS);
+    const styles: string[] = Object.values(SWIM_STYLE_TRANSLATIONS);
+    const genders: string[] = Object.values(GENDER_TRANSLATIONS);
     const maxLength = Math.max(styles.length, genders.length);
 
     for (let i = 0; i < maxLength; i++) {
