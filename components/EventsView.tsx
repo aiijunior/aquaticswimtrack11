@@ -223,7 +223,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
             const json = XLSX.utils.sheet_to_json(worksheet);
 
             // FIX: Explicitly cast `json` to `any[]` to resolve the 'unknown' type error.
-            const result = await processEventUpload(json as any[]);
+            const result = await processEventUpload(json);
             setUploadResult(result);
 
             if (result.errors.length === 0 && result.success > 0) {
