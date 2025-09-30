@@ -8,8 +8,7 @@
  * INSTRUCTIONS:
  * 1. RENAME this file from `config.ts.txt` to `config.ts`.
  * 2. Fill in your Supabase URL and Public Anon Key.
- * 3. Set your Google Gemini API key in your Netlify deployment settings (see README).
- * 4. (Optional) Customize the application and competition default names.
+ * 3. (Optional) Customize the application and competition default names.
  * =================================================================
  */
 
@@ -22,14 +21,6 @@ export const config = {
     url: "YOUR_SUPABASE_URL_HERE", // 👈 Paste your Supabase URL here. E.g., "https://xyz.supabase.co"
     anonKey: "YOUR_SUPABASE_ANON_KEY_HERE", // 👈 Paste your Supabase anon key here.
   },
-
-  /**
-   * Google Gemini API Key
-   * This is now managed securely as an environment variable in your Netlify deployment settings.
-   * See the README.md file for instructions on how to set this up in Netlify.
-   * The client-side application no longer needs access to it directly.
-   */
-  google: {},
 
   /**
    * Super Admin Credentials

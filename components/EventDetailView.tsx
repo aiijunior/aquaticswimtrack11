@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { SwimEvent, Swimmer, Result, EventEntry, SwimRecord } from '../types';
 import { RecordType } from '../types';
 import { getEventById, getSwimmers, recordEventResults, getSwimmerById, getRecords } from '../services/databaseService';
-import { generateRaceCommentary } from '../services/geminiService';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Modal } from './ui/Modal';
@@ -62,8 +61,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     const [isLoading, setIsLoading] = useState(true);
     const [isTimeModalOpen, setTimeModalOpen] = useState(false);
     const [times, setTimes] = useState<Record<string, { min: string, sec: string, ms: string }>>({});
-    const [commentary, setCommentary] = useState('');
-    const [isGenerating, setIsGenerating] = useState(false);
 
     const fetchEventDetails = useCallback(async () => {
         setIsLoading(true);
@@ -114,23 +111,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             ...prev,
             [swimmerId]: { ...prev[swimmerId], [part]: value }
         }));
-    };
-
-    const handleGenerateCommentary = async () => {
-        if (!event || event.results.length === 0) return;
-        setIsGenerating(true);
-        setCommentary('');
-        
-        const resultsWithNames = await Promise.all(
-            event.results.map(async (r) => {
-                const swimmer = await getSwimmerById(r.swimmerId);
-                return { swimmer: swimmer!, time: r.time };
-            })
-        );
-        const eventNameStr = formatEventName(event);
-        const generatedText = await generateRaceCommentary(eventNameStr, resultsWithNames);
-        setCommentary(generatedText);
-        setIsGenerating(false);
     };
 
     const sortedResults = event 
@@ -212,20 +192,6 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                     ) : <p className="text-text-secondary">Belum ada hasil dicatat.</p>}
                 </Card>
             </div>
-            
-            <Card className="mt-6">
-                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">Komentar AI</h2>
-                    <Button onClick={handleGenerateCommentary} disabled={isGenerating || sortedResults.length === 0}>
-                        {isGenerating ? <Spinner /> : 'Buat Komentar'}
-                    </Button>
-                </div>
-                {commentary ? (
-                    <p className="text-text-secondary whitespace-pre-wrap font-mono bg-background p-4 rounded-md">{commentary}</p>
-                ) : (
-                    <p className="text-text-secondary">Klik "Buat Komentar" untuk menghasilkan komentar AI berdasarkan hasil lomba.</p>
-                )}
-            </Card>
             
             <Modal isOpen={isTimeModalOpen} onClose={() => setTimeModalOpen(false)} title="Catat Waktu Lomba">
                 <div className="space-y-4 max-h-[60vh] overflow-y-auto p-1">

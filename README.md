@@ -1,6 +1,6 @@
 # Aquatic Swimtrack 11
 
-Aquatic Swimtrack 11 adalah aplikasi modern, *offline-first*, dan *real-time* yang dirancang untuk mengelola kompetisi renang secara komprehensif. Mulai dari pendaftaran atlet, penjadwalan nomor lomba, hingga pencatatan waktu langsung (*live timing*), publikasi hasil, dan pembuatan komentar berbasis AI, aplikasi ini menyediakan semua yang dibutuhkan oleh panitia penyelenggara.
+Aquatic Swimtrack 11 adalah aplikasi modern, *offline-first*, dan *real-time* yang dirancang untuk mengelola kompetisi renang secara komprehensif. Mulai dari pendaftaran atlet, penjadwalan nomor lomba, hingga pencatatan waktu langsung (*live timing*), dan publikasi hasil, aplikasi ini menyediakan semua yang dibutuhkan oleh panitia penyelenggara.
 
 ## Fitur Unggulan
 
@@ -10,7 +10,6 @@ Aquatic Swimtrack 11 adalah aplikasi modern, *offline-first*, dan *real-time* ya
 - **Live Timing**: Antarmuka intuitif untuk menjalankan seri (*heat*), lengkap dengan stopwatch manual, pencatat waktu, dan manajemen diskualifikasi (DQ).
 - **Hasil Real-time**: Hasil diperbarui secara *real-time* dan dapat dilihat di halaman publik.
 - **Klasemen Medali**: Perhitungan dan tampilan otomatis klasemen medali untuk klub dan perorangan.
-- **Komentar Lomba AI**: Hasilkan komentar seru layaknya siaran langsung untuk lomba yang telah selesai menggunakan Google Gemini API secara aman melalui serverless function.
 - **Manajemen Data**:
     - Impor/Ekspor nomor lomba dan rekor melalui Excel.
     - Fungsi backup dan restore seluruh database menggunakan file JSON.
@@ -98,7 +97,6 @@ Sebelum memulai, pastikan Anda telah mendaftar untuk layanan-layanan gratis beri
 1.  **[Supabase](https://supabase.com/)**: Untuk database, otentikasi, dan backend.
 2.  **[GitHub](https://github.com/)**: Untuk menyimpan kode Anda secara online.
 3.  **[Netlify](https://www.netlify.com/)**: Untuk mempublikasikan (hosting) aplikasi Anda agar dapat diakses publik.
-4.  **[Google AI Studio](https://aistudio.google.com/)**: Untuk mendapatkan kunci API yang diperlukan untuk fitur AI.
 
 ---
 
@@ -369,7 +367,7 @@ Sekarang Anda akan mengkonfigurasi kode aplikasi untuk terhubung ke backend Supa
         *   Ganti `YOUR_SUPABASE_ANON_KEY_HERE` dengan kunci **anon public** yang Anda salin dari Supabase.
     *   **Super Admin**:
         *   Ganti `email` dan `password` di dalam objek `superAdmin` dengan kredensial yang Anda inginkan untuk akun admin utama. Akun ini memiliki hak akses tertinggi dan tidak disimpan di database.
-    *   **Google Gemini API Key & Supabase Service Key**: Kunci-kunci ini tidak lagi diatur di sini. Mereka akan diatur di Netlify pada langkah selanjutnya untuk keamanan.
+    *   **Supabase Service Key**: Kunci ini tidak lagi diatur di sini. Kunci ini akan diatur di Netlify pada langkah selanjutnya untuk keamanan.
     *   Simpan file `config.ts`.
 
 ### Langkah 3: Unggah Kode ke GitHub (Penyimpanan Kode)
@@ -431,10 +429,7 @@ Netlify akan mengambil kode dari GitHub Anda dan mempublikasikannya ke web.
 4.  **Atur Kunci API & Variabel Lingkungan (Langkah Paling Penting)**:
     *   Setelah Netlify selesai melakukan deploy awal, buka **Site configuration** untuk situs baru Anda.
     *   Di menu kiri, pilih **Build & deploy** > **Environment** > **Environment variables**.
-    *   Klik "**Add a variable**" dan tambahkan **tiga** variabel berikut, satu per satu:
-        *   **Untuk Google Gemini (Komentar AI):**
-            *   **Key**: `API_KEY`
-            *   **Value**: Tempelkan kunci **Google Gemini API** Anda di sini.
+    *   Klik "**Add a variable**" dan tambahkan **dua** variabel berikut, satu per satu:
         *   **Untuk Pendaftaran Online & Koneksi Server:**
             *   **Key**: `SUPABASE_URL`
             *   **Value**: Tempelkan **Project URL** Supabase Anda di sini (dari Langkah 1).
@@ -453,7 +448,7 @@ Netlify akan mengambil kode dari GitHub Anda dan mempublikasikannya ke web.
 
 ## Menjalankan Secara Lokal
 
-Untuk menjalankan aplikasi ini secara lokal, termasuk *serverless functions* untuk AI dan pendaftaran, Anda perlu menggunakan Netlify CLI. Ini akan mensimulasikan lingkungan Netlify di komputer Anda.
+Untuk menjalankan aplikasi ini secara lokal, termasuk *serverless functions* untuk pendaftaran, Anda perlu menggunakan Netlify CLI. Ini akan mensimulasikan lingkungan Netlify di komputer Anda.
 
 1.  Pastikan Anda telah menginstal [Node.js](https://nodejs.org/).
 2.  Pastikan Anda telah mengisi file `config.ts` sesuai petunjuk di atas.
@@ -466,9 +461,6 @@ Untuk menjalankan aplikasi ini secara lokal, termasuk *serverless functions* unt
     *   Buat file baru di root proyek dengan nama `.env`.
     *   Salin (**copy**) dan tempel (**paste**) konten berikut ke dalam file `.env` tersebut, lalu isi dengan kunci rahasia Anda. File ini sudah ada di `.gitignore` sehingga tidak akan terunggah ke GitHub.
     ```
-# Kunci untuk fitur AI (Google Gemini)
-API_KEY=MASUKKAN_KUNCI_GEMINI_API_ANDA_DI_SINI
-
 # Kunci untuk Pendaftaran Online & fungsi server lainnya (Supabase)
 SUPABASE_URL=MASUKKAN_URL_SUPABASE_ANDA_DI_SINI
 SUPABASE_SERVICE_KEY=MASUKKAN_KUNCI_SERVICE_ROLE_SUPABASE_ANDA_DI_SINI
