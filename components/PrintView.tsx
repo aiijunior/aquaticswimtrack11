@@ -71,7 +71,7 @@ const ReportHeader: React.FC<{ info: CompetitionInfo, title: string }> = ({ info
         <div className="mb-4">
             {info.eventName.split('\n').map((line, index) => {
                 if (index === 0) {
-                    return <h1 key={index} className="font-bold tracking-tight" style={{ fontSize: '16px' }}>{line}</h1>;
+                    return <h1 key={index} className="font-bold tracking-tight" style={{ fontSize: '22px' }}>{line}</h1>;
                 } else if (index === 1) {
                     return <p key={index} className="font-semibold tracking-tight" style={{ fontSize: '12px' }}>{line}</p>;
                 } else { // index 2 and beyond
@@ -1221,7 +1221,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
                     currentRow++;
                     
-                    aoa.push(['Lane', 'Nama', 'KU', 'Tahun Lahir', 'Klub', 'Waktu Unggulan']);
+                    aoa.push(['Lane', 'Nama', 'KU', 'Tahun', 'Klub', 'Waktu Unggulan']);
                     currentRow++;
 
                     Array.from({ length: competitionInfo.numberOfLanes || 8 }, (_, i) => i + 1).forEach(lane => {
@@ -1271,7 +1271,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             aoa.push([formatEventName(event)]);
             merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
             currentRow++;
-            aoa.push(['Rank', 'Medali', 'Nama Peserta', 'KU', 'Tahun Lahir', 'Klub', 'Waktu', 'Catatan']);
+            aoa.push(['Rank', 'Medali', 'Nama Peserta', 'KU', 'Tahun', 'Klub', 'Waktu', 'Catatan']);
             currentRow++;
             
             const sortedResults = [...event.results].sort((a: Result,b: Result) => {
