@@ -10,7 +10,6 @@ import { SwimmersView } from './components/SwimmersView';
 import { EventDetailView } from './components/EventDetailView';
 import { LiveTimingView } from './components/LiveTimingView';
 import { ResultsView } from './components/ResultsView';
-// FIX: Corrected import from PrintView to PrintMenu which appears to be the intended component. The component name in App.tsx was updated to reflect this.
 import { PrintView } from './components/PrintView';
 import { PublicResultsView } from './components/PublicResultsView';
 import { UserManagementView } from './components/UserManagementView';
