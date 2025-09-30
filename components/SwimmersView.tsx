@@ -107,8 +107,6 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
   const [viewMode, setViewMode] = useState<'swimmerList' | 'clubRecap'>('swimmerList');
 
 
-  const calculateAge = (birthYear: number) => new Date().getFullYear() - birthYear;
-
   const stats = useMemo(() => {
     const totalSwimmers = swimmers.length;
     const maleSwimmers = swimmers.filter(s => s.gender === 'Male').length;
@@ -414,7 +412,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                 <thead>
                   <tr className="border-b border-border">
                     <th className="p-3">Nama</th>
-                    <th className="p-3">Umur</th>
+                    <th className="p-3">Tahun Lahir</th>
                     <th className="p-3">Jenis Kelamin</th>
                     <th className="p-3">Klub</th>
                     <th className="p-3 text-center">Aksi</th>
@@ -425,7 +423,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                     filteredSwimmers.map((swimmer) => (
                       <tr key={swimmer.id} className="border-b border-border last:border-b-0 hover:bg-background">
                         <td className="p-3">{swimmer.name}</td>
-                        <td className="p-3">{calculateAge(swimmer.birthYear)}</td>
+                        <td className="p-3">{swimmer.birthYear}</td>
                         <td className="p-3">{swimmer.gender}</td>
                         <td className="p-3">{swimmer.club}</td>
                         <td className="p-3">
