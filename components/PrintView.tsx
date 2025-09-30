@@ -69,9 +69,15 @@ const ReportHeader: React.FC<{ info: CompetitionInfo, title: string }> = ({ info
         {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-20 object-contain mx-auto mb-4" />}
         
         <div className="mb-4">
-            {info.eventName.split('\n').map((line, index) => (
-                <h1 key={index} className="text-3xl font-bold tracking-tight">{line}</h1>
-            ))}
+            {info.eventName.split('\n').map((line, index) => {
+                if (index === 0) {
+                    return <h1 key={index} className="font-bold tracking-tight" style={{ fontSize: '16px' }}>{line}</h1>;
+                } else if (index === 1) {
+                    return <p key={index} className="font-semibold tracking-tight" style={{ fontSize: '12px' }}>{line}</p>;
+                } else { // index 2 and beyond
+                    return <p key={index} className="font-semibold tracking-tight" style={{ fontSize: '11px' }}>{line}</p>;
+                }
+            })}
             <p className="text-lg text-gray-600 mt-1">{info.eventDate && new Date(info.eventDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
 
