@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo } from 'react';
 import type { Swimmer, SwimEvent } from '../types';
 import { Card } from './ui/Card';
