@@ -254,12 +254,12 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                                                 <colgroup>
                                                     <col style={{ width: '8%' }} />
                                                     <col style={{ width: '30%' }} />
+                                                    <col style={{ width: '10%' }} />
+                                                    <col style={{ width: '10%' }} />
                                                     <col style={{ width: '27%' }} />
-                                                    <col style={{ width: '10%' }} />
-                                                    <col style={{ width: '10%' }} />
                                                     <col style={{ width: '15%' }} />
                                                 </colgroup>
-                                                <thead><tr><th>Lintasan</th><th>Nama</th><th>Klub</th><th>Tahun</th><th>KU</th><th className="text-right">Waktu Unggulan</th></tr></thead>
+                                                <thead><tr><th>Lane</th><th>Nama</th><th>KU</th><th>Tahun</th><th>Klub</th><th className="text-right">Waktu Unggulan</th></tr></thead>
                                                 <tbody>
                                                     {Array.from({ length: lanes }, (_, i) => i + 1).map(lane => {
                                                         const assignment = heat.assignments.find(a => a.lane === lane);
@@ -269,9 +269,9 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                                                             <tr key={lane}>
                                                                 <td className="w-12 text-center font-bold">{lane}</td>
                                                                 <td>{displayName}</td>
-                                                                <td>{displayClub}</td>
-                                                                <td>{assignment && !isRelay ? assignment.entry.swimmer.birthYear : '-'}</td>
                                                                 <td>{assignment && !isRelay ? (assignment.entry.swimmer.ageGroup || '-') : '-'}</td>
+                                                                <td>{assignment && !isRelay ? assignment.entry.swimmer.birthYear : '-'}</td>
+                                                                <td>{displayClub}</td>
                                                                 <td className="text-right font-mono">{assignment ? formatTime(assignment.entry.seedTime) : '-'}</td>
                                                             </tr>
                                                         );
@@ -338,13 +338,13 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                             <colgroup>
                                 <col style={{ width: '8%' }} />
                                 <col style={{ width: '30%' }} />
+                                <col style={{ width: '8%' }} />
+                                <col style={{ width: '8%' }} />
                                 <col style={{ width: '25%' }} />
-                                <col style={{ width: '8%' }} />
-                                <col style={{ width: '8%' }} />
                                 <col style={{ width: '13%' }} />
                                 <col style={{ width: '8%' }} />
                             </colgroup>
-                            <thead><tr><th className="text-center">RANK</th><th>Nama</th><th>Klub</th><th>Tahun</th><th>KU</th><th className="text-right">Waktu</th><th className="text-center">Medali</th></tr></thead>
+                            <thead><tr><th className="text-center">Rank</th><th>Nama</th><th>KU</th><th>Tahun</th><th>Klub</th><th className="text-right">Waktu</th><th className="text-center">Medali</th></tr></thead>
                             <tbody>
                                 {event.sortedResults.map(res => {
                                     let rankClass = '';
@@ -356,9 +356,9 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                                         <tr key={res.swimmerId} className={rankClass}>
                                             <td className="text-center font-bold">{res.rank > 0 ? res.rank : '-'}</td>
                                             <td>{res.swimmer?.name || 'N/A'}</td>
-                                            <td>{res.swimmer?.club || 'N/A'}</td>
-                                            <td>{event.relayLegs ? '-' : res.swimmer?.birthYear || ''}</td>
                                             <td>{event.relayLegs ? '-' : res.swimmer?.ageGroup || '-'}</td>
+                                            <td>{event.relayLegs ? '-' : res.swimmer?.birthYear || ''}</td>
+                                            <td>{res.swimmer?.club || 'N/A'}</td>
                                             <td className="text-right font-mono">
                                                 {formatTime(res.time)}
                                                 {res.recordsBroken.map(br => (
@@ -1215,7 +1215,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
                     currentRow++;
                     
-                    aoa.push(['Lintasan', 'Nama', 'Klub', 'Tahun Lahir', 'KU', 'Waktu Unggulan']);
+                    aoa.push(['Lane', 'Nama', 'KU', 'Tahun Lahir', 'Klub', 'Waktu Unggulan']);
                     currentRow++;
 
                     Array.from({ length: competitionInfo.numberOfLanes || 8 }, (_, i) => i + 1).forEach(lane => {
@@ -1225,9 +1225,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                         aoa.push([
                             lane,
                             displayName,
-                            displayClub,
-                            assignment && !isRelay ? assignment.entry.swimmer.birthYear : '',
                             assignment && !isRelay ? (assignment.entry.swimmer.ageGroup || '') : '',
+                            assignment && !isRelay ? assignment.entry.swimmer.birthYear : '',
+                            displayClub,
                             assignment ? formatTime(assignment.entry.seedTime) : '-'
                         ]);
                         currentRow++;
@@ -1239,7 +1239,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
         const worksheet = XLSX.utils.aoa_to_sheet(aoa);
         worksheet['!merges'] = merges;
-        worksheet['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 20 }];
+        worksheet['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 25 }, { wch: 20 }];
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Buku Acara");
         XLSX.writeFile(workbook, "Buku_Acara_Start_List.xlsx");
@@ -1265,7 +1265,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             aoa.push([formatEventName(event)]);
             merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
             currentRow++;
-            aoa.push(['Peringkat', 'Medali', 'Nama Peserta', 'Klub', 'Tahun Lahir', 'KU', 'Waktu', 'Catatan']);
+            aoa.push(['Rank', 'Medali', 'Nama Peserta', 'KU', 'Tahun Lahir', 'Klub', 'Waktu', 'Catatan']);
             currentRow++;
             
             const sortedResults = [...event.results].sort((a: Result,b: Result) => {
@@ -1283,9 +1283,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     rankDisplay, 
                     medalEmoji, 
                     swimmer?.name || 'N/A', 
-                    swimmer?.club || 'N/A',
-                    event.relayLegs ? '' : (swimmer?.birthYear || ''),
                     event.relayLegs ? '' : (swimmer?.ageGroup || ''),
+                    event.relayLegs ? '' : (swimmer?.birthYear || ''),
+                    swimmer?.club || 'N/A',
                     formatTime(res.time), 
                     note ? `REKOR BARU ${note}`: ''
                 ]);
@@ -1296,7 +1296,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
         const worksheet = XLSX.utils.aoa_to_sheet(aoa);
         worksheet['!merges'] = merges;
-        worksheet['!cols'] = [{ wch: 10 }, { wch: 8 }, { wch: 25 }, { wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 25 }];
+        worksheet['!cols'] = [{ wch: 10 }, { wch: 8 }, { wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 25 }, { wch: 15 }, { wch: 25 }];
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Hasil Lomba");
         XLSX.writeFile(workbook, "Hasil_Lomba.xlsx");
