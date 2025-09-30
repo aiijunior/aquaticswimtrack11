@@ -88,6 +88,36 @@ const ReportFooter: React.FC<{ info: CompetitionInfo }> = ({ info }) => {
     );
 }
 
+const ReportPageFooter: React.FC = () => {
+    const [printDateTime, setPrintDateTime] = useState('');
+
+    useEffect(() => {
+        const now = new Date();
+        const options: Intl.DateTimeFormatOptions = {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        };
+        const formatted = new Intl.DateTimeFormat('id-ID', options)
+            .format(now)
+            .toUpperCase()
+            .replace(/\./g, ':');
+
+        setPrintDateTime(formatted);
+    }, []);
+
+    return (
+        <div className="print-footer">
+            <span>Dicetak {printDateTime}</span>
+            <span className="page-number"></span>
+        </div>
+    );
+};
+
 const PrintRecordRow: React.FC<{ record: SwimRecord | undefined; type: string; }> = ({ record, type }) => {
     const typeText = type.toUpperCase() === 'PORPROV' ? 'REKOR PORPROV' : 'REKOR NASIONAL';
     if (!record) {
@@ -1651,6 +1681,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     {renderContent()}
                     {competitionInfo && <ReportFooter info={competitionInfo} />}
                 </div>
+                <ReportPageFooter />
             </div>
         </div>
     );
