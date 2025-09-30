@@ -854,9 +854,9 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                             </div>
                         </div>
                         <div>
-                            <Input label="Nama Event (Baris 1)" id="event-name-1" type="text" value={eventNameLines[0]} onChange={(e) => handleEventNameChange(0, e.target.value)} />
-                            <Input label="Nama Event (Baris 2)" id="event-name-2" type="text" value={eventNameLines[1]} onChange={(e) => handleEventNameChange(1, e.target.value)} className="mt-4"/>
-                            <Input label="Nama Event (Baris 3)" id="event-name-3" type="text" value={eventNameLines[2]} onChange={(e) => handleEventNameChange(2, e.target.value)} className="mt-4"/>
+                            <Input label="Nama Event (Baris 1)" id="event-name-1" type="text" value={eventNameLines[0]} onChange={(e) => handleEventNameChange(0, e.target.value)} style={{ fontSize: '16px' }} />
+                            <Input label="Nama Event (Baris 2)" id="event-name-2" type="text" value={eventNameLines[1]} onChange={(e) => handleEventNameChange(1, e.target.value)} className="mt-4" style={{ fontSize: '12px' }}/>
+                            <Input label="Nama Event (Baris 3)" id="event-name-3" type="text" value={eventNameLines[2]} onChange={(e) => handleEventNameChange(2, e.target.value)} className="mt-4" style={{ fontSize: '11px' }}/>
                         </div>
                         <Input label="Hari dan Tanggal Event" id="event-date" type="date" value={info.eventDate} onChange={(e) => setInfo({ ...info, eventDate: e.target.value })}/>
                         <Select
