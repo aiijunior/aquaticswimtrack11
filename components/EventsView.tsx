@@ -105,13 +105,15 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     // FIX: Add explicit types for sort callback parameters to ensure they are treated as numbers.
     const sessionKeys = Object.keys(grouped).map(Number).sort((a: number, b: number) => a - b);
     
-    sessionKeys.forEach(sessionNum => {
+    // FIX: Add explicit type to forEach callback parameter
+    sessionKeys.forEach((sessionNum: number) => {
         const sessionMatch = selectedSession === 0 ||
             (selectedSession === -1 && sessionNum === 0) ||
             (sessionNum === selectedSession);
 
         if (sessionMatch) {
-            const eventsInSession = grouped[sessionNum].filter(event => 
+            // FIX: Add explicit type to filter callback parameter
+            const eventsInSession = grouped[sessionNum].filter((event: SwimEvent) => 
                 !searchQuery || formatEventName(event).toLowerCase().includes(searchQuery.toLowerCase())
             );
 
@@ -348,7 +350,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 <p className="text-sm font-medium text-text-secondary mb-2">Filter berdasarkan Sesi</p>
                 <div className="flex flex-wrap gap-2">
                     <Button variant={selectedSession === 0 ? 'primary' : 'secondary'} onClick={() => setSelectedSession(0)}>Semua</Button>
-                    {sessions.scheduled.map(num => (
+                    {/* FIX: Add explicit type to map callback parameter */}
+                    {sessions.scheduled.map((num: number) => (
                         <Button key={num} variant={selectedSession === num ? 'primary' : 'secondary'} onClick={() => setSelectedSession(num)}>Sesi {romanize(num)}</Button>
                     ))}
                     {sessions.unscheduledExists && (
@@ -381,7 +384,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                     <div key={sessionName}>
                         <h2 className="text-xl font-bold text-primary border-b-2 border-primary/20 pb-2 mb-3">{sessionName}</h2>
                         <div className="space-y-2">
-                            {eventsInSession.map((event) => {
+                            {/* FIX: Add explicit type to map callback parameter */}
+                            {eventsInSession.map((event: SwimEvent) => {
                                 const recordedCount = event.results.length;
                                 const entryCount = event.entries.length;
                                 const hasEntries = entryCount > 0;
@@ -503,7 +507,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.style}
                 onChange={(e) => setNewEvent({ ...newEvent, style: e.target.value as SwimStyle })}
             >
-                {SWIM_STYLE_OPTIONS.map((style) => (
+                {/* FIX: Add explicit type to map callback parameter */}
+                {SWIM_STYLE_OPTIONS.map((style: SwimStyle) => (
                 <option key={style} value={style}>
                     {translateSwimStyle(style)}
                 </option>
@@ -515,7 +520,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.gender}
                 onChange={(e) => setNewEvent({ ...newEvent, gender: e.target.value as Gender })}
             >
-                {GENDER_OPTIONS.map((gender) => (
+                {/* FIX: Add explicit type to map callback parameter */}
+                {GENDER_OPTIONS.map((gender: Gender) => (
                 <option key={gender} value={gender}>
                     {translateGender(gender)}
                 </option>
@@ -656,7 +662,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {uploadResult.errors.map((err, i) => <li key={i}>{err}</li>)}
+                                {/* FIX: Add explicit type to map callback parameter */}
+                                {uploadResult.errors.map((err: string, i: number) => <li key={i}>{err}</li>)}
                             </ul>
                         </div>
                     )}

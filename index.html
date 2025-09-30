@@ -159,11 +159,6 @@
       .record-badge.porprov { background-color: #3b82f6; } /* Blue-500 */
       .record-badge.nasional { background-color: #ef4444; } /* Red-500 */
 
-      /* Hide print footer on screen */
-      .print-footer {
-        display: none;
-      }
-
       /* PDF & Print Specific Styles */
       @media print {
         .no-print {
@@ -187,7 +182,6 @@
         main {
           padding: 0 !important;
           overflow: visible !important;
-          padding-bottom: 2cm !important; /* Make space for the footer */
         }
 
         .print-preview-content {
@@ -302,27 +296,6 @@
         }
         .secure-view-print-message::before {
           content: "Pencetakan dan penyimpanan PDF untuk halaman hasil ini telah dinonaktifkan.";
-        }
-        
-        /* --- New Print Footer Styles --- */
-        .print-footer {
-            display: flex !important;
-            justify-content: space-between;
-            position: fixed;
-            bottom: 0.5cm;
-            left: 1.5cm;
-            right: 1.5cm;
-            width: auto;
-            font-size: 9pt;
-            font-family: sans-serif;
-            color: #333333 !important;
-            border-top: 1px solid #cccccc !important;
-            padding-top: 4px;
-        }
-
-        .print-footer .page-number::before {
-            counter-increment: page;
-            content: counter(page);
         }
       }
 

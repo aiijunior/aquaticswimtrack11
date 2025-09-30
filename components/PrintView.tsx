@@ -88,36 +88,6 @@ const ReportFooter: React.FC<{ info: CompetitionInfo }> = ({ info }) => {
     );
 }
 
-const ReportPageFooter: React.FC = () => {
-    const [printDateTime, setPrintDateTime] = useState('');
-
-    useEffect(() => {
-        const now = new Date();
-        const options: Intl.DateTimeFormatOptions = {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-        };
-        const formatted = new Intl.DateTimeFormat('id-ID', options)
-            .format(now)
-            .toUpperCase()
-            .replace(/\./g, ':');
-
-        setPrintDateTime(formatted);
-    }, []);
-
-    return (
-        <div className="print-footer">
-            <span>Dicetak {printDateTime}</span>
-            <span className="page-number"></span>
-        </div>
-    );
-};
-
 const PrintRecordRow: React.FC<{ record: SwimRecord | undefined; type: string; }> = ({ record, type }) => {
     const typeText = type.toUpperCase() === 'PORPROV' ? 'REKOR PORPROV' : 'REKOR NASIONAL';
     if (!record) {
@@ -141,9 +111,9 @@ const PrintRecordRow: React.FC<{ record: SwimRecord | undefined; type: string; }
 const ScheduleOfEvents: React.FC<{ events: SwimEvent[] }> = ({ events }) => {
     const processedData = useMemo(() => {
         let globalEventCounter = 1;
-        // FIX: Explicitly type scheduledEvents to ensure it is treated as an array.
+        // FIX: Add explicit type to filter callback parameter
         const scheduledEvents: SwimEvent[] = events
-            .filter(e => e.sessionNumber && e.sessionNumber > 0 && e.sessionDateTime)
+            .filter((e: SwimEvent) => e.sessionNumber && e.sessionNumber > 0 && e.sessionDateTime)
             .sort((a, b) => {
                 const dateA = new Date(a.sessionDateTime!).getTime();
                 const dateB = new Date(b.sessionDateTime!).getTime();
@@ -219,7 +189,8 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
     const data = useMemo(() => {
         let globalEventCounter = 1;
         const scheduledEvents = events
-            .filter(e => e.sessionNumber && e.sessionNumber > 0)
+            // FIX: Add explicit type to filter callback parameter
+            .filter((e: SwimEvent) => e.sessionNumber && e.sessionNumber > 0)
             .sort((a, b) => {
                 const sessionDiff = (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0);
                 if (sessionDiff !== 0) return sessionDiff;
@@ -423,7 +394,8 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
                     }
                 });
         });
-        return Object.entries(clubMedals).sort(([,a], [,b]) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
+        // FIX: Add explicit type to sort callback parameters to prevent errors
+        return Object.entries(clubMedals).sort(([,a]: [string, { gold: number, silver: number, bronze: number }], [,b]: [string, { gold: number, silver: number, bronze: number }]) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
     }, [events, swimmers]);
 
     const grandTotal = useMemo(() => {
@@ -796,14 +768,16 @@ const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
         };
 
         const eventsWithWinners = events
-            .filter(e => e.results && e.results.length > 0)
-            .map(event => ({
+            // FIX: Add explicit type to filter and map callback parameters
+            .filter((e: SwimEvent) => e.results && e.results.length > 0)
+            .map((event: SwimEvent) => ({
                 ...event,
                 winners: [...event.results]
-                    .filter(r => r.time > 0)
-                    .sort((a,b) => a.time - b.time)
+                    // FIX: Add explicit types to filter, sort, and map callback parameters
+                    .filter((r: Result) => r.time > 0)
+                    .sort((a: Result,b: Result) => a.time - b.time)
                     .slice(0, 3)
-                    .map((result, i) => ({
+                    .map((result: Result, i: number) => ({
                         rank: i + 1,
                         time: result.time,
                         swimmer: swimmersMap.get(result.swimmerId)
@@ -1126,7 +1100,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         let currentRow = headerInfo.currentRow;
 
         let globalEventCounter = 1;
-        const scheduledEvents = events.filter(e => e.sessionNumber && e.sessionNumber > 0 && e.sessionDateTime).sort((a,b) => new Date(a.sessionDateTime!).getTime() - new Date(b.sessionDateTime!).getTime() || (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
+        const scheduledEvents = events.filter((e: SwimEvent) => e.sessionNumber && e.sessionNumber > 0 && e.sessionDateTime).sort((a,b) => new Date(a.sessionDateTime!).getTime() - new Date(b.sessionDateTime!).getTime() || (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
         const groupedByDate = scheduledEvents.reduce((acc: Record<string, SwimEvent[]>,event: SwimEvent) => {
             const dateStr = new Date(event.sessionDateTime!).toLocaleDateString('id-ID',{weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'});
             if(!acc[dateStr]) acc[dateStr] = [];
@@ -1182,7 +1156,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         let globalEventCounter = 1;
         const programBookData = (() => {
             const scheduledEvents = events
-                .filter(e => e.sessionNumber && e.sessionNumber > 0)
+                .filter((e: SwimEvent) => e.sessionNumber && e.sessionNumber > 0)
                 .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
             return scheduledEvents.reduce((acc: Record<string, (SwimEvent & { detailedEntries: Entry[] })[]>, event: SwimEvent) => {
                 const sessionName = `Sesi ${romanize(event.sessionNumber!)}`;
@@ -1334,7 +1308,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 });
                 return acc;
             }, {} as Record<string, { gold: number; silver: number; bronze: number }>)
-        ).sort(([, a], [, b]) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
+        // FIX: Add explicit type to sort callback parameters
+        ).sort(([, a]: [string, { gold: number, silver: number, bronze: number }], [, b]: [string, { gold: number, silver: number, bronze: number }]) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
         
         const NUM_COLS = 6;
         const headerInfo = getExcelHeaderAOA('Rekapitulasi Medali Klub', NUM_COLS);
@@ -1465,8 +1440,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             const category = event.category?.trim() || 'Umum'; return category;
         };
         const eventsWithWinners = events
-            .filter(e => e.results && e.results.length > 0)
-            .map(event => ({ ...event, winners: [...event.results].filter((r: Result) => r.time > 0).sort((a: Result,b: Result) => a.time - b.time).slice(0, 3) .map((result: Result, i: number) => ({ rank: i + 1, time: result.time, swimmer: swimmersMap.get(result.swimmerId) })), categoryKey: getCategoryKey(event) }))
+            .filter((e: SwimEvent) => e.results && e.results.length > 0)
+            .map((event: SwimEvent) => ({ ...event, winners: [...event.results].filter((r: Result) => r.time > 0).sort((a: Result,b: Result) => a.time - b.time).slice(0, 3) .map((result: Result, i: number) => ({ rank: i + 1, time: result.time, swimmer: swimmersMap.get(result.swimmerId) })), categoryKey: getCategoryKey(event) }))
             .filter(e => e.winners.length > 0);
         const groupedByCategory = eventsWithWinners.reduce((acc: Record<string, typeof eventsWithWinners>, event) => { if (!acc[event.categoryKey]) acc[event.categoryKey] = []; acc[event.categoryKey].push(event); return acc; }, {} as Record<string, typeof eventsWithWinners>);
         const sortedGroupedData = Object.entries(groupedByCategory).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
@@ -1681,7 +1656,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     {renderContent()}
                     {competitionInfo && <ReportFooter info={competitionInfo} />}
                 </div>
-                <ReportPageFooter />
             </div>
         </div>
     );

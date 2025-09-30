@@ -140,7 +140,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         }
 
         return localEvents
-            .filter(event => {
+            // FIX: Add explicit type to filter callback parameter
+            .filter((event: SwimEvent) => {
                 if (registeredEventIds.has(event.id)) return false;
                 return event.gender === "Mixed" || (formData.gender === "Male" && event.gender === "Men's") || (formData.gender === "Female" && event.gender === "Women's");
             })
