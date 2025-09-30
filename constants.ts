@@ -3,6 +3,7 @@ import type { SwimEvent, SwimRecord, FormattableEvent, Entry, Heat, LaneAssignme
 
 export const SWIM_STYLE_OPTIONS = Object.values(SwimStyle);
 export const GENDER_OPTIONS = Object.values(Gender);
+export const AGE_GROUP_OPTIONS = ['KU Senior', 'KU 1', 'KU 2', 'KU 3', 'KU 4', 'KU 5'];
 
 // --- Translations ---
 

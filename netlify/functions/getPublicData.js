@@ -24,7 +24,8 @@ const toSwimmer = (data) => ({
     name: data.name,
     birthYear: data.birth_year,
     gender: data.gender,
-    club: data.club
+    club: data.club,
+    ageGroup: data.age_group,
 });
 
 const toEventEntry = (data) => ({

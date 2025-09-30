@@ -6,7 +6,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Spinner } from './ui/Spinner';
-import { formatEventName, toTitleCase, formatTime, translateSwimStyle } from '../constants';
+import { formatEventName, toTitleCase, formatTime, translateSwimStyle, AGE_GROUP_OPTIONS } from '../constants';
 import { SwimStyle, Gender } from '../types';
 
 interface OnlineRegistrationViewProps {
@@ -18,7 +18,6 @@ interface OnlineRegistrationViewProps {
 type RegistrationTime = { min: string; sec: string; ms: string };
 type SelectedEvents = Record<string, { selected: boolean; time: RegistrationTime }>;
 
-// FIX: Define the response type for processOnlineRegistration to ensure type safety.
 interface OnlineRegistrationResponse {
     success: boolean;
     message: string;
@@ -55,6 +54,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         birthYear: new Date().getFullYear() - 10,
         gender: 'Male' as 'Male' | 'Female',
         club: '',
+        ageGroup: '',
     });
     const [selectedEvents, setSelectedEvents] = useState<SelectedEvents>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -140,7 +140,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         }
 
         return localEvents
-            // FIX: Add explicit type to filter callback parameter
             .filter((event: SwimEvent) => {
                 if (registeredEventIds.has(event.id)) return false;
                 return event.gender === "Mixed" || (formData.gender === "Male" && event.gender === "Men's") || (formData.gender === "Female" && event.gender === "Women's");
@@ -149,7 +148,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     }, [localEvents, formData.gender, existingSwimmer]);
 
     const groupedAvailableEvents = useMemo(() => {
-        // FIX: Add explicit type to the reduce accumulator to ensure correct type inference.
         return availableEvents.reduce((acc: Record<SwimStyle, SwimEvent[]>, event: SwimEvent) => {
             const style = event.style;
             if (!acc[style]) {
@@ -161,7 +159,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     }, [availableEvents]);
     
     const selectedEventCount = useMemo(() => {
-        // FIX: Explicitly type `e` to resolve 'unknown' type error.
         return Object.values(selectedEvents).filter((e: { selected: boolean }) => e.selected).length;
     }, [selectedEvents]);
 
@@ -192,7 +189,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     };
 
     const handleTimeChange = (eventId: string, part: keyof RegistrationTime, value: string) => {
-        // FIX: Rewrote state update to be safer and avoid spreading potentially undefined values, which could cause runtime errors and type issues.
         setSelectedEvents(prev => {
             const currentEvent = prev[eventId] || { selected: true, time: { min: '99', sec: '99', ms: '99' } };
             return {
@@ -216,7 +212,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         if (swimmerName.length < 3) {
             if (existingSwimmer) {
                 setExistingSwimmer(null);
-                setFormData(prev => ({ ...prev, club: '', birthYear: new Date().getFullYear() - 10, gender: 'Male' }));
+                setFormData(prev => ({ ...prev, club: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', ageGroup: '' }));
             }
             return;
         }
@@ -229,6 +225,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 club: foundSwimmer.club,
                 birthYear: foundSwimmer.birthYear,
                 gender: foundSwimmer.gender,
+                ageGroup: foundSwimmer.ageGroup || '',
             });
             setExistingSwimmer(foundSwimmer);
         } else if (existingSwimmer) {
@@ -238,7 +235,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     
     const clearAutoFilledData = () => {
         setExistingSwimmer(null);
-        setFormData(prev => ({ ...prev, club: '', birthYear: new Date().getFullYear() - 10, gender: 'Male' }));
+        setFormData(prev => ({ ...prev, club: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', ageGroup: '' }));
         setTimeout(() => document.getElementById('club')?.focus(), 0);
     };
 
@@ -257,7 +254,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
         const registrationsToSubmit = [];
         for (const [eventId, val] of Object.entries(selectedEvents)) {
-            // FIX: Explicitly type `val` to resolve `unknown` type errors.
             const eventValue = val as { selected: boolean; time: RegistrationTime };
             if (eventValue.selected) {
                 const min = parseInt(eventValue.time.min, 10) || 0;
@@ -327,13 +323,13 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             setSuccessMessage(detailedSuccessMessage);
             onRegistrationSuccess(); // Refresh data in the background
             // Reset form
-            setFormData({ name: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', club: '' });
+            setFormData({ name: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', club: '', ageGroup: '' });
             setSelectedEvents({});
             setExistingSwimmer(null);
         } else if (result.success) { // Fallback just in case
             setSuccessMessage(`${result.message} Selamat! Anda telah terdaftar. Silakan hubungi panitia untuk konfirmasi.`);
             onRegistrationSuccess();
-            setFormData({ name: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', club: '' });
+            setFormData({ name: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', club: '', ageGroup: '' });
             setSelectedEvents({});
             setExistingSwimmer(null);
         } else {
@@ -479,10 +475,16 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                         <option value="Male">Laki-laki (Male)</option>
                         <option value="Female">Perempuan (Female)</option>
                     </Select>
+                     <div className="md:col-span-2">
+                        <Select label="Kelompok Umur (KU) (Opsional)" id="ageGroup" name="ageGroup" value={formData.ageGroup} onChange={handleFormChange} disabled={!!existingSwimmer}>
+                            <option value="">-- Tanpa KU / Umum --</option>
+                            {AGE_GROUP_OPTIONS.map(ku => <option key={ku} value={ku}>{ku}</option>)}
+                        </Select>
+                    </div>
                      {existingSwimmer && (
                         <div className="md:col-span-2 text-sm text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/40 p-3 rounded-md border border-green-200 dark:border-green-700">
                             <p className="font-semibold">Data perenang ditemukan!</p>
-                            <p>Data klub, tahun lahir, dan jenis kelamin telah diisi otomatis. Jika ini bukan perenang yang benar, klik 'Ganti' di atas.</p>
+                            <p>Data klub, tahun lahir, jenis kelamin, dan KU telah diisi otomatis. Jika ini bukan perenang yang benar, klik 'Ganti' di atas.</p>
                         </div>
                     )}
                 </div>

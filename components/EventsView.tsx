@@ -78,14 +78,12 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
   const sessions = useMemo(() => {
     if (!events) return { scheduled: [], unscheduledExists: false };
     const sessionNumbers = new Set(events.map(e => e.sessionNumber || 0));
-    // FIX: Add explicit types to sort callback parameters to resolve type errors.
     const scheduled = Array.from(sessionNumbers).filter((s: number) => s > 0).sort((a: number, b: number) => a - b);
     const unscheduledExists = sessionNumbers.has(0);
     return { scheduled, unscheduledExists };
   }, [events]);
 
   const groupedEvents = useMemo(() => {
-    // FIX: Add explicit type for the accumulator in reduce to prevent type inference issues.
     const grouped = events.reduce((acc: Record<number, SwimEvent[]>, event: SwimEvent) => {
         const sessionNum = event.sessionNumber || 0;
         if (!acc[sessionNum]) {
@@ -96,23 +94,19 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     }, {} as Record<number, SwimEvent[]>);
 
     // This correctly infers the type of `sessionEvents` as `SwimEvent[]` for sorting.
-    // FIX: Add explicit type to forEach callback parameter to avoid potential mis-inference.
     Object.values(grouped).forEach((sessionEvents: SwimEvent[]) => {
       sessionEvents.sort((a, b) => (a.heatOrder ?? 999) - (b.heatOrder ?? 999));
     });
 
     const filteredAndGrouped: Record<string, SwimEvent[]> = {};
-    // FIX: Add explicit types for sort callback parameters to ensure they are treated as numbers.
     const sessionKeys = Object.keys(grouped).map(Number).sort((a: number, b: number) => a - b);
     
-    // FIX: Add explicit type to forEach callback parameter
     sessionKeys.forEach((sessionNum: number) => {
         const sessionMatch = selectedSession === 0 ||
             (selectedSession === -1 && sessionNum === 0) ||
             (sessionNum === selectedSession);
 
         if (sessionMatch) {
-            // FIX: Add explicit type to filter callback parameter
             const eventsInSession = grouped[sessionNum].filter((event: SwimEvent) => 
                 !searchQuery || formatEventName(event).toLowerCase().includes(searchQuery.toLowerCase())
             );
@@ -224,7 +218,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
             const worksheet = workbook.Sheets[sheetName];
             const json: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-            // FIX: Explicitly type `json` and remove cast in function call to fix potential type inference issues.
             const result = await processEventUpload(json);
             setUploadResult(result);
 
@@ -350,7 +343,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 <p className="text-sm font-medium text-text-secondary mb-2">Filter berdasarkan Sesi</p>
                 <div className="flex flex-wrap gap-2">
                     <Button variant={selectedSession === 0 ? 'primary' : 'secondary'} onClick={() => setSelectedSession(0)}>Semua</Button>
-                    {/* FIX: Add explicit type to map callback parameter */}
                     {sessions.scheduled.map((num: number) => (
                         <Button key={num} variant={selectedSession === num ? 'primary' : 'secondary'} onClick={() => setSelectedSession(num)}>Sesi {romanize(num)}</Button>
                     ))}
@@ -384,7 +376,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                     <div key={sessionName}>
                         <h2 className="text-xl font-bold text-primary border-b-2 border-primary/20 pb-2 mb-3">{sessionName}</h2>
                         <div className="space-y-2">
-                            {/* FIX: Add explicit type to map callback parameter */}
                             {eventsInSession.map((event: SwimEvent) => {
                                 const recordedCount = event.results.length;
                                 const entryCount = event.entries.length;
@@ -507,7 +498,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.style}
                 onChange={(e) => setNewEvent({ ...newEvent, style: e.target.value as SwimStyle })}
             >
-                {/* FIX: Add explicit type to map callback parameter */}
                 {SWIM_STYLE_OPTIONS.map((style: SwimStyle) => (
                 <option key={style} value={style}>
                     {translateSwimStyle(style)}
@@ -520,7 +510,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.gender}
                 onChange={(e) => setNewEvent({ ...newEvent, gender: e.target.value as Gender })}
             >
-                {/* FIX: Add explicit type to map callback parameter */}
+                {/* FIX: Add explicit type to map callback parameter to resolve 'unknown' type error */}
                 {GENDER_OPTIONS.map((gender: Gender) => (
                 <option key={gender} value={gender}>
                     {translateGender(gender)}
@@ -662,7 +652,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {/* FIX: Add explicit type to map callback parameter */}
                                 {uploadResult.errors.map((err: string, i: number) => <li key={i}>{err}</li>)}
                             </ul>
                         </div>

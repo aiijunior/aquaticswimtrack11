@@ -37,7 +37,7 @@ export const handler = async (event) => {
         // 1. Find or create the swimmer and find existing registrations
         const { data: existingSwimmers, error: searchError } = await supabaseAdmin
             .from('swimmers')
-            .select('id, name, birth_year, gender, club')
+            .select('id, name, birth_year, gender, club, age_group')
             .ilike('name', swimmerData.name.trim())
             .ilike('club', swimmerData.club.trim())
             .eq('birth_year', swimmerData.birthYear)
@@ -77,9 +77,10 @@ export const handler = async (event) => {
                     name: swimmerData.name,
                     birth_year: swimmerData.birthYear,
                     gender: swimmerData.gender,
-                    club: swimmerData.club
+                    club: swimmerData.club,
+                    age_group: swimmerData.ageGroup
                 })
-                .select('id, name, birth_year, gender, club')
+                .select('id, name, birth_year, gender, club, age_group')
                 .single();
             if (addError) throw addError;
             swimmer = newSwimmer;

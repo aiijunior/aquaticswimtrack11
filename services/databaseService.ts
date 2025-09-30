@@ -23,7 +23,8 @@ const toSwimmer = (data: any): Swimmer => ({
     name: data.name,
     birthYear: data.birth_year,
     gender: data.gender,
-    club: data.club
+    club: data.club,
+    ageGroup: data.age_group
 });
 
 const toEventEntry = (data: any): EventEntry => ({
@@ -207,7 +208,8 @@ export const addSwimmer = async (swimmer: Omit<Swimmer, 'id'>): Promise<Swimmer>
       name: newSwimmer.name,
       birth_year: newSwimmer.birthYear,
       gender: newSwimmer.gender,
-      club: newSwimmer.club
+      club: newSwimmer.club,
+      age_group: newSwimmer.ageGroup
   };
   // FIX: Remove redundant cast as `payload` is already typed, resolving 'never' type error.
   // FIX: Removed 'as any' cast to allow for proper type checking by TypeScript.
@@ -222,7 +224,8 @@ export const updateSwimmer = async (swimmerId: string, updatedData: Omit<Swimmer
         name: updatedData.name, 
         birth_year: updatedData.birthYear, 
         gender: updatedData.gender, 
-        club: updatedData.club 
+        club: updatedData.club,
+        age_group: updatedData.ageGroup
     };
     const { data, error } = await supabase
         .from('swimmers')
@@ -436,7 +439,7 @@ export const restoreDatabase = async (backupData: any): Promise<void> => {
 
     if (backupData.swimmers.length > 0) {
         // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
-        const swimmerPayloads: Database['public']['Tables']['swimmers']['Insert'][] = backupData.swimmers.map((s: Swimmer) => ({ id: s.id, name: s.name, birth_year: s.birthYear, gender: s.gender, club: s.club }));
+        const swimmerPayloads: Database['public']['Tables']['swimmers']['Insert'][] = backupData.swimmers.map((s: Swimmer) => ({ id: s.id, name: s.name, birth_year: s.birthYear, gender: s.gender, club: s.club, age_group: s.ageGroup }));
         // FIX: Removed 'as any' cast to allow for proper type checking by TypeScript.
         const { error } = await supabase.from('swimmers').insert(swimmerPayloads);
         if (error) throw error;
@@ -629,6 +632,7 @@ export const processParticipantUpload = async (data: any[]): Promise<{ newSwimme
             const birthYearStr = row['Tahun Lahir']?.toString().trim();
             const genderStr = row['Jenis Kelamin (L/P)']?.toString().trim().toUpperCase();
             const club = toTitleCase(row['Klub/Tim']?.toString().trim() || '');
+            const ageGroup = toTitleCase(row['KU']?.toString().trim() || '') || null;
             const eventName = row['Nomor Lomba']?.toString().trim();
             const seedTimeStr = row['Waktu Unggulan (mm:ss.SS)']?.toString().trim();
             
@@ -664,7 +668,7 @@ export const processParticipantUpload = async (data: any[]): Promise<{ newSwimme
             let swimmer = swimmerMap.get(swimmerKey);
             
             if (!swimmer) {
-                swimmer = await addSwimmer({ name, birthYear, gender, club });
+                swimmer = await addSwimmer({ name, birthYear, gender, club, ageGroup });
                 swimmerMap.set(swimmerKey, swimmer); // Add to local map to avoid re-adding
                 newSwimmersCount++;
             }

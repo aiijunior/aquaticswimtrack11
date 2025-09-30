@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo } from 'react';
 import type { Swimmer, SwimEvent } from '../types';
 import { Card } from './ui/Card';
@@ -8,7 +6,7 @@ import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
 import { Select } from './ui/Select';
 import { updateSwimmer, deleteSwimmer, deleteAllSwimmers, unregisterSwimmerFromEvent, updateSwimmerSeedTime, registerSwimmerToEvent, addSwimmer } from '../services/databaseService';
-import { formatEventName, formatTime, toTitleCase } from '../constants';
+import { formatEventName, formatTime, toTitleCase, AGE_GROUP_OPTIONS } from '../constants';
 
 // --- ICONS ---
 const EditIcon = () => (
@@ -80,7 +78,8 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
     name: '',
     birthYear: new Date().getFullYear(),
     gender: 'Male',
-    club: ''
+    club: '',
+    ageGroup: ''
   });
 
   // State for adding a new swimmer
@@ -89,7 +88,8 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
     name: '',
     birthYear: new Date().getFullYear() - 10,
     gender: 'Male' as 'Male' | 'Female',
-    club: ''
+    club: '',
+    ageGroup: ''
   });
 
   // State for event actions in modal
@@ -175,7 +175,8 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
         name: swimmer.name,
         birthYear: swimmer.birthYear,
         gender: swimmer.gender,
-        club: swimmer.club
+        club: swimmer.club,
+        ageGroup: swimmer.ageGroup || ''
     });
     setIsEditModalOpen(true);
   };
@@ -243,7 +244,8 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
         name: '',
         birthYear: new Date().getFullYear() - 10,
         gender: 'Male',
-        club: ''
+        club: '',
+        ageGroup: ''
     });
     setIsAddModalOpen(true);
   };
@@ -414,6 +416,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                     <th className="p-3">Nama</th>
                     <th className="p-3">Tahun Lahir</th>
                     <th className="p-3">Jenis Kelamin</th>
+                    <th className="p-3">KU</th>
                     <th className="p-3">Klub</th>
                     <th className="p-3 text-center">Aksi</th>
                   </tr>
@@ -425,6 +428,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                         <td className="p-3">{swimmer.name}</td>
                         <td className="p-3">{swimmer.birthYear}</td>
                         <td className="p-3">{swimmer.gender}</td>
+                        <td className="p-3">{swimmer.ageGroup || '-'}</td>
                         <td className="p-3">{swimmer.club}</td>
                         <td className="p-3">
                             <div className="flex justify-center items-center space-x-2">
@@ -437,7 +441,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="text-center p-6 text-text-secondary">
+                      <td colSpan={6} className="text-center p-6 text-text-secondary">
                         {searchQuery ? "Tidak ada perenang yang cocok dengan pencarian Anda." : "Tidak ada perenang yang cocok dengan filter yang dipilih."}
                       </td>
                     </tr>
@@ -480,6 +484,10 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                 <option value="Male">Laki-laki (Male)</option>
                 <option value="Female">Perempuan (Female)</option>
             </Select>
+            <Select label="Kelompok Umur (KU) (Opsional)" id="add-ageGroup" name="ageGroup" value={addFormData.ageGroup} onChange={handleAddFormChange}>
+                <option value="">-- Tanpa KU --</option>
+                {AGE_GROUP_OPTIONS.map(ku => <option key={ku} value={ku}>{ku}</option>)}
+            </Select>
             <Input label="Klub/Tim" id="add-club" name="club" value={addFormData.club} onChange={handleAddFormChange} required />
             <div className="flex justify-end pt-4 space-x-2">
                 <Button type="button" variant="secondary" onClick={closeModal}>Batal</Button>
@@ -496,6 +504,10 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
             <Select label="Jenis Kelamin" id="gender" name="gender" value={editFormData.gender} onChange={handleEditFormChange}>
                 <option value="Male">Laki-laki (Male)</option>
                 <option value="Female">Perempuan (Female)</option>
+            </Select>
+            <Select label="Kelompok Umur (KU) (Opsional)" id="edit-ageGroup" name="ageGroup" value={editFormData.ageGroup || ''} onChange={handleEditFormChange}>
+                <option value="">-- Tanpa KU --</option>
+                {AGE_GROUP_OPTIONS.map(ku => <option key={ku} value={ku}>{ku}</option>)}
             </Select>
             <Input label="Klub/Tim" id="club" name="club" value={editFormData.club} onChange={handleEditFormChange} required />
             <div className="flex justify-end pt-4 space-x-2">

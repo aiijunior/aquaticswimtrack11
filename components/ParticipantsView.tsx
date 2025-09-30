@@ -87,6 +87,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
             "Tahun Lahir": "",
             "Jenis Kelamin (L/P)": "",
             "Klub/Tim": "",
+            "KU": "",
             "Nomor Lomba": "",
             "Waktu Unggulan (mm:ss.SS)": ""
         };
@@ -106,6 +107,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                     "Tahun Lahir": 2005,
                     "Jenis Kelamin (L/P)": "L",
                     "Klub/Tim": "Klub Cepat",
+                    "KU": "KU 1",
                     "Nomor Lomba": formatEventName(event),
                     "Waktu Unggulan (mm:ss.SS)": index === 0 ? "01:05.50" : "99:99.99"
                 });
@@ -124,6 +126,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                     "Tahun Lahir": 2006,
                     "Jenis Kelamin (L/P)": "P",
                     "Klub/Tim": "Klub Cepat",
+                    "KU": "KU Senior",
                     "Nomor Lomba": formatEventName(event),
                     "Waktu Unggulan (mm:ss.SS)": index === 0 ? "01:15.20" : "00:31.40"
                 });
@@ -140,7 +143,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
             addSectionHeader("Contoh Pendaftaran Estafet (Relay)");
             templateData.push({
                 ...columnHeaders,
-                "Nama Peserta": "CATATAN: Untuk Estafet, 'Nama Peserta' diisi NAMA TIM, 'Tahun Lahir' dikosongkan."
+                "Nama Peserta": "CATATAN: Untuk Estafet, 'Nama Peserta' diisi NAMA TIM, 'Tahun Lahir' dan 'KU' dikosongkan."
             });
 
             if (relayMaleEvent) {
@@ -149,6 +152,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                     "Tahun Lahir": "", // Intentionally blank for relays
                     "Jenis Kelamin (L/P)": "L", // Gender is used to identify the team type
                     "Klub/Tim": "Klub Cepat",
+                    "KU": "",
                     "Nomor Lomba": formatEventName(relayMaleEvent),
                     "Waktu Unggulan (mm:ss.SS)": "04:10.00"
                 });
@@ -159,6 +163,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                     "Tahun Lahir": "",
                     "Jenis Kelamin (L/P)": "P",
                     "Klub/Tim": "Klub Cepat",
+                     "KU": "",
                     "Nomor Lomba": formatEventName(relayFemaleEvent),
                     "Waktu Unggulan (mm:ss.SS)": "04:30.00"
                 });
@@ -169,6 +174,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                     "Tahun Lahir": "",
                     "Jenis Kelamin (L/P)": "L", // For mixed, can be L or P, often tied to team contact
                     "Klub/Tim": "Klub Cepat",
+                     "KU": "",
                     "Nomor Lomba": formatEventName(relayMixedEvent),
                     "Waktu Unggulan (mm:ss.SS)": "04:20.00"
                 });
@@ -183,6 +189,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                 "Tahun Lahir": 2005,
                 "Jenis Kelamin (L/P)": "L",
                 "Klub/Tim": "Klub Contoh",
+                "KU": "KU 1",
                 "Nomor Lomba": events.length > 0 ? formatEventName(events[0]) : "Tidak ada nomor lomba",
                 "Waktu Unggulan (mm:ss.SS)": "01:25.50"
             });
@@ -194,14 +201,14 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         const wsTemplate = XLSX.utils.json_to_sheet(templateData, { skipHeader: true }); // Use skipHeader and manually add it
         
         // Manually create the header row
-        const header = ["Nama Peserta", "Tahun Lahir", "Jenis Kelamin (L/P)", "Klub/Tim", "Nomor Lomba", "Waktu Unggulan (mm:ss.SS)"];
+        const header = ["Nama Peserta", "Tahun Lahir", "Jenis Kelamin (L/P)", "Klub/Tim", "KU", "Nomor Lomba", "Waktu Unggulan (mm:ss.SS)"];
         XLSX.utils.sheet_add_aoa(wsTemplate, [header], { origin: "A1" });
 
         const maxRows = 2000;
         if (!wsTemplate['!dataValidation']) wsTemplate['!dataValidation'] = [];
         // Data validation for Race Name
         wsTemplate['!dataValidation'].push({
-            sqref: `E2:E${maxRows}`, 
+            sqref: `F2:F${maxRows}`, 
             opts: { type: 'list', allowBlank: false, formula1: `'Daftar Nomor Lomba'!$A$6:$A$${events.length + 6}`, showDropDown: true, error: 'Silakan pilih nomor lomba yang valid dari daftar.', errorTitle: 'Pilihan Tidak Valid' }
         });
         // Data validation for Gender
@@ -210,7 +217,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
             opts: { type: 'list', allowBlank: false, formula1: `"L,P"`, showDropDown: true, error: 'Gunakan "L" untuk Laki-laki atau "P" untuk Perempuan.', errorTitle: 'Pilihan Tidak Valid'}
         });
         
-        wsTemplate['!cols'] = [ { wch: 40 }, { wch: 15 }, { wch: 20 }, { wch: 30 }, { wch: 50 }, { wch: 25 }];
+        wsTemplate['!cols'] = [ { wch: 40 }, { wch: 15 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 50 }, { wch: 25 }];
         XLSX.utils.book_append_sheet(workbook, wsTemplate, "Template Pendaftaran");
         
         // --- Sheet 2: Daftar Nomor Lomba ---
@@ -525,7 +532,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
           <div className="bg-background p-4 rounded-md border border-border space-y-3 mb-4">
               <div>
                 <p className="text-text-secondary">Unggah file Excel (.xlsx) dengan kolom berikut untuk mendaftarkan peserta ke nomor lomba:</p>
-                <code className="block text-sm bg-surface p-2 rounded-md whitespace-pre mt-1">Nama Peserta | Tahun Lahir | Jenis Kelamin (L/P) | Klub/Tim | Nomor Lomba | Waktu Unggulan (mm:ss.SS)</code>
+                <code className="block text-sm bg-surface p-2 rounded-md whitespace-pre mt-1">Nama Peserta | Tahun Lahir | Jenis Kelamin (L/P) | Klub/Tim | KU | Nomor Lomba | Waktu Unggulan (mm:ss.SS)</code>
               </div>
               <div className="flex flex-wrap gap-2">
                   <Button variant="secondary" onClick={downloadTemplate} disabled={isDownloading || !canDownload} title={!canDownload ? "Buat 'Nomor Lomba' terlebih dahulu untuk mengunduh template" : "Unduh template Excel dengan daftar nomor lomba"}>

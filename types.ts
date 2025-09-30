@@ -42,6 +42,7 @@ export interface Swimmer {
   birthYear: number;
   gender: 'Male' | 'Female';
   club: string;
+  ageGroup?: string | null;
 }
 
 export interface Result {

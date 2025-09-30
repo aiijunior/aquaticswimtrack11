@@ -185,6 +185,7 @@ export type Database = {
           birth_year: number
           gender: "Male" | "Female"
           club: string
+          age_group: string | null
         }
         Insert: {
           id?: string
@@ -192,6 +193,7 @@ export type Database = {
           birth_year: number
           gender: "Male" | "Female"
           club: string
+          age_group?: string | null
         }
         Update: {
           id?: string
@@ -199,6 +201,7 @@ export type Database = {
           birth_year?: number
           gender?: "Male" | "Female"
           club?: string
+          age_group?: string | null
         }
         Relationships: []
       }
