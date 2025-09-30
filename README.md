@@ -23,6 +23,19 @@ Aquatic Swimtrack 11 adalah aplikasi modern, *offline-first*, dan *real-time* ya
 Catatan ini melacak semua perubahan signifikan yang diterapkan pada aplikasi Aquatic Swimtrack 11.
 
 ---
+### **Pembaruan Terkini: Penambahan Kelompok Umur (KU)**
+*Tanggal Rilis: Sesuai pembaruan terakhir*
+
+Pembaruan ini memperkenalkan fungsionalitas Kelompok Umur (KU) untuk setiap perenang, meningkatkan kemampuan aplikasi dalam mengelola kompetisi berbasis usia.
+
+- **Fitur Baru: Data Kelompok Umur (KU)**
+  - **Data Perenang**: Setiap perenang kini memiliki kolom "KU" opsional (`KU Senior`, `KU 1` - `KU 5`).
+  - **Manajemen Admin**: Kolom KU ditambahkan pada tabel, formulir tambah, dan edit perenang di halaman "Daftar Perenang".
+  - **Pendaftaran Online**: Formulir pendaftaran online sekarang menyertakan input dropdown untuk KU, dengan fungsionalitas pengisian otomatis untuk perenang yang sudah ada.
+  - **Unggah Massal**: Template Excel untuk pendaftaran massal diperbarui dengan kolom "KU" baru.
+  - **Skema Database**: Skema SQL diperbarui untuk menyertakan kolom `age_group` pada tabel `swimmers`.
+
+---
 ### **Versi 1.1.5: Fitur SQL Editor & Perbaikan Tipe Data**
 *Tanggal Rilis: Sesuai pembaruan terakhir*
 
@@ -177,7 +190,8 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
         name text NOT NULL,
         birth_year integer NOT NULL,
         gender public.swimmer_gender NOT NULL,
-        club text NOT NULL
+        club text NOT NULL,
+        age_group text
     );
     -- RLS Policies for swimmers
     ALTER TABLE public.swimmers ENABLE ROW LEVEL SECURITY;

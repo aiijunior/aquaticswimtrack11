@@ -105,7 +105,8 @@ CREATE TABLE IF NOT EXISTS public.swimmers (
     name text NOT NULL,
     birth_year integer NOT NULL,
     gender public.swimmer_gender NOT NULL,
-    club text NOT NULL
+    club text NOT NULL,
+    age_group text
 );
 -- RLS Policies for swimmers
 ALTER TABLE public.swimmers ENABLE ROW LEVEL SECURITY;

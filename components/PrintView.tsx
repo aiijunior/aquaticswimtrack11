@@ -252,12 +252,14 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                                             <h5 className="font-bold text-center mb-1">Seri {heat.heatNumber} dari {heats.length}</h5>
                                             <table className="w-full text-left text-sm">
                                                 <colgroup>
+                                                    <col style={{ width: '8%' }} />
+                                                    <col style={{ width: '30%' }} />
+                                                    <col style={{ width: '27%' }} />
                                                     <col style={{ width: '10%' }} />
-                                                    <col style={{ width: '35%' }} />
-                                                    <col style={{ width: '35%' }} />
-                                                    <col style={{ width: '20%' }} />
+                                                    <col style={{ width: '10%' }} />
+                                                    <col style={{ width: '15%' }} />
                                                 </colgroup>
-                                                <thead><tr><th>Lintasan</th><th>Nama</th><th>Klub</th><th className="text-right">Waktu Unggulan</th></tr></thead>
+                                                <thead><tr><th>Lintasan</th><th>Nama</th><th>Klub</th><th>Tahun</th><th>KU</th><th className="text-right">Waktu Unggulan</th></tr></thead>
                                                 <tbody>
                                                     {Array.from({ length: lanes }, (_, i) => i + 1).map(lane => {
                                                         const assignment = heat.assignments.find(a => a.lane === lane);
@@ -268,6 +270,8 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                                                                 <td className="w-12 text-center font-bold">{lane}</td>
                                                                 <td>{displayName}</td>
                                                                 <td>{displayClub}</td>
+                                                                <td>{assignment && !isRelay ? assignment.entry.swimmer.birthYear : '-'}</td>
+                                                                <td>{assignment && !isRelay ? (assignment.entry.swimmer.ageGroup || '-') : '-'}</td>
                                                                 <td className="text-right font-mono">{assignment ? formatTime(assignment.entry.seedTime) : '-'}</td>
                                                             </tr>
                                                         );
@@ -332,13 +336,15 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                         </div>
                         <table className="w-full text-left text-sm mt-2">
                             <colgroup>
-                                <col style={{ width: '10%' }} />
-                                <col style={{ width: '35%' }} />
+                                <col style={{ width: '8%' }} />
                                 <col style={{ width: '30%' }} />
-                                <col style={{ width: '15%' }} />
-                                <col style={{ width: '10%' }} />
+                                <col style={{ width: '25%' }} />
+                                <col style={{ width: '8%' }} />
+                                <col style={{ width: '8%' }} />
+                                <col style={{ width: '13%' }} />
+                                <col style={{ width: '8%' }} />
                             </colgroup>
-                            <thead><tr><th className="text-center">RANK</th><th>Nama</th><th>Klub</th><th className="text-right">Waktu</th><th className="text-center">Medali</th></tr></thead>
+                            <thead><tr><th className="text-center">RANK</th><th>Nama</th><th>Klub</th><th>Tahun</th><th>KU</th><th className="text-right">Waktu</th><th className="text-center">Medali</th></tr></thead>
                             <tbody>
                                 {event.sortedResults.map(res => {
                                     let rankClass = '';
@@ -351,6 +357,8 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                                             <td className="text-center font-bold">{res.rank > 0 ? res.rank : '-'}</td>
                                             <td>{res.swimmer?.name || 'N/A'}</td>
                                             <td>{res.swimmer?.club || 'N/A'}</td>
+                                            <td>{event.relayLegs ? '-' : res.swimmer?.birthYear || ''}</td>
+                                            <td>{event.relayLegs ? '-' : res.swimmer?.ageGroup || '-'}</td>
                                             <td className="text-right font-mono">
                                                 {formatTime(res.time)}
                                                 {res.recordsBroken.map(br => (
@@ -1142,7 +1150,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const downloadProgramBookExcel = () => {
         if (!competitionInfo) return;
         
-        const NUM_COLS = 4;
+        const NUM_COLS = 6;
         const headerInfo = getExcelHeaderAOA('Buku Acara', NUM_COLS);
         const aoa: any[][] = headerInfo.aoa;
         const merges: any[] = headerInfo.merges;
@@ -1207,7 +1215,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
                     currentRow++;
                     
-                    aoa.push(['Lintasan', 'Nama', 'Klub', 'Waktu Unggulan']);
+                    aoa.push(['Lintasan', 'Nama', 'Klub', 'Tahun Lahir', 'KU', 'Waktu Unggulan']);
                     currentRow++;
 
                     Array.from({ length: competitionInfo.numberOfLanes || 8 }, (_, i) => i + 1).forEach(lane => {
@@ -1218,6 +1226,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                             lane,
                             displayName,
                             displayClub,
+                            assignment && !isRelay ? assignment.entry.swimmer.birthYear : '',
+                            assignment && !isRelay ? (assignment.entry.swimmer.ageGroup || '') : '',
                             assignment ? formatTime(assignment.entry.seedTime) : '-'
                         ]);
                         currentRow++;
@@ -1229,7 +1239,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
         const worksheet = XLSX.utils.aoa_to_sheet(aoa);
         worksheet['!merges'] = merges;
-        worksheet['!cols'] = [{ wch: 10 }, { wch: 35 }, { wch: 30 }, { wch: 20 }];
+        worksheet['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 20 }];
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Buku Acara");
         XLSX.writeFile(workbook, "Buku_Acara_Start_List.xlsx");
@@ -1242,7 +1252,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         };
 
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-        const NUM_COLS = 6;
+        const NUM_COLS = 8;
         const headerInfo = getExcelHeaderAOA('Hasil Lomba per Nomor', NUM_COLS);
         const aoa: any[][] = headerInfo.aoa;
         const merges: any[] = headerInfo.merges;
@@ -1255,7 +1265,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             aoa.push([formatEventName(event)]);
             merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
             currentRow++;
-            aoa.push(['Peringkat', 'Medali', 'Nama Peserta', 'Klub', 'Waktu', 'Catatan']);
+            aoa.push(['Peringkat', 'Medali', 'Nama Peserta', 'Klub', 'Tahun Lahir', 'KU', 'Waktu', 'Catatan']);
             currentRow++;
             
             const sortedResults = [...event.results].sort((a: Result,b: Result) => {
@@ -1269,7 +1279,16 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 const medalEmoji = getMedalEmoji(rankNumber);
                 const note = brokenRecords.find(br => br.newHolder.id === swimmer?.id && br.newTime === res.time && br.record.style === event.style && br.record.distance === event.distance)?.record.type;
                 
-                aoa.push([rankDisplay, medalEmoji, swimmer?.name || 'N/A', swimmer?.club || 'N/A', formatTime(res.time), note ? `REKOR BARU ${note}`: '']);
+                aoa.push([
+                    rankDisplay, 
+                    medalEmoji, 
+                    swimmer?.name || 'N/A', 
+                    swimmer?.club || 'N/A',
+                    event.relayLegs ? '' : (swimmer?.birthYear || ''),
+                    event.relayLegs ? '' : (swimmer?.ageGroup || ''),
+                    formatTime(res.time), 
+                    note ? `REKOR BARU ${note}`: ''
+                ]);
                 currentRow++;
             });
             aoa.push([]); currentRow++;
@@ -1277,7 +1296,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
         const worksheet = XLSX.utils.aoa_to_sheet(aoa);
         worksheet['!merges'] = merges;
-        worksheet['!cols'] = [{ wch: 10 }, { wch: 8 }, { wch: 30 }, { wch: 30 }, { wch: 15 }, { wch: 25 }];
+        worksheet['!cols'] = [{ wch: 10 }, { wch: 8 }, { wch: 25 }, { wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 25 }];
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Hasil Lomba");
         XLSX.writeFile(workbook, "Hasil_Lomba.xlsx");

@@ -318,12 +318,53 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     XLSX.writeFile(wb, "Template_Nomor_Lomba.xlsx");
   };
 
+  const handleDownloadEvents = () => {
+    if (typeof XLSX === 'undefined') {
+        alert('Pustaka untuk membuat file Excel belum termuat. Periksa koneksi internet Anda dan muat ulang halaman.');
+        return;
+    }
+    if (events.length === 0) {
+        alert('Tidak ada nomor lomba untuk diunduh.');
+        return;
+    }
+
+    const sortedEvents = [...events].sort((a, b) => {
+         const sessionDiff = (a.sessionNumber ?? 999) - (b.sessionNumber ?? 999);
+         if (sessionDiff !== 0) return sessionDiff;
+         const orderDiff = (a.heatOrder ?? 999) - (b.heatOrder ?? 999);
+         if (orderDiff !== 0) return orderDiff;
+         return formatEventName(a).localeCompare(formatEventName(b));
+    });
+
+    const dataToExport = sortedEvents.map(event => ({
+        "Jarak (m)": event.distance,
+        "Gaya": translateSwimStyle(event.style),
+        "Jenis Kelamin": translateGender(event.gender),
+        "Kategori": event.category || "",
+        "Jumlah Perenang": event.relayLegs || ""
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    worksheet['!cols'] = [
+        { wch: 10 }, // Jarak
+        { wch: 25 }, // Gaya
+        { wch: 15 }, // Jenis Kelamin
+        { wch: 15 }, // Kategori
+        { wch: 20 }  // Jumlah Perenang
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Daftar Nomor Lomba");
+    XLSX.writeFile(workbook, "Daftar_Nomor_Lomba_Saat_Ini.xlsx");
+  };
+
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
         <h1 className="text-3xl font-bold">Nomor Lomba</h1>
         <div className="flex space-x-2 flex-wrap gap-2">
+            <Button onClick={handleDownloadEvents} variant="secondary" disabled={events.length === 0} title="Unduh semua nomor lomba yang ada">Unduh Nomor Lomba</Button>
             <Button onClick={() => setIsUploadModalOpen(true)} variant="secondary">Unggah Nomor Lomba</Button>
             <Button onClick={() => setIsModalOpen(true)}>Buat Nomor Lomba</Button>
             <Button 
