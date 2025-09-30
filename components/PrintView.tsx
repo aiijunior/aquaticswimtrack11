@@ -230,7 +230,7 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
             const sessionName = `Sesi ${romanize(event.sessionNumber!)}`;
             if (!acc[sessionName]) acc[sessionName] = [];
             
-            const eventEntries = event.entries.map((entry: EventEntry) => {
+            const eventEntries = (event.entries as EventEntry[]).map((entry: EventEntry) => {
                 const swimmer = swimmers.find(s => s.id === entry.swimmerId);
                 return swimmer ? { ...entry, swimmer } : null;
             }).filter((e): e is Entry => e !== null);
@@ -326,7 +326,7 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
             .map((event: SwimEvent) => ({
                 ...event,
                 globalEventNumber: globalEventCounter++,
-                sortedResults: [...event.results]
+                sortedResults: [...(event.results as Result[])]
                     .sort((a: Result,b: Result) => {
                         if (a.time < 0) return 1; // DQ at the end
                         if (b.time < 0) return -1;
@@ -925,7 +925,7 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
             return acc;
         }, {} as Record<string, MedalInfo[]>);
 
-        let clubData = Object.entries(groupedByClub).map(([clubName, medals]) => {
+        let clubData = Object.entries(groupedByClub).map(([clubName, medals]: [string, MedalInfo[]]) => {
             const counts = medals.reduce((acc, medal) => {
                 if (medal.rank === 1) acc.gold++;
                 else if (medal.rank === 2) acc.silver++;
