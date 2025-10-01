@@ -205,7 +205,7 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
             const sessionName = `Sesi ${romanize(event.sessionNumber!)}`;
             if (!acc[sessionName]) acc[sessionName] = [];
             
-            // FIX: Add explicit type to map callback parameter to resolve 'unknown' type error.
+            // FIX: Explicitly type the 'entry' parameter to resolve 'unknown' type error.
             const eventEntries = (event.entries as EventEntry[]).map((entry: EventEntry) => {
                 const swimmer = swimmers.find(s => s.id === entry.swimmerId);
                 return swimmer ? { ...entry, swimmer } : null;
@@ -307,6 +307,7 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                 ...event,
                 globalEventNumber: globalEventCounter++,
                 sortedResults: [...(event.results as Result[])]
+                    // FIX: Explicitly type sort parameters to resolve 'unknown' type error.
                     .sort((a: Result,b: Result) => {
                         if (a.time < 0) return 1; // DQ at the end
                         if (b.time < 0) return -1;
@@ -314,7 +315,7 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
                         if (b.time === 0) return -1;
                         return a.time - b.time;
                     })
-                    // FIX: Add explicit type to map callback parameter to resolve 'unknown' type error.
+                    // FIX: Explicitly type map parameters to resolve 'unknown' type error.
                     .map((r: Result, i: number) => {
                         const swimmer = swimmersMap.get(r.swimmerId);
                         const recordsBroken = brokenRecords.filter(br => br.newHolder.id === swimmer?.id && br.newTime === r.time && br.record.style === event.style && br.record.distance === event.distance);
@@ -391,13 +392,16 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
         const clubMedals: Record<string, { gold: number, silver: number, bronze: number }> = {};
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
 
-        // FIX: Add explicit type annotation to forEach callback parameter.
+        // FIX: Add explicit type annotation to forEach callback parameter to resolve 'unknown' type.
         events.forEach((event: SwimEvent) => {
             if (!event.results) return;
             [...(event.results as Result[])]
+                // FIX: Explicitly type filter parameter to resolve 'unknown' type error.
                 .filter((r: Result) => r.time > 0)
+                // FIX: Explicitly type sort parameters to resolve 'unknown' type error.
                 .sort((a: Result, b: Result) => a.time - b.time)
                 .slice(0, 3)
+                // FIX: Explicitly type forEach parameters to resolve 'unknown' type error.
                 .forEach((result: Result, i: number) => {
                     const rank = i + 1;
                     const swimmer = swimmersMap.get(result.swimmerId);
@@ -409,12 +413,12 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
                     }
                 });
         });
-        // FIX: Add explicit type annotation to sort callback parameters.
+        // FIX: Add explicit type annotation to sort callback parameters to resolve 'unknown' type error.
         return Object.entries(clubMedals).sort(([,a]: [string, { gold: number, silver: number, bronze: number }], [,b]: [string, { gold: number, silver: number, bronze: number }]) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
     }, [events, swimmers]);
 
     const grandTotal = useMemo(() => {
-        // FIX: Add explicit type annotations to reduce callback parameters.
+        // FIX: Add explicit type annotations to reduce callback parameters to resolve 'unknown' type error.
         return data.reduce((acc: { gold: number, silver: number, bronze: number }, [, medals]: [string, { gold: number, silver: number, bronze: number }]) => {
             acc.gold += medals.gold;
             acc.silver += medals.silver;
@@ -546,7 +550,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
         const individualData: Record<string, IndividualStandingData> = {};
 
         // 1. Calculate Medals
-        // FIX: Add explicit type annotations to forEach and other callbacks.
+        // FIX: Add explicit type annotations to forEach and other callbacks to resolve 'unknown' type issues.
         events.filter(e => e.gender !== Gender.MIXED && e.results && e.results.length > 0).forEach((event: SwimEvent) => {
             [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => {
                 const rank = i + 1;
@@ -563,7 +567,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
         });
 
         // 2. Calculate Tiebreaker scores for all athletes with medals
-        // FIX: Add explicit type annotation to forEach callback parameter.
+        // FIX: Add explicit type annotation to forEach callback parameter to resolve 'unknown' type.
         Object.values(individualData).forEach((data: IndividualStandingData) => {
             const swimmerId = data.swimmer.id;
             const relevantResults = events
@@ -608,7 +612,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
         });
         
         // Sort within each tied group by tiebreaker score
-        // FIX: Add explicit type annotation to forEach callback parameter.
+        // FIX: Add explicit type annotation to forEach callback parameter to resolve 'unknown' type.
         sortedGroups.forEach((group: IndividualStandingData[]) => {
             if (group.length > 1) {
                 group.sort((a, b) => b.tiebreakerScore - a.tiebreakerScore);
@@ -1273,7 +1277,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         const sortedEvents = events.filter(e => e.results && e.results.length > 0)
             .sort((a,b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
 
-        // FIX: Add explicit type annotation to forEach callback parameter.
+        // FIX: Add explicit type annotation to forEach callback parameter to resolve 'unknown' type.
         sortedEvents.forEach((event: SwimEvent) => {
             aoa.push([formatEventName(event)]);
             merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
@@ -1281,12 +1285,12 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             aoa.push(['Rank', 'Medali', 'Nama Peserta', 'KU', 'Tahun', 'Klub', 'Waktu', 'Catatan']);
             currentRow++;
             
-            // FIX: Add explicit type annotation to sort callback parameters.
+            // FIX: Add explicit type annotation to sort callback parameters to resolve 'unknown' type.
             const sortedResults = [...event.results].sort((a: Result,b: Result) => {
                 if (a.time < 0) return 1; if (b.time < 0) return -1; if (a.time === 0) return 1; if (b.time === 0) return -1; return a.time - b.time;
             });
 
-            // FIX: Add explicit type annotation to forEach callback parameter.
+            // FIX: Add explicit type annotation to forEach callback parameter to resolve 'unknown' type.
             sortedResults.forEach((res: Result, i: number) => {
                 const swimmer = swimmersMap.get(res.swimmerId);
                 const rankNumber = res.time > 0 ? i + 1 : 0;

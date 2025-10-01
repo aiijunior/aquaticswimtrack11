@@ -551,7 +551,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.gender}
                 onChange={(e) => setNewEvent({ ...newEvent, gender: e.target.value as Gender })}
             >
-                {/* FIX: Add explicit type to map callback parameter to resolve 'unknown' type error */}
+                {/* FIX: Explicitly typing the 'gender' parameter in the map function to resolve an issue where it might be inferred as 'unknown'. */}
                 {GENDER_OPTIONS.map((gender: Gender) => (
                 <option key={gender} value={gender}>
                     {translateGender(gender)}

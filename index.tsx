@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { NotificationProvider } from './components/ui/NotificationManager';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -13,6 +14,8 @@ const root = createRoot(rootElement);
 // This simplified render call is more idiomatic and robust.
 root.render(
   <ThemeProvider>
-    <App />
+    <NotificationProvider>
+      <App />
+    </NotificationProvider>
   </ThemeProvider>
 );

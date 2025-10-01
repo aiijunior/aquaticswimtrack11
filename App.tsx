@@ -21,6 +21,7 @@ import { ThemeToggle } from './components/ui/ThemeToggle';
 import { supabase } from './services/supabaseClient';
 import { Spinner } from './components/ui/Spinner';
 import { ConnectionStatusIndicator } from './components/ui/ConnectionStatusIndicator';
+import { NotificationContainer } from './components/ui/NotificationManager';
 
 const NavLink: React.FC<{
   label: string;
@@ -298,12 +299,18 @@ const App: React.FC = () => {
   };
   
   if (currentView === View.LOGIN || currentView === View.PUBLIC_RESULTS || currentView === View.ONLINE_REGISTRATION) {
-      return renderContent();
+      return (
+        <>
+          <NotificationContainer />
+          {renderContent()}
+        </>
+      );
   }
 
 
   return (
     <div className="flex h-screen bg-background text-text-primary">
+      <NotificationContainer />
       {/* Mobile Menu Overlay */}
       {isMenuOpen && (
         <div

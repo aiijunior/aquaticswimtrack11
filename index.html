@@ -158,6 +158,22 @@
       }
       .record-badge.porprov { background-color: #3b82f6; } /* Blue-500 */
       .record-badge.nasional { background-color: #ef4444; } /* Red-500 */
+      
+      /* NEW: Styles for Notification Toasts */
+      .notification-toast {
+        animation: toast-in-right 0.5s cubic-bezier(0.215, 0.610, 0.355, 1.000);
+      }
+
+      @keyframes toast-in-right {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
 
       /* PDF & Print Specific Styles */
       @media print {
