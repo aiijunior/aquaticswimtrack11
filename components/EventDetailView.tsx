@@ -104,7 +104,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
         
         try {
             await recordEventResults(eventId, results);
-            addNotification('Hasil lomba berhasil disimpan.', 'success');
+            addNotification('Hasil lomba berhasil disimpan.', 'info');
             setTimeModalOpen(false);
             onDataUpdate();
             fetchEventDetails();

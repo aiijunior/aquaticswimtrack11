@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View } from './types';
 import type { Swimmer, SwimEvent, CompetitionInfo, User } from './types';
 import { LoginView } from './components/LoginView';
-import { AdminDashboard } from './components/Dashboard';
+import { AdminDashboard } from './components/AdminDashboard';
 import { EventSettingsView } from './components/EventSettingsView';
 import { EventsView } from './components/EventsView';
 import { ParticipantsView } from './components/ParticipantsView';

@@ -197,7 +197,7 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
                 });
             
             await addOrUpdateEventResults(eventId, resultsToSave);
-            addNotification(`Hasil untuk Seri ${currentHeat.heatNumber} berhasil disimpan.`, 'success');
+            addNotification(`Hasil untuk Seri ${currentHeat.heatNumber} berhasil disimpan.`, 'info');
             onDataUpdate();
             await fetchAndSetupEvent();
         } catch (error: any) {

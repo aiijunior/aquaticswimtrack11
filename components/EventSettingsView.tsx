@@ -238,7 +238,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
 
             await updateCompetitionInfo(infoToSave);
             onDataUpdate();
-            addNotification('Pengaturan umum berhasil disimpan!', 'success');
+            addNotification('Pengaturan umum berhasil disimpan!', 'info');
         } catch (error) {
              addNotification(`Gagal menyimpan: ${getErrorMessage(error)}`, 'error');
         }
@@ -272,7 +272,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             
             await updateEventSchedule(finalEvents);
             onDataUpdate();
-            addNotification('Jadwal berhasil disimpan!', 'success');
+            addNotification('Jadwal berhasil disimpan!', 'info');
         } catch (error) {
             console.error("Gagal menyimpan jadwal:", error);
             addNotification(`Gagal menyimpan jadwal: ${getErrorMessage(error)}`, 'error');
@@ -376,7 +376,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                     onDataUpdate(); 
                     fetchRecords();
                     setRecordFile(null);
-                    addNotification(`${result.success} data rekor berhasil diperbarui via unggahan!`, 'success');
+                    addNotification(`${result.success} data rekor berhasil diperbarui via unggahan!`, 'info');
                 } else if (result.errors.length > 0) {
                     addNotification('Impor selesai dengan galat. Periksa detail di bawah.', 'error');
                 }
@@ -611,7 +611,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             setRecordToDelete(null);
             fetchRecords();
             onDataUpdate();
-            addNotification('Rekor berhasil dihapus.', 'success');
+            addNotification('Rekor berhasil dihapus.', 'error');
         } catch (error) {
              addNotification(`Gagal menghapus rekor: ${getErrorMessage(error)}`, 'error');
         }
@@ -623,7 +623,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             setIsDeleteAllRecordsModalOpen(false);
             fetchRecords(); // Refresh the list
             onDataUpdate(); // Refresh global data
-            addNotification('Semua rekor berhasil dihapus.', 'success');
+            addNotification('Semua rekor berhasil dihapus.', 'error');
         } catch (error) {
             addNotification(`Gagal menghapus semua rekor: ${getErrorMessage(error)}`, 'error');
         }
@@ -656,7 +656,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             handleCancelEdit();
             fetchRecords();
             onDataUpdate();
-            addNotification(`Rekor berhasil ${editingRecord ? 'diperbarui' : 'ditambahkan'}.`, 'success');
+            addNotification(`Rekor berhasil ${editingRecord ? 'diperbarui' : 'ditambahkan'}.`, editingRecord ? 'info' : 'success');
         } catch (error) {
             addNotification(`Gagal menyimpan rekor: ${getErrorMessage(error)}`, 'error');
         }
@@ -749,7 +749,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 setIsClearDataModalOpen(false);
                 setClearDataCredentials({ email: '', password: '' });
                 onDataUpdate();
-                addNotification('Semua data kompetisi telah berhasil dihapus.', 'success');
+                addNotification('Semua data kompetisi telah berhasil dihapus.', 'error');
             } else {
                 setClearDataError('Kredensial tidak valid.');
                 setIsClearingData(false);
@@ -786,7 +786,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 const data = JSON.parse(content);
                 await restoreDatabase(data); 
 
-                addNotification('Data berhasil dipulihkan dari backup!', 'success');
+                addNotification('Data berhasil dipulihkan dari backup!', 'info');
                 onDataUpdate();
             } catch (error) {
                 addNotification(`Gagal memulihkan: ${getErrorMessage(error)}`, 'error');

@@ -220,7 +220,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
     if (!selectedSwimmer) return;
     try {
         await updateSwimmer(selectedSwimmer.id, editFormData);
-        addNotification('Data perenang berhasil diperbarui.', 'success');
+        addNotification('Data perenang berhasil diperbarui.', 'info');
         closeModal();
         onDataUpdate();
     } catch (error: any) {
@@ -232,7 +232,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
     if (!selectedSwimmer) return;
     try {
         await deleteSwimmer(selectedSwimmer.id);
-        addNotification(`Perenang ${selectedSwimmer.name} berhasil dihapus.`, 'success');
+        addNotification(`Perenang ${selectedSwimmer.name} berhasil dihapus.`, 'error');
         closeModal();
         onDataUpdate();
     } catch (error: any) {
@@ -243,7 +243,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
   const handleConfirmDeleteAll = async () => {
     try {
         await deleteAllSwimmers();
-        addNotification('Semua data perenang berhasil dihapus.', 'success');
+        addNotification('Semua data perenang berhasil dihapus.', 'error');
         setIsDeleteAllModalOpen(false);
         onDataUpdate();
     } catch (error: any) {
@@ -317,7 +317,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
     if (!actionTarget || !selectedSwimmer) return;
     try {
         await unregisterSwimmerFromEvent(actionTarget.event.id, selectedSwimmer.id);
-        addNotification('Pendaftaran berhasil dihapus.', 'success');
+        addNotification('Pendaftaran berhasil dihapus.', 'error');
         setIsUnregisterModalOpen(false);
         setActionTarget(null);
         onDataUpdate();
@@ -345,7 +345,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
 
     try {
         await updateSwimmerSeedTime(actionTarget.event.id, selectedSwimmer.id, newSeedTime);
-        addNotification('Waktu unggulan berhasil diperbarui.', 'success');
+        addNotification('Waktu unggulan berhasil diperbarui.', 'info');
         setIsEditSeedTimeModalOpen(false);
         setActionTarget(null);
         onDataUpdate();

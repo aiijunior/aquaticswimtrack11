@@ -177,7 +177,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     if (eventToDelete) {
         try {
             await deleteEvent(eventToDelete.id);
-            addNotification('Nomor lomba berhasil dihapus.', 'success');
+            addNotification('Nomor lomba berhasil dihapus.', 'error');
             closeDeleteConfirm();
             onDataUpdate();
         } catch (error: any) {
@@ -189,7 +189,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
   const handleConfirmDeleteAll = async () => {
     try {
         await deleteAllEvents();
-        addNotification('Semua nomor lomba berhasil dihapus.', 'success');
+        addNotification('Semua nomor lomba berhasil dihapus.', 'error');
         setIsDeleteAllModalOpen(false);
         onDataUpdate();
     } catch (error: any) {
