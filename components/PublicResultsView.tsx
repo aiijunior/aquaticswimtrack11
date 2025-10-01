@@ -169,9 +169,17 @@ export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ onAdminLog
         <header className="relative text-center p-4 md:p-6">
             {localCompetitionInfo?.eventLogo && <img src={localCompetitionInfo.eventLogo} alt="Logo Acara" className={`mx-auto h-20 md:h-24 object-contain mb-4 ${theme === 'dark' ? 'bg-white p-2 rounded' : ''}`} />}
             {localCompetitionInfo ? (
-                localCompetitionInfo.eventName.split('\n').map((line, index) => (
-                    <h1 key={index} className="text-3xl md:text-5xl font-extrabold text-primary tracking-tight">{line}</h1>
-                ))
+                <div>
+                    {localCompetitionInfo.eventName.split('\n').map((line, index) => {
+                        if (index === 0) {
+                            return <h1 key={index} className="text-3xl md:text-5xl font-extrabold text-primary tracking-tight">{line}</h1>;
+                        } else if (index === 1) {
+                            return <h2 key={index} className="text-xl md:text-2xl font-semibold text-text-secondary tracking-wide mt-1">{line}</h2>;
+                        } else { // For line 3 and beyond, if any
+                            return <h3 key={index} className="text-lg md:text-xl font-medium text-text-secondary tracking-wide">{line}</h3>;
+                        }
+                    })}
+                </div>
             ) : (
                 <h1 className="text-3xl md:text-5xl font-extrabold text-primary tracking-tight">Hasil Lomba</h1>
             )}

@@ -391,9 +391,10 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
         const clubMedals: Record<string, { gold: number, silver: number, bronze: number }> = {};
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
 
+        // FIX: Add explicit type annotation to forEach callback parameter.
         events.forEach((event: SwimEvent) => {
             if (!event.results) return;
-            [...event.results]
+            [...(event.results as Result[])]
                 .filter((r: Result) => r.time > 0)
                 .sort((a: Result, b: Result) => a.time - b.time)
                 .slice(0, 3)
@@ -408,10 +409,12 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
                     }
                 });
         });
+        // FIX: Add explicit type annotation to sort callback parameters.
         return Object.entries(clubMedals).sort(([,a]: [string, { gold: number, silver: number, bronze: number }], [,b]: [string, { gold: number, silver: number, bronze: number }]) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
     }, [events, swimmers]);
 
     const grandTotal = useMemo(() => {
+        // FIX: Add explicit type annotations to reduce callback parameters.
         return data.reduce((acc: { gold: number, silver: number, bronze: number }, [, medals]: [string, { gold: number, silver: number, bronze: number }]) => {
             acc.gold += medals.gold;
             acc.silver += medals.silver;
@@ -543,8 +546,9 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
         const individualData: Record<string, IndividualStandingData> = {};
 
         // 1. Calculate Medals
+        // FIX: Add explicit type annotations to forEach and other callbacks.
         events.filter(e => e.gender !== Gender.MIXED && e.results && e.results.length > 0).forEach((event: SwimEvent) => {
-            [...event.results].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => {
+            [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => {
                 const rank = i + 1;
                 const swimmer = swimmersMap.get(result.swimmerId);
                 if (swimmer) {
@@ -559,6 +563,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
         });
 
         // 2. Calculate Tiebreaker scores for all athletes with medals
+        // FIX: Add explicit type annotation to forEach callback parameter.
         Object.values(individualData).forEach((data: IndividualStandingData) => {
             const swimmerId = data.swimmer.id;
             const relevantResults = events
@@ -603,7 +608,8 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
         });
         
         // Sort within each tied group by tiebreaker score
-        sortedGroups.forEach(group => {
+        // FIX: Add explicit type annotation to forEach callback parameter.
+        sortedGroups.forEach((group: IndividualStandingData[]) => {
             if (group.length > 1) {
                 group.sort((a, b) => b.tiebreakerScore - a.tiebreakerScore);
             }
@@ -1267,6 +1273,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         const sortedEvents = events.filter(e => e.results && e.results.length > 0)
             .sort((a,b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
 
+        // FIX: Add explicit type annotation to forEach callback parameter.
         sortedEvents.forEach((event: SwimEvent) => {
             aoa.push([formatEventName(event)]);
             merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
@@ -1274,10 +1281,12 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             aoa.push(['Rank', 'Medali', 'Nama Peserta', 'KU', 'Tahun', 'Klub', 'Waktu', 'Catatan']);
             currentRow++;
             
+            // FIX: Add explicit type annotation to sort callback parameters.
             const sortedResults = [...event.results].sort((a: Result,b: Result) => {
                 if (a.time < 0) return 1; if (b.time < 0) return -1; if (a.time === 0) return 1; if (b.time === 0) return -1; return a.time - b.time;
             });
 
+            // FIX: Add explicit type annotation to forEach callback parameter.
             sortedResults.forEach((res: Result, i: number) => {
                 const swimmer = swimmersMap.get(res.swimmerId);
                 const rankNumber = res.time > 0 ? i + 1 : 0;
@@ -1392,7 +1401,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             const sortedGroups = Object.values(groupedByMedals).sort((groupA, groupB) => {
                 const a = groupA[0]; const b = groupB[0]; return b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze;
             });
-            sortedGroups.forEach(group => { if (group.length > 1) { group.sort((a, b) => b.tiebreakerScore - a.tiebreakerScore); }});
+            sortedGroups.forEach((group: IndividualStandingData[]) => { if (group.length > 1) { group.sort((a, b) => b.tiebreakerScore - a.tiebreakerScore); }});
             return {
                 maleGroups: sortedGroups.map(group => group.filter(d => d.swimmer.gender === 'Male')).filter(g => g.length > 0),
                 femaleGroups: sortedGroups.map(group => group.filter(d => d.swimmer.gender === 'Female')).filter(g => g.length > 0),
@@ -1406,7 +1415,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             const aoa = headerInfo.aoa;
             aoa.push(['Peringkat', 'Nama', 'Klub', 'Emas 🥇', 'Perak 🥈', 'Perunggu 🥉']);
             let rankCounter = 1;
-            groups.forEach(group => { group.forEach(d => { aoa.push([rankCounter++, d.swimmer.name, d.swimmer.club, d.gold, d.silver, d.bronze]); }); });
+            groups.forEach((group: IndividualStandingData[]) => { group.forEach(d => { aoa.push([rankCounter++, d.swimmer.name, d.swimmer.club, d.gold, d.silver, d.bronze]); }); });
             const worksheet = XLSX.utils.aoa_to_sheet(aoa);
             worksheet['!merges'] = headerInfo.merges;
             worksheet['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
