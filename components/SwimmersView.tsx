@@ -7,6 +7,7 @@ import { Modal } from './ui/Modal';
 import { Select } from './ui/Select';
 import { updateSwimmer, deleteSwimmer, deleteAllSwimmers, unregisterSwimmerFromEvent, updateSwimmerSeedTime, registerSwimmerToEvent, addSwimmer } from '../services/databaseService';
 import { formatEventName, formatTime, toTitleCase, AGE_GROUP_OPTIONS } from '../constants';
+import { useNotification } from './ui/NotificationManager';
 
 // --- ICONS ---
 const EditIcon = () => (
@@ -81,6 +82,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
     club: '',
     ageGroup: ''
   });
+  const { addNotification } = useNotification();
 
   // State for adding a new swimmer
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -99,8 +101,6 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
   const [actionTarget, setActionTarget] = useState<{ event: SwimEvent; seedTime: number } | null>(null);
   const [editTime, setEditTime] = useState({ min: '0', sec: '0', ms: '00' });
   const [registrationData, setRegistrationData] = useState({ eventId: '', min: '99', sec: '99', ms: '99' });
-  const [statusMessage, setStatusMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
-  const [editSeedTimeError, setEditSeedTimeError] = useState<string | null>(null);
   
   // State for filtering and view mode
   const [genderFilter, setGenderFilter] = useState<'Male' | 'Female' | 'All'>('All');
@@ -201,8 +201,6 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
     setIsAddModalOpen(false);
     setSelectedSwimmer(null);
     setActionTarget(null);
-    setStatusMessage(null);
-    setEditSeedTimeError(null);
   };
 
   // Form Handlers
@@ -220,22 +218,37 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSwimmer) return;
-    await updateSwimmer(selectedSwimmer.id, editFormData);
-    closeModal();
-    onDataUpdate();
+    try {
+        await updateSwimmer(selectedSwimmer.id, editFormData);
+        addNotification('Data perenang berhasil diperbarui.', 'success');
+        closeModal();
+        onDataUpdate();
+    } catch (error: any) {
+        addNotification(`Gagal memperbarui: ${error.message}`, 'error');
+    }
   };
   
   const handleDelete = async () => {
     if (!selectedSwimmer) return;
-    await deleteSwimmer(selectedSwimmer.id);
-    closeModal();
-    onDataUpdate();
+    try {
+        await deleteSwimmer(selectedSwimmer.id);
+        addNotification(`Perenang ${selectedSwimmer.name} berhasil dihapus.`, 'success');
+        closeModal();
+        onDataUpdate();
+    } catch (error: any) {
+        addNotification(`Gagal menghapus: ${error.message}`, 'error');
+    }
   };
   
   const handleConfirmDeleteAll = async () => {
-    await deleteAllSwimmers();
-    setIsDeleteAllModalOpen(false);
-    onDataUpdate();
+    try {
+        await deleteAllSwimmers();
+        addNotification('Semua data perenang berhasil dihapus.', 'success');
+        setIsDeleteAllModalOpen(false);
+        onDataUpdate();
+    } catch (error: any) {
+        addNotification(`Gagal menghapus semua perenang: ${error.message}`, 'error');
+    }
   };
 
   // --- Add Swimmer Handlers ---
@@ -266,9 +279,14 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
   const handleAddSwimmer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addFormData.name || !addFormData.club) return;
-    await addSwimmer(addFormData);
-    closeModal();
-    onDataUpdate();
+    try {
+        await addSwimmer(addFormData);
+        addNotification(`Perenang ${addFormData.name} berhasil ditambahkan.`, 'success');
+        closeModal();
+        onDataUpdate();
+    } catch (error: any) {
+        addNotification(`Gagal menambahkan perenang: ${error.message}`, 'error');
+    }
   };
 
   // --- Event Action Handlers ---
@@ -279,7 +297,6 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
 
   const handleOpenEditSeedTimeModal = (event: SwimEvent, seedTime: number) => {
     setActionTarget({ event, seedTime });
-    setEditSeedTimeError(null);
     if (seedTime > 0) {
         const totalMs = seedTime;
         const minutes = Math.floor(totalMs / 60000);
@@ -298,22 +315,26 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
   
   const handleConfirmUnregister = async () => {
     if (!actionTarget || !selectedSwimmer) return;
-    await unregisterSwimmerFromEvent(actionTarget.event.id, selectedSwimmer.id);
-    setIsUnregisterModalOpen(false);
-    setActionTarget(null);
-    onDataUpdate();
+    try {
+        await unregisterSwimmerFromEvent(actionTarget.event.id, selectedSwimmer.id);
+        addNotification('Pendaftaran berhasil dihapus.', 'success');
+        setIsUnregisterModalOpen(false);
+        setActionTarget(null);
+        onDataUpdate();
+    } catch (error: any) {
+        addNotification(`Gagal menghapus pendaftaran: ${error.message}`, 'error');
+    }
   };
 
   const handleConfirmEditSeedTime = async () => {
     if (!actionTarget || !selectedSwimmer) return;
-    setEditSeedTimeError(null);
 
     const min = parseInt(editTime.min || '0');
     const sec = parseInt(editTime.sec || '0');
     const ms = parseInt(editTime.ms || '0');
 
     if (sec >= 60 && !(min === 99 && sec === 99 && ms === 99)) {
-        setEditSeedTimeError('Input detik harus di bawah 60, kecuali untuk "No Time" (99:99.99).');
+        addNotification('Input detik harus di bawah 60, kecuali untuk "No Time" (99:99.99).', 'error');
         return;
     }
 
@@ -322,25 +343,27 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
         newSeedTime = 0;
     }
 
-    await updateSwimmerSeedTime(actionTarget.event.id, selectedSwimmer.id, newSeedTime);
-    
-    setIsEditSeedTimeModalOpen(false);
-    setActionTarget(null);
-    onDataUpdate();
+    try {
+        await updateSwimmerSeedTime(actionTarget.event.id, selectedSwimmer.id, newSeedTime);
+        addNotification('Waktu unggulan berhasil diperbarui.', 'success');
+        setIsEditSeedTimeModalOpen(false);
+        setActionTarget(null);
+        onDataUpdate();
+    } catch (error: any) {
+        addNotification(`Gagal memperbarui waktu: ${error.message}`, 'error');
+    }
   };
 
   const handleOpenRegisterModal = () => {
     setIsEventsModalOpen(false);
     setIsRegisterModalOpen(true);
     setRegistrationData({ eventId: '', min: '99', sec: '99', ms: '99' });
-    setStatusMessage(null);
   };
 
   const handleConfirmRegistration = async (e: React.FormEvent) => {
       e.preventDefault();
-      setStatusMessage(null);
       if (!selectedSwimmer || !registrationData.eventId) {
-          setStatusMessage({type: 'error', text: 'Silakan pilih nomor lomba.'});
+          addNotification('Silakan pilih nomor lomba.', 'error');
           return;
       }
 
@@ -349,7 +372,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
       const ms = parseInt(registrationData.ms || '0');
       
       if (sec >= 60 && !(min === 99 && sec === 99 && ms === 99)) {
-        setStatusMessage({type: 'error', text: 'Input detik harus di bawah 60, kecuali untuk "No Time" (99:99.99).'});
+        addNotification('Input detik harus di bawah 60, kecuali untuk "No Time" (99:99.99).', 'error');
         return;
       }
       
@@ -358,13 +381,17 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
           newSeedTime = 0;
       }
       
-      const result = await registerSwimmerToEvent(registrationData.eventId, selectedSwimmer.id, newSeedTime);
-      
-      if(result.success) {
-        closeModal();
-        onDataUpdate();
-      } else {
-        setStatusMessage({type: 'error', text: result.message});
+      try {
+        const result = await registerSwimmerToEvent(registrationData.eventId, selectedSwimmer.id, newSeedTime);
+        if(result.success) {
+            addNotification('Perenang berhasil didaftarkan.', 'success');
+            closeModal();
+            onDataUpdate();
+        } else {
+            addNotification(result.message, 'error');
+        }
+      } catch (error: any) {
+          addNotification(`Gagal mendaftar: ${error.message}`, 'error');
       }
   };
 
@@ -610,8 +637,6 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                 <Input label="ss/100" id="reg-ms" type="number" min="0" max="99" value={registrationData.ms} onChange={e => setRegistrationData(p => ({...p, ms: e.target.value}))} />
             </div>
 
-            {statusMessage && <p className={`text-sm text-center ${statusMessage.type === 'error' ? 'text-red-400' : 'text-green-400'}`}>{statusMessage.text}</p>}
-
             <div className="flex justify-end pt-4 space-x-2 border-t border-border">
                 <Button type="button" variant="secondary" onClick={closeModal}>Batal</Button>
                 <Button type="submit">Daftarkan</Button>
@@ -646,7 +671,6 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                       <Input label="Detik" id="edit-sec" type="number" min="0" max="99" value={editTime.sec} onChange={e => setEditTime(p => ({...p, sec: e.target.value}))} />
                       <Input label="ss/100" id="edit-ms" type="number" min="0" max="99" value={editTime.ms} onChange={e => setEditTime(p => ({...p, ms: e.target.value}))} />
                   </div>
-                  {editSeedTimeError && <p className="text-red-500 text-sm text-center mt-2">{editSeedTimeError}</p>}
                   <div className="flex justify-end pt-4 space-x-2 border-t border-border">
                       <Button type="button" variant="secondary" onClick={closeModal}>Batal</Button>
                       <Button type="submit">Simpan Waktu</Button>

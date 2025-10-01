@@ -8,6 +8,7 @@ import type { Swimmer, SwimEvent } from '../types';
 import { Gender } from '../types';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
+import { useNotification } from './ui/NotificationManager';
 
 declare var XLSX: any; // From script tag
 
@@ -23,10 +24,10 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
   const [isDownloading, setIsDownloading] = useState(false);
   const [uploadResult, setUploadResult] = useState<{ newSwimmers: number; updatedSwimmers: number; errors: string[] } | null>(null);
   const [canDownload, setCanDownload] = useState(false);
+  const { addNotification } = useNotification();
   
   // State for manual registration
   const [manualForm, setManualForm] = useState({ swimmerId: '', eventId: '', min: '99', sec: '99', ms: '99' });
-  const [statusMessage, setStatusMessage] = useState<{type: 'success'|'error', text: string} | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
   useEffect(() => {
@@ -54,12 +55,18 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         const worksheet = workbook.Sheets[sheetName];
         const json = XLSX.utils.sheet_to_json(worksheet);
         
-        const uploadResult = await processParticipantUpload(json);
-        setUploadResult(uploadResult);
-        if (uploadResult.newSwimmers > 0 || uploadResult.updatedSwimmers > 0) {
+        const result = await processParticipantUpload(json);
+        setUploadResult(result);
+        if (result.errors.length === 0 && (result.newSwimmers > 0 || result.updatedSwimmers > 0)) {
+            addNotification('File pendaftaran berhasil diproses!', 'success');
+        } else if (result.errors.length > 0) {
+            addNotification(`Impor selesai dengan ${result.errors.length} galat.`, 'error');
+        }
+        if (result.newSwimmers > 0 || result.updatedSwimmers > 0) {
           onUploadSuccess(); // Trigger global data refresh
         }
       } catch (error: any) {
+        addNotification(`Gagal memproses file: ${error.message}`, 'error');
         setUploadResult({ newSwimmers: 0, updatedSwimmers: 0, errors: ['Gagal membaca atau memproses file.', error.message] });
       } finally {
         setIsProcessing(false);
@@ -405,7 +412,6 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
   const handleManualFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setManualForm(prev => ({ ...prev, [name]: value }));
-    setStatusMessage(null); // Clear message on new input
   };
   
   const availableCategories = useMemo(() => {
@@ -436,9 +442,8 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
 
   const handleManualRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStatusMessage(null);
     if (!manualForm.swimmerId || !manualForm.eventId) {
-        setStatusMessage({type: 'error', text: 'Silakan pilih perenang dan nomor lomba.'});
+        addNotification('Silakan pilih perenang dan nomor lomba.', 'error');
         return;
     }
 
@@ -447,7 +452,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
     const ms = parseInt(manualForm.ms || '0');
     
     if (sec >= 60 && !(min === 99 && sec === 99 && ms === 99)) {
-        setStatusMessage({type: 'error', text: 'Input detik harus di bawah 60, kecuali untuk "No Time" (99:99.99).'});
+        addNotification('Input detik harus di bawah 60, kecuali untuk "No Time" (99:99.99).', 'error');
         return;
     }
 
@@ -460,14 +465,14 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
     try {
         const result = await registerSwimmerToEvent(manualForm.eventId, manualForm.swimmerId, seedTime);
         if (result.success) {
-            setStatusMessage({type: 'success', text: 'Pendaftaran berhasil ditambahkan!'});
+            addNotification('Pendaftaran berhasil ditambahkan!', 'success');
             setManualForm({ swimmerId: '', eventId: '', min: '99', sec: '99', ms: '99' });
             onUploadSuccess(); // Refresh all data
         } else {
-            setStatusMessage({type: 'error', text: result.message});
+            addNotification(result.message, 'error');
         }
     } catch (err: any) {
-        setStatusMessage({type: 'error', text: `Gagal mendaftar: ${err.message}`});
+        addNotification(`Gagal mendaftar: ${err.message}`, 'error');
     } finally {
         setIsProcessing(false);
     }
@@ -518,7 +523,6 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                     <Input label="ss/100" id="manual-ms" name="ms" type="number" min="0" max="99" value={manualForm.ms} onChange={handleManualFormChange} />
                 </div>
             </div>
-             {statusMessage && <p className={`text-sm text-center ${statusMessage.type === 'error' ? 'text-red-400' : 'text-green-400'}`}>{statusMessage.text}</p>}
             <div className="pt-2">
                 <Button type="submit" className="w-full" disabled={isProcessing}>
                     {isProcessing ? <Spinner/> : 'Daftarkan Peserta'}

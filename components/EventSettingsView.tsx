@@ -12,6 +12,7 @@ import { ToggleSwitch } from './ui/ToggleSwitch';
 import { Modal } from './ui/Modal';
 import { Select } from './ui/Select';
 import { translateGender, translateSwimStyle, GENDER_TRANSLATIONS, SWIM_STYLE_TRANSLATIONS, formatEventName, formatTime, toTitleCase } from '../constants';
+import { useNotification } from './ui/NotificationManager';
 
 declare var XLSX: any;
 
@@ -110,8 +111,8 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     const [schedule, setSchedule] = useState<{ [key: string]: SwimEvent[] }>({});
     const [sessionNames, setSessionNames] = useState<{ [key: string]: string }>({});
     const [sessionDetails, setSessionDetails] = useState<{ [key: string]: { date: string; time: string } }>({});
-    const [formStatus, setFormStatus] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
     const [unscheduledSearchQuery, setUnscheduledSearchQuery] = useState('');
+    const { addNotification } = useNotification();
 
     // Record states
     const [currentRecords, setCurrentRecords] = useState<SwimRecord[]>([]);
@@ -231,22 +232,19 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
 
     const handleSaveInfo = async () => {
         if (!info) return;
-        setFormStatus({ message: 'Menyimpan perubahan...', type: 'success' });
         try {
             const combinedEventName = eventNameLines.map(line => line.trim()).filter(Boolean).join('\n');
             const infoToSave = { ...info, eventName: combinedEventName };
 
             await updateCompetitionInfo(infoToSave);
             onDataUpdate();
-            setFormStatus({ message: 'Pengaturan umum berhasil disimpan!', type: 'success' });
-            setTimeout(() => setFormStatus(null), 4000);
+            addNotification('Pengaturan umum berhasil disimpan!', 'success');
         } catch (error) {
-             setFormStatus({ message: `Gagal menyimpan: ${getErrorMessage(error)}`, type: 'error' });
+             addNotification(`Gagal menyimpan: ${getErrorMessage(error)}`, 'error');
         }
     };
     
     const handleSaveSchedule = async () => {
-        setFormStatus({ message: 'Menyimpan jadwal...', type: 'success' });
         try {
             const finalEvents: SwimEvent[] = [];
             Object.keys(schedule).forEach(key => {
@@ -274,11 +272,10 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             
             await updateEventSchedule(finalEvents);
             onDataUpdate();
-            setFormStatus({ message: 'Jadwal berhasil disimpan!', type: 'success' });
-            setTimeout(() => setFormStatus(null), 4000);
+            addNotification('Jadwal berhasil disimpan!', 'success');
         } catch (error) {
             console.error("Gagal menyimpan jadwal:", error);
-            setFormStatus({ message: `Gagal menyimpan jadwal: ${getErrorMessage(error)}`, type: 'error' });
+            addNotification(`Gagal menyimpan jadwal: ${getErrorMessage(error)}`, 'error');
         }
     };
 
@@ -379,11 +376,14 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                     onDataUpdate(); 
                     fetchRecords();
                     setRecordFile(null);
-                    setFormStatus({ message: 'Data rekor berhasil diperbarui via unggahan!', type: 'success' });
-                    setTimeout(() => setFormStatus(null), 4000);
+                    addNotification(`${result.success} data rekor berhasil diperbarui via unggahan!`, 'success');
+                } else if (result.errors.length > 0) {
+                    addNotification('Impor selesai dengan galat. Periksa detail di bawah.', 'error');
                 }
             } catch (error) {
-                setUploadResult({ success: 0, errors: ['Gagal membaca atau memproses file.', getErrorMessage(error)] });
+                const errorMessage = getErrorMessage(error);
+                setUploadResult({ success: 0, errors: ['Gagal membaca atau memproses file.', errorMessage] });
+                addNotification(`Gagal memproses unggahan: ${errorMessage}`, 'error');
             } finally {
                 setIsProcessing(false);
             }
@@ -611,10 +611,9 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             setRecordToDelete(null);
             fetchRecords();
             onDataUpdate();
-            setFormStatus({ message: 'Rekor berhasil dihapus.', type: 'success' });
-            setTimeout(() => setFormStatus(null), 4000);
+            addNotification('Rekor berhasil dihapus.', 'success');
         } catch (error) {
-             setFormStatus({ message: `Gagal menghapus rekor: ${getErrorMessage(error)}`, type: 'error' });
+             addNotification(`Gagal menghapus rekor: ${getErrorMessage(error)}`, 'error');
         }
     };
 
@@ -624,10 +623,9 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             setIsDeleteAllRecordsModalOpen(false);
             fetchRecords(); // Refresh the list
             onDataUpdate(); // Refresh global data
-            setFormStatus({ message: 'Semua rekor berhasil dihapus.', type: 'success' });
-            setTimeout(() => setFormStatus(null), 4000);
+            addNotification('Semua rekor berhasil dihapus.', 'success');
         } catch (error) {
-            setFormStatus({ message: `Gagal menghapus semua rekor: ${getErrorMessage(error)}`, type: 'error' });
+            addNotification(`Gagal menghapus semua rekor: ${getErrorMessage(error)}`, 'error');
         }
     };
 
@@ -658,10 +656,9 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             handleCancelEdit();
             fetchRecords();
             onDataUpdate();
-            setFormStatus({ message: `Rekor berhasil ${editingRecord ? 'diperbarui' : 'ditambahkan'}.`, type: 'success' });
-            setTimeout(() => setFormStatus(null), 4000);
+            addNotification(`Rekor berhasil ${editingRecord ? 'diperbarui' : 'ditambahkan'}.`, 'success');
         } catch (error) {
-            setFormStatus({ message: `Gagal menyimpan rekor: ${getErrorMessage(error)}`, type: 'error' });
+            addNotification(`Gagal menyimpan rekor: ${getErrorMessage(error)}`, 'error');
         }
     };
 
@@ -725,7 +722,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     // --- Data Management Handlers ---
     const handleBackup = async () => {
         setIsBackupLoading(true);
-        setFormStatus({ message: 'Membuat file backup...', type: 'success' });
         try {
             const data = await backupDatabase();
             const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, 2))}`;
@@ -733,12 +729,11 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             link.href = jsonString;
             link.download = `swimcomp-backup-${new Date().toISOString().split('T')[0]}.json`;
             link.click();
-            setFormStatus({ message: 'Backup berhasil diunduh.', type: 'success' });
+            addNotification('Backup berhasil diunduh.', 'success');
         } catch (error) {
-            setFormStatus({ message: `Gagal membuat backup: ${getErrorMessage(error)}`, type: 'error' });
+            addNotification(`Gagal membuat backup: ${getErrorMessage(error)}`, 'error');
         } finally {
             setIsBackupLoading(false);
-            setTimeout(() => setFormStatus(null), 4000);
         }
     };
 
@@ -754,14 +749,15 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 setIsClearDataModalOpen(false);
                 setClearDataCredentials({ email: '', password: '' });
                 onDataUpdate();
-                setFormStatus({ message: 'Semua data kompetisi telah berhasil dihapus.', type: 'success' });
-                setTimeout(() => setFormStatus(null), 5000);
+                addNotification('Semua data kompetisi telah berhasil dihapus.', 'success');
             } else {
                 setClearDataError('Kredensial tidak valid.');
                 setIsClearingData(false);
             }
         } catch (error) {
-            setClearDataError(getErrorMessage(error));
+            const errorMessage = getErrorMessage(error);
+            setClearDataError(errorMessage);
+            addNotification(`Gagal menghapus data: ${errorMessage}`, 'error');
             setIsClearingData(false);
         }
     };
@@ -770,9 +766,8 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         if (e.target.files && e.target.files[0]) {
             if (e.target.files[0].type === 'application/json') {
                 setRestoreFile(e.target.files[0]);
-                setFormStatus(null);
             } else {
-                setFormStatus({ message: 'Harap pilih file backup .json yang valid.', type: 'error' });
+                addNotification('Harap pilih file backup .json yang valid.', 'error');
                 setRestoreFile(null);
                 (e.target as HTMLInputElement).value = '';
             }
@@ -783,7 +778,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         if (!restoreFile) return;
 
         setIsRestoring(true);
-        setFormStatus({ message: 'Memulihkan data dari backup...', type: 'success' });
 
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -792,10 +786,10 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 const data = JSON.parse(content);
                 await restoreDatabase(data); 
 
-                setFormStatus({ message: 'Data berhasil dipulihkan dari backup!', type: 'success' });
+                addNotification('Data berhasil dipulihkan dari backup!', 'success');
                 onDataUpdate();
             } catch (error) {
-                setFormStatus({ message: `Gagal memulihkan: ${getErrorMessage(error)}`, type: 'error' });
+                addNotification(`Gagal memulihkan: ${getErrorMessage(error)}`, 'error');
             } finally {
                 setIsRestoring(false);
                 setIsRestoreModalOpen(false);
@@ -810,8 +804,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     // --- Render Logic ---
     if (!info) return <div className="flex justify-center items-center h-full"><Spinner /></div>;
     
-    const displayStatus = formStatus;
-
     const renderTabs = () => (
         <div className="flex border-b border-border mb-6 no-print">
             <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 -mb-px border-b-2 ${activeTab === 'settings' ? 'border-primary text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'}`}>Pengaturan Umum</button>
@@ -824,7 +816,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     return (
         <div>
             <h1 className="text-3xl font-bold mb-2">Pengaturan Acara & Jadwal</h1>
-            {displayStatus && <p className={`${displayStatus.type === 'success' ? 'text-green-500' : 'text-red-500'} text-sm mb-4 font-semibold`}>{displayStatus.message}</p>}
             {renderTabs()}
 
             {activeTab === 'settings' && (

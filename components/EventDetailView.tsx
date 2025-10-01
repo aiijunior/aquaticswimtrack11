@@ -8,6 +8,7 @@ import { Modal } from './ui/Modal';
 import { Input } from './ui/Input';
 import { Spinner } from './ui/Spinner';
 import { formatEventName, formatTime } from '../constants';
+import { useNotification } from './ui/NotificationManager';
 
 interface EventDetailViewProps {
   eventId: string;
@@ -61,6 +62,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
     const [isLoading, setIsLoading] = useState(true);
     const [isTimeModalOpen, setTimeModalOpen] = useState(false);
     const [times, setTimes] = useState<Record<string, { min: string, sec: string, ms: string }>>({});
+    const { addNotification } = useNotification();
 
     const fetchEventDetails = useCallback(async () => {
         setIsLoading(true);
@@ -100,10 +102,15 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
             return { swimmerId, time: ms };
         }).filter(r => r.time > 0);
         
-        await recordEventResults(eventId, results);
-        setTimeModalOpen(false);
-        onDataUpdate(); // Trigger global data refresh
-        fetchEventDetails(); // Refresh local data for this view
+        try {
+            await recordEventResults(eventId, results);
+            addNotification('Hasil lomba berhasil disimpan.', 'success');
+            setTimeModalOpen(false);
+            onDataUpdate();
+            fetchEventDetails();
+        } catch (error: any) {
+            addNotification(`Gagal menyimpan hasil: ${error.message}`, 'error');
+        }
     };
 
     const handleTimeChange = (swimmerId: string, part: 'min' | 'sec' | 'ms', value: string) => {

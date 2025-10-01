@@ -8,6 +8,7 @@ import { Card } from './ui/Card';
 import { Spinner } from './ui/Spinner';
 import { Input } from './ui/Input';
 import { formatEventName, generateHeats, formatTime, parseMsToTimeParts } from '../constants';
+import { useNotification } from './ui/NotificationManager';
 
 interface LiveTimingViewProps {
   eventId: string;
@@ -32,6 +33,7 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
     const [dqSwimmers, setDqSwimmers] = useState(new Set<string>());
     const [nsSwimmers, setNsSwimmers] = useState(new Set<string>());
     const [flashingLane, setFlashingLane] = useState<string | null>(null);
+    const { addNotification } = useNotification();
 
     // Stopwatch state
     const [stopwatchTime, setStopwatchTime] = useState(0);
@@ -174,29 +176,35 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
         if (!currentHeat) return;
         
         setIsSaving(true);
-        const resultsToSave: Result[] = currentHeat.assignments
-            .map(a => {
-                const time = times[a.entry.swimmerId];
-                if (dqSwimmers.has(a.entry.swimmerId)) {
-                    return { swimmerId: a.entry.swimmerId, time: -1 };
-                }
-                 if (nsSwimmers.has(a.entry.swimmerId)) {
-                    return { swimmerId: a.entry.swimmerId, time: -2 };
-                }
-                if (!time) return { swimmerId: a.entry.swimmerId, time: -2 }; // Default to NS if no time object
-                const ms = (parseInt(time.min || '0') * 60 * 1000) + (parseInt(time.sec || '0') * 1000) + parseInt(time.ms || '0');
-                
-                // Treat a final time of 0 as a "No Show" or invalid time, rather than a valid result.
-                if (ms === 0) {
-                    return { swimmerId: a.entry.swimmerId, time: -2 }; // NS
-                }
-                return { swimmerId: a.entry.swimmerId, time: ms };
-            });
-        
-        await addOrUpdateEventResults(eventId, resultsToSave);
-        onDataUpdate();
-        await fetchAndSetupEvent();
-        setIsSaving(false);
+        try {
+            const resultsToSave: Result[] = currentHeat.assignments
+                .map(a => {
+                    const time = times[a.entry.swimmerId];
+                    if (dqSwimmers.has(a.entry.swimmerId)) {
+                        return { swimmerId: a.entry.swimmerId, time: -1 };
+                    }
+                     if (nsSwimmers.has(a.entry.swimmerId)) {
+                        return { swimmerId: a.entry.swimmerId, time: -2 };
+                    }
+                    if (!time) return { swimmerId: a.entry.swimmerId, time: -2 }; // Default to NS if no time object
+                    const ms = (parseInt(time.min || '0') * 60 * 1000) + (parseInt(time.sec || '0') * 1000) + parseInt(time.ms || '0');
+                    
+                    // Treat a final time of 0 as a "No Show" or invalid time, rather than a valid result.
+                    if (ms === 0) {
+                        return { swimmerId: a.entry.swimmerId, time: -2 }; // NS
+                    }
+                    return { swimmerId: a.entry.swimmerId, time: ms };
+                });
+            
+            await addOrUpdateEventResults(eventId, resultsToSave);
+            addNotification(`Hasil untuk Seri ${currentHeat.heatNumber} berhasil disimpan.`, 'success');
+            onDataUpdate();
+            await fetchAndSetupEvent();
+        } catch (error: any) {
+            addNotification(`Gagal menyimpan hasil: ${error.message}`, 'error');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const formattedStopwatchTime = useMemo(() => {

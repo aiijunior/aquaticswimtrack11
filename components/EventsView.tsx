@@ -9,6 +9,7 @@ import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Card } from './ui/Card';
 import { Spinner } from './ui/Spinner';
+import { useNotification } from './ui/NotificationManager';
 
 declare var XLSX: any;
 
@@ -59,7 +60,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     relayLegs: 4,
     category: '',
   });
-  const [formError, setFormError] = useState<{ message: string; isSchemaError?: boolean } | null>(null);
+  const { addNotification } = useNotification();
   
   // State for upload modal
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -124,10 +125,9 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newEvent.distance <= 0) {
-        setFormError({ message: "Jarak lomba harus lebih besar dari 0." });
+        addNotification("Jarak lomba harus lebih besar dari 0.", 'error');
         return;
     }
-    setFormError(null);
 
     try {
         await addEvent({
@@ -147,21 +147,19 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         });
         setIsModalOpen(false);
         onDataUpdate();
+        addNotification('Nomor lomba baru berhasil dibuat.', 'success');
     } catch (error) {
-        console.error("Gagal menambahkan nomor lomba:", error);
         let errorMessage = "Terjadi kesalahan saat menyimpan.";
-        let isSchemaError = false;
         if (error instanceof Error) {
             const lowerMessage = error.message.toLowerCase();
             if (lowerMessage.includes('invalid input value for enum public.swim_style') ||
                 (lowerMessage.includes('violates check constraint') && lowerMessage.includes('events_style_check'))) {
                 errorMessage = `Gagal menyimpan gaya "${translateSwimStyle(newEvent.style)}". Skema database Anda mungkin perlu diperbarui.`;
-                isSchemaError = true;
             } else {
                 errorMessage = error.message;
             }
         }
-        setFormError({ message: errorMessage, isSchemaError });
+        addNotification(errorMessage, 'error');
     }
   };
   
@@ -177,16 +175,26 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
   
   const handleDeleteEvent = async () => {
     if (eventToDelete) {
-      await deleteEvent(eventToDelete.id);
-      closeDeleteConfirm();
-      onDataUpdate();
+        try {
+            await deleteEvent(eventToDelete.id);
+            addNotification('Nomor lomba berhasil dihapus.', 'success');
+            closeDeleteConfirm();
+            onDataUpdate();
+        } catch (error: any) {
+            addNotification(`Gagal menghapus: ${error.message}`, 'error');
+        }
     }
   };
 
   const handleConfirmDeleteAll = async () => {
-    await deleteAllEvents();
-    setIsDeleteAllModalOpen(false);
-    onDataUpdate();
+    try {
+        await deleteAllEvents();
+        addNotification('Semua nomor lomba berhasil dihapus.', 'success');
+        setIsDeleteAllModalOpen(false);
+        onDataUpdate();
+    } catch (error: any) {
+        addNotification(`Gagal menghapus: ${error.message}`, 'error');
+    }
   };
 
   const closeUploadModal = () => {
@@ -222,12 +230,16 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
             setUploadResult(result);
 
             if (result.errors.length === 0 && result.success > 0) {
+                addNotification(`${result.success} nomor lomba berhasil diimpor.`, 'success');
                 onDataUpdate();
                 setTimeout(() => {
                     closeUploadModal();
                 }, 2000);
+            } else if (result.errors.length > 0) {
+                addNotification(`Impor selesai dengan ${result.errors.length} galat. Periksa detail di bawah.`, 'error');
             }
         } catch (error: any) {
+            addNotification(`Gagal memproses file: ${error.message}`, 'error');
             setUploadResult({ success: 0, errors: ['Gagal membaca atau memproses file.', error.message] });
         } finally {
             setIsProcessingUpload(false);
@@ -492,7 +504,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
       </Card>
 
 
-      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setFormError(null); }} title="Buat Nomor Lomba Baru">
+      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); }} title="Buat Nomor Lomba Baru">
         <form onSubmit={handleAddEvent} className="space-y-4">
             <div className="flex items-center p-2 bg-background rounded-md space-x-3">
                 <input 
@@ -522,7 +534,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.distance}
                 onChange={(e) => {
                     setNewEvent({ ...newEvent, distance: parseInt(e.target.value) || 0 });
-                    setFormError(null);
                 }}
                 required
             />
@@ -551,23 +562,13 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.gender}
                 onChange={(e) => setNewEvent({ ...newEvent, gender: e.target.value as Gender })}
             >
-                {/* FIX: Explicitly typing the 'gender' parameter in the map function to resolve an issue where it might be inferred as 'unknown'. */}
+                {/* FIX: Add explicit type annotation for the 'gender' parameter to resolve type inference issues. */}
                 {GENDER_OPTIONS.map((gender: Gender) => (
                 <option key={gender} value={gender}>
                     {translateGender(gender)}
                 </option>
                 ))}
             </Select>
-            {formError && (
-                <div className={`p-3 rounded-md text-sm text-center ${formError.isSchemaError ? 'bg-red-900/20 border border-red-500/50 text-red-300/90' : 'bg-red-500/10 text-red-500'}`}>
-                    <p className="font-semibold">{formError.message}</p>
-                    {formError.isSchemaError && (
-                        <p className="mt-1">
-                            Buka menu <strong className="font-semibold">"SQL Editor"</strong>, salin perintah perbaikan, dan jalankan di Supabase.
-                        </p>
-                    )}
-                </div>
-            )}
             <div className="flex justify-end pt-2">
                 <Button type="submit">Buat Nomor Lomba</Button>
             </div>
