@@ -296,16 +296,12 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
     );
 };
 
-const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[], brokenRecords: BrokenRecord[] }> = ({ events, swimmers, info, records, brokenRecords }) => {
+const EventResults: React.FC<{ events: (SwimEvent & { globalEventNumber: number })[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[], brokenRecords: BrokenRecord[] }> = ({ events, swimmers, info, records, brokenRecords }) => {
     const data = useMemo(() => {
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-        let globalEventCounter = 1;
         return events
-            .filter((e: SwimEvent) => e.results && e.results.length > 0)
-            .sort((a,b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0))
-            .map((event: SwimEvent) => ({
+            .map((event) => ({
                 ...event,
-                globalEventNumber: globalEventCounter++,
                 sortedResults: [...(event.results as Result[])]
                     // FIX: Explicitly type sort parameters to resolve 'unknown' type error.
                     .sort((a: Result,b: Result) => {
@@ -1040,8 +1036,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const [selectedEventIdForPrint, setSelectedEventIdForPrint] = useState<string>('all');
     const [selectedClubForRecap, setSelectedClubForRecap] = useState<string>('all');
 
-    const eventsWithResults = useMemo(() => events.filter(e => e.results && e.results.length > 0), [events]);
-    
     const uniqueClubs = useMemo(() => {
         const clubs = new Set(swimmers.map(s => s.club));
         return Array.from(clubs).sort();
@@ -1091,6 +1085,17 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
          // Deduplicate
         return [...new Map(calculated.map(item => [item.record.id, item])).values()];
     }, [events, swimmers, records]);
+
+    const numberedEventsWithResults = useMemo(() => {
+        let globalEventCounter = 1;
+        return events
+            .filter((e: SwimEvent) => e.results && e.results.length > 0)
+            .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0))
+            .map((event) => ({
+                ...event,
+                globalEventNumber: globalEventCounter++,
+            }));
+    }, [events]);
     
     // --- EXCEL DOWNLOAD LOGIC ---
     const getExcelHeaderAOA = (reportTitle: string, numCols: number): { aoa: any[][], merges: any[], currentRow: number } => {
@@ -1600,8 +1605,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             case 'programBook': return <ProgramBook events={events} swimmers={swimmers} info={competitionInfo} records={records} />;
             case 'eventResults': {
                 const filteredEvents = selectedEventIdForPrint === 'all'
-                    ? eventsWithResults
-                    : eventsWithResults.filter(e => e.id === selectedEventIdForPrint);
+                    ? numberedEventsWithResults
+                    : numberedEventsWithResults.filter(e => e.id === selectedEventIdForPrint);
                 const filteredBrokenRecords = brokenRecords.filter(br => 
                     filteredEvents.some(fe => formatEventName(fe) === br.newEventName)
                 );
@@ -1623,7 +1628,16 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         >{label}</button>
     );
 
-    const printTitle = PRINT_TITLES[activeTab] || 'Laporan Kompetisi';
+    const printTitle = useMemo(() => {
+        if (activeTab === 'eventResults' && selectedEventIdForPrint !== 'all') {
+            const selectedEvent = numberedEventsWithResults.find(e => e.id === selectedEventIdForPrint);
+            if (selectedEvent) {
+                return `Hasil Acara ${selectedEvent.globalEventNumber}: ${formatEventName(selectedEvent)}`;
+            }
+        }
+        return PRINT_TITLES[activeTab] || 'Laporan Kompetisi';
+    }, [activeTab, selectedEventIdForPrint, numberedEventsWithResults]);
+
 
     return (
         <div>
@@ -1651,7 +1665,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                         <TabButton tab="individualStandings" label="Klasemen Perorangan" />
                         <TabButton tab="brokenRecords" label="Rekor Terpecahkan" />
                     </div>
-                    {activeTab === 'eventResults' && eventsWithResults.length > 0 && (
+                    {activeTab === 'eventResults' && numberedEventsWithResults.length > 0 && (
                         <div className="p-4 border-b border-border">
                             <label htmlFor="event-print-select" className="block text-sm font-medium text-text-secondary mb-1">
                                 Pilih Nomor Lomba untuk Dicetak
@@ -1663,9 +1677,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                                 className="w-full bg-background border border-border rounded-md px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
                             >
                                 <option value="all">Semua Nomor Lomba</option>
-                                {eventsWithResults.map(event => (
+                                {numberedEventsWithResults.map(event => (
                                     <option key={event.id} value={event.id}>
-                                        {formatEventName(event)}
+                                        {`No. Acara ${event.globalEventNumber}: ${formatEventName(event)}`}
                                     </option>
                                 ))}
                             </select>
