@@ -389,32 +389,38 @@ const EventResults: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: C
 
 const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo }> = ({ events, swimmers, info }) => {
     const data = useMemo(() => {
-        const clubMedals: Record<string, { gold: number, silver: number, bronze: number }> = {};
+        // Initialize clubMedals with all unique clubs from the swimmers list.
+        const allClubs = [...new Set(swimmers.map(s => s.club))];
+        const clubMedals: Record<string, { gold: number, silver: number, bronze: number }> = allClubs.reduce((acc, club) => {
+            acc[club] = { gold: 0, silver: 0, bronze: 0 };
+            return acc;
+        }, {} as Record<string, { gold: number, silver: number, bronze: number }>);
+        
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
 
-        // FIX: Add explicit type annotation to forEach callback parameter to resolve 'unknown' type.
+        // Tally medals for clubs that have won.
         events.forEach((event: SwimEvent) => {
             if (!event.results) return;
             [...(event.results as Result[])]
-                // FIX: Explicitly type filter parameter to resolve 'unknown' type error.
                 .filter((r: Result) => r.time > 0)
-                // FIX: Explicitly type sort parameters to resolve 'unknown' type error.
                 .sort((a: Result, b: Result) => a.time - b.time)
                 .slice(0, 3)
-                // FIX: Explicitly type forEach parameters to resolve 'unknown' type error.
                 .forEach((result: Result, i: number) => {
                     const rank = i + 1;
                     const swimmer = swimmersMap.get(result.swimmerId);
+                    // The club is guaranteed to exist in clubMedals from the initialization step.
                     if (swimmer) {
-                        if (!clubMedals[swimmer.club]) clubMedals[swimmer.club] = { gold: 0, silver: 0, bronze: 0 };
                         if (rank === 1) clubMedals[swimmer.club].gold++;
                         else if (rank === 2) clubMedals[swimmer.club].silver++;
                         else if (rank === 3) clubMedals[swimmer.club].bronze++;
                     }
                 });
         });
-        // FIX: Add explicit type annotation to sort callback parameters to resolve 'unknown' type error.
-        return Object.entries(clubMedals).sort(([,a]: [string, { gold: number, silver: number, bronze: number }], [,b]: [string, { gold: number, silver: number, bronze: number }]) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
+
+        // Sort by medal count, then alphabetically by club name as a tie-breaker.
+        return Object.entries(clubMedals).sort(([clubA, a]: [string, { gold: number, silver: number, bronze: number }], [clubB, b]: [string, { gold: number, silver: number, bronze: number }]) => 
+            b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || clubA.localeCompare(clubB)
+        );
     }, [events, swimmers]);
 
     const grandTotal = useMemo(() => {
@@ -1323,32 +1329,42 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
     const downloadClubStandingsExcel = () => {
         if (!competitionInfo) return;
+
+        // Initialize with all clubs to include those with zero medals
+        const allClubs = [...new Set(swimmers.map(s => s.club))];
+        const clubMedals = allClubs.reduce((acc, club) => {
+            acc[club] = { gold: 0, silver: 0, bronze: 0 };
+            return acc;
+        }, {} as Record<string, { gold: number, silver: number, bronze: number }>);
+
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-        const clubMedalsData = Object.entries(
-            events.reduce((acc: Record<string, { gold: number; silver: number; bronze: number }>, event: SwimEvent) => {
-                if (!event.results) return acc;
-                [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => {
-                    const swimmer = swimmersMap.get(result.swimmerId);
-                    if (swimmer) {
-                        if (!acc[swimmer.club]) acc[swimmer.club] = { gold: 0, silver: 0, bronze: 0 };
-                        if (i === 0) acc[swimmer.club].gold++;
-                        else if (i === 1) acc[swimmer.club].silver++;
-                        else if (i === 2) acc[swimmer.club].bronze++;
-                    }
-                });
-                return acc;
-            }, {} as Record<string, { gold: number; silver: number; bronze: number }>)
-        ).sort(([, a]: [string, { gold: number, silver: number, bronze: number }], [, b]: [string, { gold: number, silver: number, bronze: number }]) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
+
+        // Tally medals
+        events.forEach((event: SwimEvent) => {
+            if (!event.results) return;
+            [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => {
+                const swimmer = swimmersMap.get(result.swimmerId);
+                if (swimmer && clubMedals[swimmer.club]) { // Check if club exists
+                    if (i === 0) clubMedals[swimmer.club].gold++;
+                    else if (i === 1) clubMedals[swimmer.club].silver++;
+                    else if (i === 2) clubMedals[swimmer.club].bronze++;
+                }
+            });
+        });
+
+        const clubMedalsData = Object.entries(clubMedals).sort(([clubA, a], [clubB, b]) => 
+            b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || clubA.localeCompare(clubB)
+        );
         
         const NUM_COLS = 6;
         const headerInfo = getExcelHeaderAOA('Rekapitulasi Medali Klub', NUM_COLS);
         const aoa: any[][] = headerInfo.aoa;
         aoa.push(['Peringkat', 'Klub', 'Emas 🥇', 'Perak 🥈', 'Perunggu 🥉', 'Total']);
-        clubMedalsData.forEach(([club, medals]: [string, { gold: number, silver: number, bronze: number }], i) => {
+        clubMedalsData.forEach(([club, medals], i) => {
             aoa.push([i + 1, club, medals.gold, medals.silver, medals.bronze, medals.gold + medals.silver + medals.bronze]);
         });
         
-        const grandTotal = clubMedalsData.reduce((acc: { gold: number, silver: number, bronze: number }, [, medals]: [string, { gold: number, silver: number, bronze: number }]) => {
+        const grandTotal = clubMedalsData.reduce((acc, [, medals]) => {
             acc.gold += medals.gold; acc.silver += medals.silver; acc.bronze += medals.bronze; return acc;
         }, { gold: 0, silver: 0, bronze: 0 });
 
