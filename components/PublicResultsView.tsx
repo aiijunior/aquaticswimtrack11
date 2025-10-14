@@ -141,15 +141,22 @@ export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ onAdminLog
                  return !searchQuery || formatEventName(event).toLowerCase().includes(searchQuery.toLowerCase());
             })
             .map(event => {
+                const getPenalty = (time: number) => {
+                    if (time > 0) return 0; // Valid time
+                    if (time === -1 || (time < 0 && time !== -2)) return 1; // DQ
+                    if (time === -2) return 2; // NS
+                    return 3; // Not yet recorded (NT) or 0
+                };
+                const validResultsForRanking = [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time);
+
                 const sortedResults = [...event.results]
-                    .sort((a, b) => { // Sort with DQ/NT at the end
-                        if (a.time < 0) return 1; if (b.time < 0) return -1;
-                        if (a.time === 0) return 1; if (b.time === 0) return -1;
-                        return a.time - b.time;
+                    .sort((a, b) => {
+                        if (a.time > 0 && b.time > 0) return a.time - b.time;
+                        return getPenalty(a.time) - getPenalty(b.time);
                     })
-                    .map((result, index) => {
+                    .map((result) => {
                         const swimmer = swimmersMap.get(result.swimmerId);
-                        const rank = result.time > 0 ? [...event.results].filter(r => r.time > 0).sort((a, b) => a.time - b.time).findIndex(r => r.swimmerId === result.swimmerId) + 1 : 0;
+                        const rank = result.time > 0 ? validResultsForRanking.findIndex(r => r.swimmerId === result.swimmerId) + 1 : 0;
                         const brokenRecordDetails = brokenRecordsList.filter(br => 
                             br.newHolder.id === swimmer?.id && 
                             br.newTime === result.time &&

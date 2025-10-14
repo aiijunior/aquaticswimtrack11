@@ -300,24 +300,33 @@ const EventResults: React.FC<{ events: (SwimEvent & { globalEventNumber: number 
     const data = useMemo(() => {
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
         return events
-            .map((event) => ({
-                ...event,
-                sortedResults: [...(event.results as Result[])]
-                    // FIX: Explicitly type sort parameters to resolve 'unknown' type error.
+            .map((event) => {
+                const getPenalty = (time: number) => {
+                    if (time > 0) return 0; // Valid time
+                    if (time === -1 || (time < 0 && time !== -2)) return 1; // DQ
+                    if (time === -2) return 2; // NS
+                    return 3; // Not yet recorded (NT) or 0
+                };
+                
+                const validResultsForRanking = [...(event.results as Result[])]
+                    .filter(r => r.time > 0)
+                    .sort((a, b) => a.time - b.time);
+    
+                const sortedResults = [...(event.results as Result[])]
                     .sort((a: Result,b: Result) => {
-                        if (a.time < 0) return 1; // DQ at the end
-                        if (b.time < 0) return -1;
-                        if (a.time === 0) return 1; // NT at the end
-                        if (b.time === 0) return -1;
-                        return a.time - b.time;
+                        if (a.time > 0 && b.time > 0) return a.time - b.time;
+                        return getPenalty(a.time) - getPenalty(b.time);
                     })
-                    // FIX: Explicitly type map parameters to resolve 'unknown' type error.
-                    .map((r: Result, i: number) => {
+                    .map((r: Result) => {
                         const swimmer = swimmersMap.get(r.swimmerId);
+                        // Correctly find rank among valid finishers
+                        const rank = r.time > 0 ? validResultsForRanking.findIndex(vr => vr.swimmerId === r.swimmerId) + 1 : 0;
                         const recordsBroken = brokenRecords.filter(br => br.newHolder.id === swimmer?.id && br.newTime === r.time && br.record.style === event.style && br.record.distance === event.distance);
-                        return ({ ...r, rank: r.time > 0 ? i + 1 : 0, swimmer, recordsBroken });
-                    })
-            }));
+                        return ({ ...r, rank, swimmer, recordsBroken });
+                    });
+    
+                return { ...event, sortedResults };
+            });
     }, [events, swimmers, brokenRecords]);
 
     if (data.length === 0) return <p className="text-center text-text-secondary py-10">Tidak ada hasil lomba yang tercatat untuk nomor yang dipilih.</p>;

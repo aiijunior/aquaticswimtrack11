@@ -45,7 +45,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
         const clubMedals: Record<string, MedalCounts> = {};
         const individualMedals: Record<string, MedalCounts & { swimmer: Swimmer }> = {};
         const brokenRecordsList: BrokenRecord[] = [];
-        // FIX: Explicitly type the Map to ensure correct type inference for swimmer objects.
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
 
         // First, calculate all broken records across all events
@@ -81,10 +80,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
         const eventsWithResults = events
             .filter(event => event.results && event.results.length > 0)
             .map(event => {
-                const sortedResults = [...event.results]
-                    .filter(r => r.time > 0) // Only process valid times for medals and standings
-                    .sort((a, b) => a.time - b.time)
-                    .map((result, index) => {
+                const validResultsForMedals = [...event.results]
+                    .filter(r => r.time > 0)
+                    .sort((a, b) => a.time - b.time);
+
+                validResultsForMedals.forEach((result, index) => {
                         const rank = index + 1;
                         const swimmer = swimmersMap.get(result.swimmerId);
                         
@@ -96,7 +96,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
                             else if (rank === 3) clubMedals[swimmer.club].bronze++;
 
                             // Tally medals for individuals (non-mixed events)
-                            // Only add swimmer to the list if they've won a medal
                             if (event.gender !== Gender.MIXED && rank <= 3) {
                                 if (!individualMedals[swimmer.id]) {
                                     individualMedals[swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 };
@@ -106,8 +105,24 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
                                 else if (rank === 3) individualMedals[swimmer.id].bronze++;
                             }
                         }
+                    });
+
+                const getPenalty = (time: number) => {
+                    if (time > 0) return 0; // Valid time
+                    if (time === -1 || (time < 0 && time !== -2)) return 1; // DQ
+                    if (time === -2) return 2; // NS
+                    return 3; // Not yet recorded (NT) or 0
+                };
+
+                const allSortedResults = [...event.results]
+                    .sort((a, b) => {
+                        if (a.time > 0 && b.time > 0) return a.time - b.time;
+                        return getPenalty(a.time) - getPenalty(b.time);
+                    })
+                    .map((result) => {
+                        const rank = result.time > 0 ? validResultsForMedals.findIndex(r => r.swimmerId === result.swimmerId) + 1 : 0;
+                        const swimmer = swimmersMap.get(result.swimmerId);
                         
-                        // Attach broken record details to the specific result
                         const brokenRecordDetails = brokenRecordsList.filter(br => 
                             br.newHolder.id === swimmer?.id && 
                             br.newTime === result.time &&
@@ -120,7 +135,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
                         return { ...result, rank, swimmer, brokenRecordDetails };
                     });
 
-                return { ...event, sortedResults };
+                return { ...event, sortedResults: allSortedResults };
             });
 
         const sortedClubMedals = Object.entries(clubMedals)
@@ -129,10 +144,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
         const sortedIndividualMedals = Object.values(individualMedals)
             .sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
 
-        // Deduplicate broken records list for the summary view
         const uniqueBrokenRecords = [...new Map(brokenRecordsList.map(item => [item.record.id, item])).values()];
         
-        // Split individual medals by gender
         const maleIndividualMedals = sortedIndividualMedals.filter(data => data.swimmer.gender === 'Male');
         const femaleIndividualMedals = sortedIndividualMedals.filter(data => data.swimmer.gender === 'Female');
 
@@ -141,7 +154,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
             maleIndividualMedals,
             femaleIndividualMedals,
             brokenRecords: uniqueBrokenRecords, 
-            eventsWithResults: eventsWithResults 
+            eventsWithResults 
         };
     }, [events, swimmers, records]);
     
@@ -336,7 +349,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
                                     <thead><tr className="border-b border-border"><th className="p-2 text-center w-12">Rank</th><th className="p-2">Nama</th><th className="p-2">Klub</th><th className="p-2 text-right">Waktu</th><th className="p-2 text-center w-16">Medali</th></tr></thead>
                                     <tbody>{event.sortedResults.map(result => (
                                         <tr key={result.swimmerId} className="border-b border-border last:border-b-0 text-sm hover:bg-background">
-                                            <td className="p-2 text-center font-bold">{result.rank}</td>
+                                            <td className="p-2 text-center font-bold">{result.rank > 0 ? result.rank : formatTime(result.time)}</td>
                                             <td className="p-2 font-semibold">{result.swimmer?.name || 'N/A'}</td>
                                             <td className="p-2 text-text-secondary">{result.swimmer?.club || 'N/A'}</td>
                                             <td className="p-2 text-right font-mono">
