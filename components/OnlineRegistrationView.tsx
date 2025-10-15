@@ -397,7 +397,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                             <h2 className="text-xl font-bold mb-4">Data Atlet</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <Input label="Nama Lengkap Atlet" id="name" name="name" value={formData.name} onChange={handleFormChange} onBlur={handleNameBlur} required />
+                                    <Input label="Nama Atlet" id="name" name="name" value={formData.name} onChange={handleFormChange} onBlur={handleNameBlur} required />
                                     {isCheckingName && <p className="text-xs text-text-secondary mt-1">Mencari data atlet...</p>}
                                     {existingSwimmer && (
                                         <div className="text-xs text-green-600 dark:text-green-400 mt-1 p-2 bg-green-500/10 rounded-md">
@@ -406,7 +406,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                         </div>
                                     )}
                                 </div>
-                                <Input label="Nama Tim / Klub" id="club" name="club" value={formData.club} onChange={handleFormChange} required />
+                                <Input label="Nama Tim" id="club" name="club" value={formData.club} onChange={handleFormChange} required />
                                 <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={formData.birthYear} onChange={handleFormChange} required />
                                 <Select label="Jenis Kelamin" id="gender" name="gender" value={formData.gender} onChange={handleFormChange}>
                                     <option value="Male">Laki-laki (Male)</option>
