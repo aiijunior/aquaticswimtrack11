@@ -179,8 +179,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
             const dataToExport: {
                 "Nomor Lomba": string;
                 "Peringkat": number;
-                "Nama Atlet": string;
-                "Nama Tim": string;
+                "Nama Peserta": string;
+                "Klub/Tim": string;
                 "Waktu": string;
             }[] = [];
 
@@ -195,8 +195,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
                         dataToExport.push({
                             "Nomor Lomba": eventName,
                             "Peringkat": result.rank,
-                            "Nama Atlet": result.swimmer?.name || 'N/A',
-                            "Nama Tim": result.swimmer?.club || 'N/A',
+                            "Nama Peserta": result.swimmer?.name || 'N/A',
+                            "Klub/Tim": result.swimmer?.club || 'N/A',
                             "Waktu": formatTime(result.time),
                         });
                     });
@@ -205,8 +205,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
             
             const finalData = dataToExport.map(d => ({
                 'Juara': d.Peringkat,
-                'Nama Atlet': d['Nama Atlet'],
-                'Nama Tim': d['Nama Tim'],
+                'Nama Peserta': d['Nama Peserta'],
+                'Klub/Tim': d['Klub/Tim'],
                 'Nomor Lomba yang Dimenangkan': d['Nomor Lomba'],
                 'Waktu': d.Waktu
             }));
@@ -215,11 +215,160 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
             const worksheet = XLSX.utils.json_to_sheet(finalData);
             worksheet['!cols'] = [
                 { wch: 10 }, // Juara
-                { wch: 30 }, // Nama Atlet
-                { wch: 30 }, // Nama Tim
+                { wch: 30 }, // Nama Peserta
+                { wch: 30 }, // Klub/Tim
                 { wch: 40 }, // Nomor Lomba
                 { wch: 15 }, // Waktu
             ];
 
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Juara");
+            XLSX.writeFile(workbook, "Rekap_Juara_Kompetisi.xlsx");
+        } catch (error) {
+            console.error("Failed to download winners report:", error);
+            alert("Gagal membuat laporan. Silakan coba lagi.");
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold">Rekapitulasi Hasil Lomba</h1>
+                <Button
+                    onClick={handleDownloadWinners}
+                    disabled={isDownloading || eventsWithResults.length === 0}
+                    variant="secondary"
+                    title={eventsWithResults.length === 0 ? "Tidak ada juara untuk diunduh" : "Unduh rekap medali emas, perak, dan perunggu"}
+                >
+                    {isDownloading ? <Spinner /> : 'Unduh Rekap Juara'}
+                </Button>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Team Scores */}
+                <Card>
+                    <div className="flex items-center space-x-4 mb-4"><TrophyIcon /><h2 className="text-2xl font-bold">Rekapitulasi Medali Klub</h2></div>
+                    {clubMedals.length > 0 ? (
+                        <div className="overflow-y-auto max-h-96">
+                            <table className="w-full text-left">
+                                <thead><tr className="border-b-2 border-border"><th className="p-2 w-12 text-center">#</th><th className="p-2">Klub</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
+                                <tbody>{clubMedals.map(([club, medals], index) => (<tr key={club} className="border-b border-border last:border-b-0 hover:bg-background"><td className="p-2 text-center font-bold">{index + 1}</td><td className="p-2 font-semibold">{club}</td><td className="p-2 text-center">{medals.gold}</td><td className="p-2 text-center">{medals.silver}</td><td className="p-2 text-center">{medals.bronze}</td></tr>))}</tbody>
+                            </table>
+                        </div>
+                    ) : <p className="text-text-secondary text-center py-4">Belum ada medali yang diraih.</p>}
+                </Card>
+
+                {/* Individual Scores */}
+                <Card>
+                    <div className="flex items-center space-x-4 mb-4"><UserGroupIcon /><h2 className="text-2xl font-bold">Klasemen Perorangan</h2></div>
+                     {(maleIndividualMedals.length > 0 || femaleIndividualMedals.length > 0) ? (
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-4">
+                            {/* Putra Table */}
+                            <div>
+                                <h3 className="text-lg font-semibold text-center p-2 rounded-t-lg bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200">Putra</h3>
+                                <div className="overflow-y-auto max-h-80">
+                                    <table className="w-full text-left">
+                                        <thead><tr className="border-b-2 border-border"><th className="p-2 w-8 text-center">#</th><th className="p-2">Nama</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
+                                        <tbody>
+                                        {maleIndividualMedals.length > 0 ? (
+                                            maleIndividualMedals.map((data, index) => (
+                                                <tr key={data.swimmer.id} className="border-b border-border last:border-b-0 hover:bg-background">
+                                                    <td className="p-2 text-center font-bold">{index + 1}</td>
+                                                    <td className="p-2 text-sm"><span className="font-semibold">{data.swimmer.name}</span><span className="block text-xs text-text-secondary">{data.swimmer.club}</span></td>
+                                                    <td className="p-2 text-center">{data.gold}</td><td className="p-2 text-center">{data.silver}</td><td className="p-2 text-center">{data.bronze}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr><td colSpan={5} className="text-center p-4 text-text-secondary">Tidak ada data.</td></tr>
+                                        )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            {/* Putri Table */}
+                            <div>
+                                <h3 className="text-lg font-semibold text-center p-2 rounded-t-lg bg-pink-100 dark:bg-pink-900/50 text-pink-800 dark:text-pink-200">Putri</h3>
+                                <div className="overflow-y-auto max-h-80">
+                                     <table className="w-full text-left">
+                                        <thead><tr className="border-b-2 border-border"><th className="p-2 w-8 text-center">#</th><th className="p-2">Nama</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
+                                        <tbody>
+                                        {femaleIndividualMedals.length > 0 ? (
+                                            femaleIndividualMedals.map((data, index) => (
+                                                <tr key={data.swimmer.id} className="border-b border-border last:border-b-0 hover:bg-background">
+                                                    <td className="p-2 text-center font-bold">{index + 1}</td>
+                                                    <td className="p-2 text-sm"><span className="font-semibold">{data.swimmer.name}</span><span className="block text-xs text-text-secondary">{data.swimmer.club}</span></td>
+                                                    <td className="p-2 text-center">{data.gold}</td><td className="p-2 text-center">{data.silver}</td><td className="p-2 text-center">{data.bronze}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr><td colSpan={5} className="text-center p-4 text-text-secondary">Tidak ada data.</td></tr>
+                                        )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    ) : <p className="text-text-secondary text-center py-4">Belum ada medali perorangan yang diraih.</p>}
+                    <p className="text-xs text-text-secondary mt-2 text-center">Rekap perorangan tidak termasuk medali dari nomor lomba campuran.</p>
+                </Card>
+            </div>
+
+            {/* Broken Records */}
+            {brokenRecords.length > 0 && (
+                <Card className="mt-8">
+                    <div className="flex items-center space-x-4 mb-4"><StarIcon /><h2 className="text-2xl font-bold">Pemecahan Rekor</h2></div>
+                    <div className="space-y-4">
+                        {brokenRecords.map(({ record, newEventName, newHolder, newTime }, i) => (
+                           <div key={i} className="bg-background p-4 rounded-lg border border-red-500/50">
+                               <p className="font-bold text-lg text-primary">{newEventName} - 
+                                <span className={`record-badge ${record.type.toLowerCase()}`}>{record.type}</span>
+                               </p>
+                               <p className="font-semibold text-xl text-text-primary">{newHolder.name} ({newHolder.club}) - <span className="font-mono">{formatTime(newTime)}</span></p>
+                               <p className="text-sm text-text-secondary mt-1">
+                                   Memecahkan Rekor <strong className="uppercase">{record.type}</strong> ({formatTime(record.time)}) atas nama {record.holderName} ({record.yearSet})
+                               </p>
+                           </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
+
+            <h2 className="text-2xl font-bold mb-4 mt-8">Hasil per Nomor Lomba</h2>
+            <div className="space-y-4">
+                {eventsWithResults.length > 0 ? eventsWithResults.map(event => (
+                    <Card key={event.id} className="overflow-hidden p-0">
+                        <button onClick={() => handleToggleEvent(event.id)} className="w-full flex justify-between items-center p-4 text-left">
+                            <h3 className="text-xl font-bold text-primary whitespace-normal break-words">{formatEventName(event)}</h3>
+                            <svg className={`h-6 w-6 transform transition-transform text-text-secondary ${expandedEventId === event.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                        </button>
+                        {expandedEventId === event.id && (
+                             <div className="pb-4 px-4"><div className="mt-2 pt-4 border-t border-border overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead><tr className="border-b border-border"><th className="p-2 text-center w-12">Rank</th><th className="p-2">Nama</th><th className="p-2">Klub</th><th className="p-2 text-right">Waktu</th><th className="p-2 text-center w-16">Medali</th></tr></thead>
+                                    <tbody>{event.sortedResults.map(result => (
+                                        <tr key={result.swimmerId} className="border-b border-border last:border-b-0 text-sm hover:bg-background">
+                                            <td className="p-2 text-center font-bold">{result.rank > 0 ? result.rank : formatTime(result.time)}</td>
+                                            <td className="p-2 font-semibold">{result.swimmer?.name || 'N/A'}</td>
+                                            <td className="p-2 text-text-secondary">{result.swimmer?.club || 'N/A'}</td>
+                                            <td className="p-2 text-right font-mono">
+                                                {formatTime(result.time)}
+                                                {result.brokenRecordDetails.map(br => (
+                                                    <span key={br.record.id} className={`record-badge ${br.record.type.toLowerCase()}`}>
+                                                        {br.record.type}
+                                                    </span>
+                                                ))}
+                                            </td>
+                                            <td className="p-2 text-center font-bold text-primary"><Medal rank={result.rank} /></td>
+                                        </tr>
+                                     ))}</tbody>
+                                </table>
+                             </div></div>
+                        )}
+                    </Card>
+                )) : ( <Card><p className="text-text-secondary text-center py-6">Tidak ada hasil lomba yang tercatat.</p></Card> )}
+            </div>
+        </div>
+    );
+};
