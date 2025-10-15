@@ -406,7 +406,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             ["2. Kolom 'Tipe Rekor', 'Jarak (m)', 'Gaya', 'Jenis Kelamin', 'Waktu (mm:ss.SS)', 'Nama Pemegang Rekor', dan 'Tahun' wajib diisi."],
             ["3. Untuk Tipe Rekor, Gaya, dan Jenis Kelamin, mohon gunakan pilihan yang tersedia di dropdown."],
             ["4. Kolom 'Kategori' bersifat opsional. Kosongkan jika tidak ada (cth: untuk event senior/open)."],
-            ["5. Kolom 'Jumlah Perenang (Estafet)' HANYA diisi untuk nomor estafet (relay), contoh: 4."],
+            ["5. Kolom 'Jumlah Atlet (Estafet)' HANYA diisi untuk nomor estafet (relay), contoh: 4."],
             [], // Spacer
             ["DAFTAR PILIHAN VALID"],
             [],
@@ -439,7 +439,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 "Waktu (mm:ss.SS)": "00:28.50",
                 "Nama Pemegang Rekor": "Contoh Atlet Putri",
                 "Tahun": 2024,
-                "Jumlah Perenang (Estafet)": "",
+                "Jumlah Atlet (Estafet)": "",
                 "Lokasi": "Bandung"
             },
             {
@@ -451,7 +451,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 "Waktu (mm:ss.SS)": "01:50.12",
                 "Nama Pemegang Rekor": "Contoh Atlet Putra",
                 "Tahun": 2023,
-                "Jumlah Perenang (Estafet)": "",
+                "Jumlah Atlet (Estafet)": "",
                 "Lokasi": "Jakarta"
             },
             {
@@ -463,7 +463,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 "Waktu (mm:ss.SS)": "04:01.88",
                 "Nama Pemegang Rekor": "Tim Contoh Campuran",
                 "Tahun": 2022,
-                "Jumlah Perenang (Estafet)": 4,
+                "Jumlah Atlet (Estafet)": 4,
                 "Lokasi": "Surabaya"
             },
             {
@@ -475,7 +475,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 "Waktu (mm:ss.SS)": "00:20.15",
                 "Nama Pemegang Rekor": "Atlet Papan Luncur",
                 "Tahun": 2024,
-                "Jumlah Perenang (Estafet)": "",
+                "Jumlah Atlet (Estafet)": "",
                 "Lokasi": "Makassar"
             }
         ];
@@ -490,7 +490,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             { wch: 20 }, // Waktu
             { wch: 30 }, // Nama
             { wch: 10 }, // Tahun
-            { wch: 25 }, // Jumlah Perenang
+            { wch: 25 }, // Jumlah Atlet
             { wch: 20 }  // Lokasi
         ];
     
@@ -535,7 +535,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 "Waktu (mm:ss.SS)": formatTime(record.time),
                 "Nama Pemegang Rekor": record.holderName,
                 "Tahun": record.yearSet,
-                "Jumlah Perenang (Estafet)": record.relayLegs ?? "",
+                "Jumlah Atlet (Estafet)": record.relayLegs ?? "",
                 "Lokasi": record.locationSet ?? ""
             }));
     
@@ -549,7 +549,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             { wch: 20 }, // Waktu
             { wch: 30 }, // Nama Pemegang Rekor
             { wch: 10 }, // Tahun
-            { wch: 25 }, // Jumlah Perenang
+            { wch: 25 }, // Jumlah Atlet
             { wch: 20 }  // Lokasi
         ];
     
@@ -973,7 +973,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                                     <input type="checkbox" id="isRelay" name="isRelay" checked={recordForm.isRelay} onChange={handleRecordFormChange} className="h-4 w-4 rounded" />
                                     <label htmlFor="isRelay" className="text-sm font-medium text-text-primary">Estafet</label>
                                 </div>
-                                {recordForm.isRelay && <Input label="Jumlah Perenang" id="relayLegs" name="relayLegs" type="number" value={recordForm.relayLegs} onChange={handleRecordFormChange} required />}
+                                {recordForm.isRelay && <Input label="Jumlah Atlet" id="relayLegs" name="relayLegs" type="number" value={recordForm.relayLegs} onChange={handleRecordFormChange} required />}
                                 <div className="flex gap-4">
                                     <Input label="Jarak (m)" id="distance" name="distance" type="number" value={recordForm.distance} onChange={handleRecordFormChange} required />
                                     <Select label="Gaya" id="style" name="style" value={recordForm.style} onChange={handleRecordFormChange}>
