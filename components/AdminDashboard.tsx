@@ -133,7 +133,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
       data: {
         labels: chartData.labels,
         datasets: [{
-          label: 'Jumlah Atlet',
+          label: 'Jumlah Perenang',
           data: chartData.data,
           backgroundColor: `${primaryColor}BF`, // primary with 75% opacity
           borderColor: primaryColor,
@@ -210,29 +210,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard icon={<UsersIcon />} label="Total Atlet" value={stats.swimmerCount} />
+            <StatCard icon={<UsersIcon />} label="Total Perenang" value={stats.swimmerCount} />
             <StatCard icon={<ClipboardListIcon />} label="Total Nomor Lomba" value={stats.eventCount} />
-            <StatCard icon={<ShieldIcon />} label="Total Tim" value={stats.clubCount} />
+            <StatCard icon={<ShieldIcon />} label="Total Klub" value={stats.clubCount} />
             <StatCard icon={<DocumentTextIcon />} label="Total Pendaftaran" value={stats.totalRegistrations} />
           </div>
 
           <Card className="mt-6">
-            <h2 className="text-xl font-bold mb-4">Analisis Tim</h2>
+            <h2 className="text-xl font-bold mb-4">Analisis Klub</h2>
             {swimmers.length > 0 ? (
                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                     <div>
-                        <h3 className="text-lg font-semibold text-text-primary mb-2 text-center">Top 7 Tim Berdasarkan Jumlah Atlet</h3>
+                        <h3 className="text-lg font-semibold text-text-primary mb-2 text-center">Top 7 Klub Berdasarkan Jumlah Atlet</h3>
                          <div style={{ position: 'relative', height: '50vh', minHeight: '350px' }}>
                             <canvas ref={chartRef}></canvas>
                         </div>
                     </div>
                     <div>
-                         <h3 className="text-lg font-semibold text-text-primary mb-2 text-center">Rincian Data Tim</h3>
+                         <h3 className="text-lg font-semibold text-text-primary mb-2 text-center">Rincian Data Klub</h3>
                         <div className="overflow-y-auto max-h-[50vh] border border-border rounded-lg">
                             <table className="w-full text-left text-sm">
                                 <thead className="bg-background sticky top-0">
                                     <tr className="border-b border-border">
-                                        <TableHeader onSort={() => requestSort('clubName')} label="Nama Tim" sortKey="clubName" currentSort={sortConfig} />
+                                        <TableHeader onSort={() => requestSort('clubName')} label="Klub" sortKey="clubName" currentSort={sortConfig} />
                                         <TableHeader onSort={() => requestSort('maleCount')} label="Putra (L)" sortKey="maleCount" currentSort={sortConfig} />
                                         <TableHeader onSort={() => requestSort('femaleCount')} label="Putri (P)" sortKey="femaleCount" currentSort={sortConfig} />
                                         <TableHeader onSort={() => requestSort('total')} label="Total" sortKey="total" currentSort={sortConfig} />
@@ -255,7 +255,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
                     </div>
                  </div>
             ) : (
-                <p className="text-text-secondary text-center py-10">Data atlet belum tersedia untuk ditampilkan.</p>
+                <p className="text-text-secondary text-center py-10">Data perenang belum tersedia untuk ditampilkan.</p>
             )}
           </Card>
         </>

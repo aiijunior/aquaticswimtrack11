@@ -265,7 +265,7 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                                                     <col style={{ width: '27%' }} />
                                                     <col style={{ width: '15%' }} />
                                                 </colgroup>
-                                                <thead><tr><th>Lane</th><th>Nama</th><th>KU</th><th>Tahun</th><th>Nama Tim</th><th className="text-right">Waktu Unggulan</th></tr></thead>
+                                                <thead><tr><th>Lane</th><th>Nama</th><th>KU</th><th>Tahun</th><th>Klub</th><th className="text-right">Waktu Unggulan</th></tr></thead>
                                                 <tbody>
                                                     {Array.from({ length: lanes }, (_, i) => i + 1).map(lane => {
                                                         const assignment = heat.assignments.find(a => a.lane === lane);
@@ -358,7 +358,7 @@ const EventResults: React.FC<{ events: (SwimEvent & { globalEventNumber: number 
                                 <col style={{ width: '13%' }} />
                                 <col style={{ width: '8%' }} />
                             </colgroup>
-                            <thead><tr><th className="text-center">Rank</th><th>Nama Atlet</th><th>KU</th><th>Tahun</th><th>Nama Tim</th><th className="text-right">Waktu</th><th className="text-center">Medali</th></tr></thead>
+                            <thead><tr><th className="text-center">Rank</th><th>Nama</th><th>KU</th><th>Tahun</th><th>Klub</th><th className="text-right">Waktu</th><th className="text-center">Medali</th></tr></thead>
                             <tbody>
                                 {event.sortedResults.map(res => {
                                     let rankClass = '';
@@ -453,7 +453,7 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
                     <col style={{ width: '10%' }} />
                     <col style={{ width: '15%' }} />
                 </colgroup>
-                <thead><tr><th className="text-center">#</th><th>Nama Tim</th><th className="text-center">🥇</th><th className="text-center">🥈</th><th className="text-center">🥉</th><th className="text-center">Total</th></tr></thead>
+                <thead><tr><th className="text-center">#</th><th>Klub</th><th className="text-center">🥇</th><th className="text-center">🥈</th><th className="text-center">🥉</th><th className="text-center">Total</th></tr></thead>
                 <tbody>
                     {data.map(([club, medals], i) => (
                         <tr key={club}>
@@ -662,7 +662,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
                             <tr className="border-b border-gray-300">
                                 <th className="p-2 text-center">#</th>
                                 <th className="p-2">Nama Atlet</th>
-                                <th className="p-2">Nama Tim</th>
+                                <th className="p-2">Team/Klub</th>
                                 <th className="p-2 text-center">🥇</th>
                                 <th className="p-2 text-center">🥈</th>
                                 <th className="p-2 text-center">🥉</th>
@@ -703,7 +703,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
                             <tr className="border-b border-gray-300">
                                 <th className="p-2 text-center">#</th>
                                 <th className="p-2">Nama Atlet</th>
-                                <th className="p-2">Nama Tim</th>
+                                <th className="p-2">Team/Klub</th>
                                 <th className="p-2 text-center">🥇</th>
                                 <th className="p-2 text-center">🥈</th>
                                 <th className="p-2 text-center">🥉</th>
@@ -793,91 +793,943 @@ const BrokenRecordsReport: React.FC<{ brokenRecords: BrokenRecord[], info: Compe
 };
 
 // FIX: Corrected the type of the `swimmers` prop from `SwimEvent[]` to `Swimmer[]`.
-// FIX: Completed the implementation of the RekapJuaraPerKategori component.
 const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo }> = ({ events, swimmers, info }) => {
     const data = useMemo(() => {
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
         
-        // Group events by category
-        const eventsByCategory = events.reduce((acc, event) => {
-            const category = event.category || 'Open'; // Group null/empty categories as 'Open'
-            if (!acc[category]) {
-                acc[category] = [];
+        const getCategoryKey = (event: SwimEvent): string => {
+            const category = event.category?.trim() || 'Umum';
+            return category;
+        };
+
+        const eventsWithWinners = events
+            .filter((e: SwimEvent) => e.results && e.results.length > 0)
+            .map((event: SwimEvent) => ({
+                ...event,
+                winners: [...event.results]
+                    .filter((r: Result) => r.time > 0)
+                    .sort((a: Result,b: Result) => a.time - b.time)
+                    .slice(0, 3)
+                    .map((result: Result, i: number) => ({
+                        rank: i + 1,
+                        time: result.time,
+                        swimmer: swimmersMap.get(result.swimmerId)
+                    })),
+                categoryKey: getCategoryKey(event)
+            }))
+            .filter(e => e.winners.length > 0);
+        
+        const groupedByCategory = eventsWithWinners.reduce((acc: Record<string, typeof eventsWithWinners>, event) => {
+            if (!acc[event.categoryKey]) {
+                acc[event.categoryKey] = [];
             }
-            acc[category].push(event);
+            acc[event.categoryKey].push(event);
             return acc;
-        }, {} as Record<string, SwimEvent[]>);
+        }, {} as Record<string, typeof eventsWithWinners>);
 
-        // Process each category
-        return Object.entries(eventsByCategory).map(([category, categoryEvents]) => {
-            const winnersByEvent = categoryEvents
-                .filter(event => event.results && event.results.length > 0)
-                .map(event => {
-                    const top3 = [...event.results]
-                        .filter(r => r.time > 0)
-                        .sort((a, b) => a.time - b.time)
-                        .slice(0, 3)
-                        .map((result, index) => {
-                            const swimmer = swimmersMap.get(result.swimmerId);
-                            return {
-                                rank: index + 1,
-                                swimmer,
-                                time: result.time,
-                            };
-                        });
-
-                    return {
-                        eventName: formatEventName(event),
-                        winners: top3,
-                    };
-                })
-                .filter(e => e.winners.length > 0);
-            
-            return {
-                category,
-                eventsWithWinners: winnersByEvent,
-            };
-        }).filter(c => c.eventsWithWinners.length > 0).sort((a,b) => a.category.localeCompare(b.category));
-
+        return Object.entries(groupedByCategory).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
+        
     }, [events, swimmers]);
 
+    const hasData = data.length > 0;
+
+    if (!hasData) return <p className="text-center text-text-secondary py-10">Tidak ada juara untuk ditampilkan.</p>;
+
+    return (
+        <main>
+            {data.map(([categoryKey, categoryEvents]) => (
+                <section key={categoryKey} className="mb-6">
+                    <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md text-center">{categoryKey}</h3>
+                    <div className="space-y-4">
+                        {categoryEvents.sort((a,b) => formatEventName(a).localeCompare(formatEventName(b))).map(event => (
+                            <div key={event.id}>
+                                <h4 className="text-lg font-semibold">{formatEventName(event)}</h4>
+                                <table className="w-full text-left text-sm mt-1">
+                                    <colgroup>
+                                        <col style={{ width: '15%' }} />
+                                        <col style={{ width: '35%' }} />
+                                        <col style={{ width: '35%' }} />
+                                        <col style={{ width: '15%' }} />
+                                    </colgroup>
+                                    <thead>
+                                        <tr>
+                                            <th className="w-16">Peringkat</th>
+                                            <th>Nama</th>
+                                            <th>Klub</th>
+                                            <th className="text-right">Waktu</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {event.winners.map(winner => (
+                                            <tr key={winner.swimmer?.id}>
+                                                <td className="font-bold text-center">{winner.rank} <Medal rank={winner.rank} /></td>
+                                                <td>{winner.swimmer?.name || 'N/A'}</td>
+                                                <td>{winner.swimmer?.club || 'N/A'}</td>
+                                                <td className="text-right font-mono">{formatTime(winner.time)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            ))}
+        </main>
+    )
+};
+
+const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo, brokenRecords: BrokenRecord[], selectedClub: string }> = ({ events, swimmers, info, brokenRecords, selectedClub }) => {
+    type MedalInfo = {
+        club: string;
+        event: string;
+        athleteName: string;
+        time: number;
+        rank: number;
+        recordBreakType: RecordType | null;
+    };
+
+    const data = useMemo(() => {
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
+        const allMedals: MedalInfo[] = [];
+
+        // FIX: Add explicit type annotation to forEach callback parameter to resolve 'unknown' type.
+        events.forEach((event: SwimEvent) => {
+            if (event.results && event.results.length > 0) {
+                const winners = [...event.results]
+                    // FIX: Add explicit type annotation to filter callback parameter to resolve 'unknown' type.
+                    .filter((r: Result) => r.time > 0)
+                    // FIX: Add explicit type annotation to sort callback parameters to resolve 'unknown' type.
+                    .sort((a: Result, b: Result) => a.time - b.time)
+                    .slice(0, 3);
+
+                winners.forEach((result: Result, index: number) => {
+                    const swimmer = swimmersMap.get(result.swimmerId);
+                    if (swimmer) {
+                        const recordBreakInfo = brokenRecords.find(br =>
+                            br.newHolder.id === swimmer.id &&
+                            br.newTime === result.time &&
+                            br.record.style === event.style &&
+                            br.record.distance === event.distance &&
+                            br.record.gender === event.gender &&
+                            (br.record.category ?? null) === (event.category ?? null)
+                        );
+
+                        allMedals.push({
+                            club: swimmer.club,
+                            event: formatEventName(event),
+                            athleteName: swimmer.name,
+                            time: result.time,
+                            rank: index + 1,
+                            recordBreakType: recordBreakInfo ? recordBreakInfo.record.type : null
+                        });
+                    }
+                });
+            }
+        });
+
+        // FIX: Add explicit type annotation to reduce callback parameter to resolve 'unknown' type.
+        const groupedByClub = allMedals.reduce((acc: Record<string, MedalInfo[]>, medal: MedalInfo) => {
+            if (!acc[medal.club]) acc[medal.club] = [];
+            acc[medal.club].push(medal);
+            return acc;
+        }, {} as Record<string, MedalInfo[]>);
+
+        let clubData = Object.entries(groupedByClub).map(([clubName, medals]: [string, MedalInfo[]]) => {
+            const counts = medals.reduce((acc, medal) => {
+                if (medal.rank === 1) acc.gold++;
+                else if (medal.rank === 2) acc.silver++;
+                else if (medal.rank === 3) acc.bronze++;
+                return acc;
+            }, { gold: 0, silver: 0, bronze: 0 });
+
+            const sortedMedals = medals.sort((a, b) => {
+                const rankOrder: { [key: number]: number } = { 1: 1, 3: 2, 2: 3 };
+                const rankA = rankOrder[a.rank] || 4;
+                const rankB = rankOrder[b.rank] || 4;
+                if (rankA !== rankB) return rankA - rankB;
+                return a.event.localeCompare(b.event);
+            });
+
+            return { clubName, medals: sortedMedals, counts };
+        });
+
+        clubData.sort((a, b) => {
+            return b.counts.gold - a.counts.gold ||
+                   b.counts.silver - a.counts.silver ||
+                   b.counts.bronze - a.counts.bronze ||
+                   a.clubName.localeCompare(b.clubName);
+        });
+        
+        if (selectedClub !== 'all') {
+            return clubData.filter(d => d.clubName === selectedClub);
+        }
+
+        return clubData;
+
+    }, [events, swimmers, brokenRecords, selectedClub]);
+
     if (data.length === 0) {
-        return <p className="text-center text-text-secondary py-10">Tidak ada juara untuk ditampilkan.</p>;
+        return <p className="text-center text-text-secondary py-10">Tidak ada data medali untuk ditampilkan.</p>;
     }
 
     return (
-        <main className="space-y-8">
-            {data.map(({ category, eventsWithWinners }) => (
-                <section key={category} className="print-event-section">
-                    <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md text-center">
-                        Juara Kategori: {category}
-                    </h3>
-                    {eventsWithWinners.map(({ eventName, winners }) => (
-                        <div key={eventName} className="mb-4">
-                            <h4 className="font-semibold text-lg">{eventName}</h4>
-                            <table className="w-full text-left text-sm mt-1">
-                                <colgroup>
-                                    <col style={{ width: '10%' }} />
-                                    <col style={{ width: '35%' }} />
-                                    <col style={{ width: '35%' }} />
-                                    <col style={{ width: '20%' }} />
-                                </colgroup>
-                                <tbody>
-                                    {winners.map(({ rank, swimmer, time }) => (
-                                        <tr key={rank}>
-                                            <td className="font-bold text-center"><Medal rank={rank} /> {rank}</td>
-                                            <td>{swimmer?.name}</td>
-                                            <td>{swimmer?.club}</td>
-                                            <td className="font-mono text-right">{formatTime(time)}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+        <main>
+            {data.map(({ clubName, medals, counts }) => (
+                <section key={clubName} className="mb-8" style={{ pageBreakInside: 'avoid' }}>
+                     <div className="my-2 bg-gray-200 text-black p-2 rounded-md flex justify-between items-center">
+                        <h3 className="text-xl font-bold">{clubName}</h3>
+                        <div className="text-sm font-semibold">
+                            <span>🥇 Emas: {counts.gold}</span>
+                            <span className="mx-2">|</span>
+                            <span>🥈 Perak: {counts.silver}</span>
+                            <span className="mx-2">|</span>
+                            <span>🥉 Perunggu: {counts.bronze}</span>
                         </div>
-                    ))}
+                    </div>
+                    <table className="w-full text-left text-sm">
+                        <colgroup>
+                            <col style={{ width: '5%' }} />
+                            <col style={{ width: '35%' }} />
+                            <col style={{ width: '25%' }} />
+                            <col style={{ width: '20%' }} />
+                            <col style={{ width: '15%' }} />
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Nomor Lomba</th>
+                                <th>Nama Atlet</th>
+                                <th>Klub/Tim</th>
+                                <th>Catatan Waktu</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {medals.map((medal, index) => (
+                                <tr key={index}>
+                                    <td className="text-center">{index + 1}</td>
+                                    <td>
+                                        {medal.rank === 1 ? '🥇 ' : medal.rank === 2 ? '🥈 ' : '🥉 '}
+                                        {medal.event}
+                                    </td>
+                                    <td>{medal.athleteName}</td>
+                                    <td>{medal.club}</td>
+                                    <td>
+                                        <span className="font-mono">{formatTime(medal.time)}</span>
+                                        {medal.recordBreakType && <span className={`record-badge ${medal.recordBreakType.toLowerCase()}`}>{medal.recordBreakType}</span>}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </section>
             ))}
         </main>
     );
 };
-```
+
+
+// --- MAIN VIEW COMPONENT ---
+type PrintTab = 'scheduleOfEvents' | 'programBook' | 'eventResults' | 'clubStandings' | 'individualStandings' | 'brokenRecords' | 'rekapJuaraKategori' | 'clubAthleteRecap';
+
+const PRINT_TITLES: Record<PrintTab, string> = {
+    scheduleOfEvents: 'Susunan Acara',
+    programBook: 'Buku Acara',
+    eventResults: 'Hasil Lomba per Nomor',
+    clubStandings: 'Rekapitulasi Medali Klub',
+    individualStandings: 'Klasemen Medali Perorangan',
+    brokenRecords: 'Daftar Rekor Terpecahkan',
+    rekapJuaraKategori: 'Rekapitulasi Juara per Kategori',
+    clubAthleteRecap: 'Rekapitulasi Medali Klub & Atlet'
+};
+
+
+export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competitionInfo, isLoading }) => {
+    const [activeTab, setActiveTab] = useState<PrintTab>('scheduleOfEvents');
+    const [records, setRecords] = useState<SwimRecord[]>([]);
+    const [isDownloading, setIsDownloading] = useState(false);
+    const [selectedEventIdForPrint, setSelectedEventIdForPrint] = useState<string>('all');
+    const [selectedClubForRecap, setSelectedClubForRecap] = useState<string>('all');
+
+    const uniqueClubs = useMemo(() => {
+        const clubs = new Set(swimmers.map(s => s.club));
+        return Array.from(clubs).sort();
+    }, [swimmers]);
+    
+    useEffect(() => {
+        getRecords().then(setRecords);
+    }, []);
+
+    const brokenRecords = useMemo(() => {
+        if (!records.length || !events.length || !swimmers.length) return [];
+        
+        const calculated: BrokenRecord[] = [];
+        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+
+        // FIX: Add explicit type annotation to forEach callback parameter to resolve 'unknown' type.
+        events.forEach((event: SwimEvent) => {
+            if (!event.results || event.results.length === 0) return;
+            // FIX: Add explicit type annotations to filter and sort callbacks to resolve 'unknown' type.
+            const winner = [...event.results].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time)[0];
+            
+            if (winner) {
+                const winnerSwimmer = swimmersMap.get(winner.swimmerId);
+                if (winnerSwimmer) {
+                    const checkRecord = (type: string) => {
+                         const recordToCompare = records.find(r => 
+                            r.type.toUpperCase() === type.toUpperCase() &&
+                            r.gender === event.gender &&
+                            r.distance === event.distance &&
+                            r.style === event.style &&
+                            (r.relayLegs ?? null) === (event.relayLegs ?? null) &&
+                            (r.category ?? null) === (event.category ?? null)
+                        );
+
+                        if (recordToCompare && winner.time < recordToCompare.time) {
+                            calculated.push({
+                                record: recordToCompare,
+                                newEventName: formatEventName(event),
+                                newHolder: winnerSwimmer,
+                                newTime: winner.time,
+                            });
+                        }
+                    };
+                    checkRecord(RecordType.PORPROV);
+                    checkRecord(RecordType.NASIONAL);
+                }
+            }
+        });
+         // Deduplicate
+        return [...new Map(calculated.map(item => [item.record.id, item])).values()];
+    }, [events, swimmers, records]);
+
+    const numberedEventsWithResults = useMemo(() => {
+        let globalEventCounter = 1;
+        return events
+            .filter((e: SwimEvent) => e.results && e.results.length > 0)
+            .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0))
+            .map((event) => ({
+                ...event,
+                globalEventNumber: globalEventCounter++,
+            }));
+    }, [events]);
+    
+    // --- EXCEL DOWNLOAD LOGIC ---
+    const getExcelHeaderAOA = (reportTitle: string, numCols: number): { aoa: any[][], merges: any[], currentRow: number } => {
+        if (!competitionInfo) return { aoa: [], merges: [], currentRow: 0 };
+    
+        const aoa: any[][] = [];
+        const merges: any[] = [];
+        let currentRow = 0;
+    
+        aoa.push([competitionInfo.eventName]);
+        merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: numCols - 1 } });
+        currentRow++;
+        const eventDateStr = competitionInfo.eventDate ? new Date(competitionInfo.eventDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '';
+        aoa.push([eventDateStr]);
+        merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: numCols - 1 } });
+        currentRow++;
+        aoa.push([reportTitle]);
+        merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: numCols - 1 } });
+        currentRow++;
+        aoa.push([]); // Spacer
+        currentRow++;
+    
+        return { aoa, merges, currentRow };
+    };
+
+    const downloadScheduleOfEventsExcel = () => {
+        if (!competitionInfo) return;
+        const NUM_COLS = 2;
+        const headerInfo = getExcelHeaderAOA('Susunan Acara', NUM_COLS);
+        const aoa = headerInfo.aoa;
+        const merges = headerInfo.merges;
+        let currentRow = headerInfo.currentRow;
+
+        let globalEventCounter = 1;
+        const scheduledEvents = events.filter((e: SwimEvent) => e.sessionNumber && e.sessionNumber > 0 && e.sessionDateTime).sort((a,b) => new Date(a.sessionDateTime!).getTime() - new Date(b.sessionDateTime!).getTime() || (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
+        const groupedByDate = scheduledEvents.reduce((acc: Record<string, SwimEvent[]>,event: SwimEvent) => {
+            const dateStr = new Date(event.sessionDateTime!).toLocaleDateString('id-ID',{weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'});
+            if(!acc[dateStr]) acc[dateStr] = [];
+            acc[dateStr].push(event);
+            return acc;
+        }, {} as Record<string, SwimEvent[]>);
+        const processedData = Object.entries(groupedByDate).map(([date,dateEvents])=>{
+            const groupedBySession = dateEvents.reduce((acc: Record<string, (SwimEvent & { globalEventNumber: number })[]>,event: SwimEvent)=>{
+                const sessionName = `Sesi ${romanize(event.sessionNumber!)}`;
+                if(!acc[sessionName]) acc[sessionName] = [];
+                acc[sessionName].push({...event, globalEventNumber: globalEventCounter++});
+                return acc;
+            },{} as Record<string, (SwimEvent & { globalEventNumber: number })[]>);
+            return {date, sessions: Object.entries(groupedBySession)};
+        });
+
+        processedData.forEach(({ date, sessions }) => {
+            aoa.push([date]);
+            merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
+            currentRow++;
+
+            sessions.forEach(([sessionName, sessionEvents]) => {
+                aoa.push([sessionName]);
+                merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
+                currentRow++;
+                aoa.push(['No. Acara', 'Nomor Lomba']);
+                currentRow++;
+                sessionEvents.forEach(event => {
+                    aoa.push([event.globalEventNumber, formatEventName(event)]);
+                    currentRow++;
+                });
+                aoa.push([]); currentRow++;
+            });
+        });
+
+        const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+        worksheet['!merges'] = merges;
+        worksheet['!cols'] = [{ wch: 15 }, { wch: 60 }];
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Susunan Acara");
+        XLSX.writeFile(workbook, "Susunan_Acara.xlsx");
+    };
+
+    const downloadProgramBookExcel = () => {
+        if (!competitionInfo) return;
+        
+        const NUM_COLS = 6;
+        const headerInfo = getExcelHeaderAOA('Buku Acara', NUM_COLS);
+        const aoa: any[][] = headerInfo.aoa;
+        const merges: any[] = headerInfo.merges;
+        let currentRow = headerInfo.currentRow;
+
+        let globalEventCounter = 1;
+        const programBookData = (() => {
+            const scheduledEvents = events
+                .filter((e: SwimEvent) => e.sessionNumber && e.sessionNumber > 0)
+                .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
+            return scheduledEvents.reduce((acc: Record<string, (SwimEvent & { detailedEntries: Entry[] })[]>, event: SwimEvent) => {
+                const sessionName = `Sesi ${romanize(event.sessionNumber!)}`;
+                if (!acc[sessionName]) acc[sessionName] = [];
+                const eventEntries = event.entries.map((entry: EventEntry) => {
+                    const swimmer = swimmers.find(s => s.id === entry.swimmerId);
+                    return swimmer ? { ...entry, swimmer } : null;
+                }).filter((e): e is Entry => e !== null);
+                if (eventEntries.length > 0) acc[sessionName].push({ ...event, detailedEntries: eventEntries });
+                return acc;
+            }, {} as Record<string, (SwimEvent & { detailedEntries: Entry[] })[]>);
+        })();
+
+        Object.entries(programBookData).forEach(([sessionName, sessionEvents]) => {
+            const firstEvent = sessionEvents[0];
+            const sessionDT = firstEvent?.sessionDateTime ? new Date(firstEvent.sessionDateTime) : null;
+            
+            aoa.push([sessionName]);
+            merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
+            currentRow++;
+            if(sessionDT){
+                const sessionDate = sessionDT.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+                const sessionTime = sessionDT.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+                aoa.push([`${sessionDate} - ${sessionTime}`]);
+                merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
+                currentRow++;
+            }
+            aoa.push([]); currentRow++;
+
+            sessionEvents.forEach(event => {
+                const eventNameStr = `Nomor Acara ${globalEventCounter++}: ${formatEventName(event)}`;
+                const isRelay = event.relayLegs && event.relayLegs > 1;
+                aoa.push([eventNameStr]);
+                merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
+                currentRow++;
+                
+                const porprovRecord = records.find(r => r.type.toUpperCase() === RecordType.PORPROV.toUpperCase() && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
+                const porprovText = porprovRecord ? `${formatTime(porprovRecord.time)} | ${porprovRecord.holderName} | ${porprovRecord.yearSet}` : 'TIDAK ADA REKOR TERCATAT';
+                aoa.push([`REKOR PORPROV | ${porprovText}`]);
+                merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
+                currentRow++;
+
+                const nasionalRecord = records.find(r => r.type.toUpperCase() === RecordType.NASIONAL.toUpperCase() && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
+                const nasionalText = nasionalRecord ? `${formatTime(nasionalRecord.time)} | ${nasionalRecord.holderName} | ${nasionalRecord.yearSet}` : 'TIDAK ADA REKOR TERCATAT';
+                aoa.push([`REKOR NASIONAL | ${nasionalText}`]);
+                merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
+                currentRow++;
+
+                const heats = generateHeats(event.detailedEntries, competitionInfo.numberOfLanes || 8);
+                heats.forEach(heat => {
+                    aoa.push([]); currentRow++;
+                    aoa.push([`Seri ${heat.heatNumber} dari ${heats.length}`]);
+                    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
+                    currentRow++;
+                    
+                    aoa.push(['Lane', 'Nama', 'KU', 'Tahun', 'Klub', 'Waktu Unggulan']);
+                    currentRow++;
+
+                    Array.from({ length: competitionInfo.numberOfLanes || 8 }, (_, i) => i + 1).forEach(lane => {
+                        const assignment = heat.assignments.find(a => a.lane === lane);
+                        const displayName = assignment ? (isRelay ? assignment.entry.swimmer.club : assignment.entry.swimmer.name) : '-';
+                        const displayClub = assignment ? assignment.entry.swimmer.club : '-';
+                        aoa.push([
+                            lane,
+                            displayName,
+                            assignment && !isRelay ? (assignment.entry.swimmer.ageGroup || '') : '',
+                            assignment && !isRelay ? assignment.entry.swimmer.birthYear : '',
+                            displayClub,
+                            assignment ? formatTime(assignment.entry.seedTime) : '-'
+                        ]);
+                        currentRow++;
+                    });
+                });
+                aoa.push([]); currentRow++;
+            });
+        });
+
+        const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+        worksheet['!merges'] = merges;
+        worksheet['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 25 }, { wch: 20 }];
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Buku Acara");
+        XLSX.writeFile(workbook, "Buku_Acara_Start_List.xlsx");
+    };
+
+    const downloadEventResultsExcel = () => {
+        if (!competitionInfo) return;
+        const getMedalEmoji = (rank: number): string => {
+            if (rank === 1) return '🥇'; if (rank === 2) return '🥈'; if (rank === 3) return '🥉'; return '';
+        };
+
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
+        const NUM_COLS = 8;
+        const headerInfo = getExcelHeaderAOA('Hasil Lomba per Nomor', NUM_COLS);
+        const aoa: any[][] = headerInfo.aoa;
+        const merges: any[] = headerInfo.merges;
+        let currentRow = headerInfo.currentRow;
+
+        const sortedEvents = events.filter(e => e.results && e.results.length > 0)
+            .sort((a,b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
+
+        // FIX: Add explicit type annotation to forEach callback parameter to resolve 'unknown' type.
+        sortedEvents.forEach((event: SwimEvent) => {
+            aoa.push([formatEventName(event)]);
+            merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
+            currentRow++;
+            aoa.push(['Rank', 'Medali', 'Nama Peserta', 'KU', 'Tahun', 'Klub', 'Waktu', 'Catatan']);
+            currentRow++;
+            
+            // FIX: Add explicit type annotation to sort callback parameters to resolve 'unknown' type.
+            const sortedResults = [...event.results].sort((a: Result,b: Result) => {
+                if (a.time < 0) return 1; if (b.time < 0) return -1; if (a.time === 0) return 1; if (b.time === 0) return -1; return a.time - b.time;
+            });
+
+            // FIX: Add explicit type annotation to forEach callback parameter to resolve 'unknown' type.
+            sortedResults.forEach((res: Result, i: number) => {
+                const swimmer = swimmersMap.get(res.swimmerId);
+                const rankNumber = res.time > 0 ? i + 1 : 0;
+                const rankDisplay = rankNumber > 0 ? rankNumber : 'DQ';
+                const medalEmoji = getMedalEmoji(rankNumber);
+                const note = brokenRecords.find(br => br.newHolder.id === swimmer?.id && br.newTime === res.time && br.record.style === event.style && br.record.distance === event.distance)?.record.type;
+                
+                aoa.push([
+                    rankDisplay, 
+                    medalEmoji, 
+                    swimmer?.name || 'N/A', 
+                    event.relayLegs ? '' : (swimmer?.ageGroup || ''),
+                    event.relayLegs ? '' : (swimmer?.birthYear || ''),
+                    swimmer?.club || 'N/A',
+                    formatTime(res.time), 
+                    note ? `REKOR BARU ${note}`: ''
+                ]);
+                currentRow++;
+            });
+            aoa.push([]); currentRow++;
+        });
+
+        const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+        worksheet['!merges'] = merges;
+        worksheet['!cols'] = [{ wch: 10 }, { wch: 8 }, { wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 25 }, { wch: 15 }, { wch: 25 }];
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Hasil Lomba");
+        XLSX.writeFile(workbook, "Hasil_Lomba.xlsx");
+    };
+
+    const downloadClubStandingsExcel = () => {
+        if (!competitionInfo) return;
+
+        // Initialize with all clubs to include those with zero medals
+        const allClubs = [...new Set(swimmers.map(s => s.club))];
+        const clubMedals = allClubs.reduce((acc, club) => {
+            acc[club] = { gold: 0, silver: 0, bronze: 0 };
+            return acc;
+        }, {} as Record<string, { gold: number, silver: number, bronze: number }>);
+
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
+
+        // Tally medals
+        events.forEach((event: SwimEvent) => {
+            if (!event.results) return;
+            [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => {
+                const swimmer = swimmersMap.get(result.swimmerId);
+                if (swimmer && clubMedals[swimmer.club]) { // Check if club exists
+                    if (i === 0) clubMedals[swimmer.club].gold++;
+                    else if (i === 1) clubMedals[swimmer.club].silver++;
+                    else if (i === 2) clubMedals[swimmer.club].bronze++;
+                }
+            });
+        });
+
+        const clubMedalsData = Object.entries(clubMedals).sort(([clubA, a], [clubB, b]) => 
+            b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || clubA.localeCompare(clubB)
+        );
+        
+        const NUM_COLS = 6;
+        const headerInfo = getExcelHeaderAOA('Rekapitulasi Medali Klub', NUM_COLS);
+        const aoa: any[][] = headerInfo.aoa;
+        aoa.push(['Peringkat', 'Klub', 'Emas 🥇', 'Perak 🥈', 'Perunggu 🥉', 'Total']);
+        clubMedalsData.forEach(([club, medals], i) => {
+            aoa.push([i + 1, club, medals.gold, medals.silver, medals.bronze, medals.gold + medals.silver + medals.bronze]);
+        });
+        
+        const grandTotal = clubMedalsData.reduce((acc, [, medals]) => {
+            acc.gold += medals.gold; acc.silver += medals.silver; acc.bronze += medals.bronze; return acc;
+        }, { gold: 0, silver: 0, bronze: 0 });
+
+        aoa.push([]);
+        aoa.push(['', 'TOTAL KESELURUHAN', grandTotal.gold, grandTotal.silver, grandTotal.bronze, grandTotal.gold + grandTotal.silver + grandTotal.bronze]);
+
+        const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+        worksheet['!merges'] = headerInfo.merges;
+        worksheet['!cols'] = [{ wch: 10 }, { wch: 35 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }];
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Medali Klub");
+        XLSX.writeFile(workbook, "Rekap_Medali_Klub.xlsx");
+    };
+    
+    const downloadIndividualStandingsExcel = () => {
+        if (!competitionInfo) return;
+        const processedData = (() => { // Re-implementing tie-breaker logic inside function
+            const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
+            const nationalRecordsMap = new Map(records.filter(r => r.type === RecordType.NASIONAL).map(r => [`${r.gender}_${r.distance}_${r.style}_${r.category ?? null}_${r.relayLegs ?? null}`, r]));
+            const individualData: Record<string, IndividualStandingData> = {};
+            events.filter(e => e.gender !== Gender.MIXED && e.results && e.results.length > 0).forEach((event: SwimEvent) => {
+                [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => {
+                    const swimmer = swimmersMap.get(result.swimmerId);
+                    if (swimmer) {
+                        if (!individualData[swimmer.id]) individualData[swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0, tiebreakerScore: 0, tiebreakerDetails: [] };
+                        if (i === 0) individualData[swimmer.id].gold++; else if (i === 1) individualData[swimmer.id].silver++; else if (i === 2) individualData[swimmer.id].bronze++;
+                    }
+                });
+            });
+            Object.values(individualData).forEach((data: IndividualStandingData) => {
+                const swimmerId = data.swimmer.id;
+                const relevantResults = events.map((e: SwimEvent) => ({ event: e, result: e.results.find((r: Result) => r.swimmerId === swimmerId && r.time > 0) })).filter((item): item is { event: SwimEvent, result: Result } => !!item.result);
+                let totalCloseness = 0; let comparableEventsCount = 0;
+                data.tiebreakerDetails = relevantResults.map(item => {
+                    const { event, result } = item;
+                    const recordKey = `${event.gender}_${event.distance}_${event.style}_${event.category ?? null}_${event.relayLegs ?? null}`;
+                    const record = nationalRecordsMap.get(recordKey);
+                    let closeness = 0;
+                    if (record && record.time > 0 && result.time > 0) {
+                        closeness = (record.time / result.time) * 100;
+                        totalCloseness += closeness;
+                        comparableEventsCount++;
+                    }
+                    return { eventName: formatEventName(event), resultTime: result.time, nationalRecordTime: record ? record.time : null, closeness: closeness, };
+                });
+                data.tiebreakerScore = comparableEventsCount > 0 ? totalCloseness / comparableEventsCount : 0;
+            });
+            const groupedByMedals: Record<string, IndividualStandingData[]> = {};
+            Object.values(individualData).forEach((data: IndividualStandingData) => {
+                const key = `g${data.gold}-s${data.silver}-b${data.bronze}`;
+                if (!groupedByMedals[key]) groupedByMedals[key] = [];
+                groupedByMedals[key].push(data);
+            });
+            const sortedGroups = Object.values(groupedByMedals).sort((groupA, groupB) => {
+                const a = groupA[0]; const b = groupB[0]; return b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze;
+            });
+            sortedGroups.forEach((group: IndividualStandingData[]) => { if (group.length > 1) { group.sort((a, b) => b.tiebreakerScore - a.tiebreakerScore); }});
+            return {
+                maleGroups: sortedGroups.map(group => group.filter(d => d.swimmer.gender === 'Male')).filter(g => g.length > 0),
+                femaleGroups: sortedGroups.map(group => group.filter(d => d.swimmer.gender === 'Female')).filter(g => g.length > 0),
+            };
+        })();
+
+        const wb = XLSX.utils.book_new();
+        const NUM_COLS = 6;
+        const createSheet = (title: string, reportTitle: string, groups: IndividualStandingData[][]) => {
+            const headerInfo = getExcelHeaderAOA(reportTitle, NUM_COLS);
+            const aoa = headerInfo.aoa;
+            aoa.push(['Peringkat', 'Nama', 'Klub', 'Emas 🥇', 'Perak 🥈', 'Perunggu 🥉']);
+            let rankCounter = 1;
+            groups.forEach((group: IndividualStandingData[]) => { group.forEach(d => { aoa.push([rankCounter++, d.swimmer.name, d.swimmer.club, d.gold, d.silver, d.bronze]); }); });
+            const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+            worksheet['!merges'] = headerInfo.merges;
+            worksheet['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+            return worksheet;
+        };
+        XLSX.utils.book_append_sheet(wb, createSheet("Klasemen Putra", "Klasemen Medali Perorangan - Putra", processedData.maleGroups), "Klasemen Putra");
+        XLSX.utils.book_append_sheet(wb, createSheet("Klasemen Putri", "Klasemen Medali Perorangan - Putri", processedData.femaleGroups), "Klasemen Putri");
+        XLSX.writeFile(wb, "Klasemen_Perorangan.xlsx");
+    };
+    
+    const downloadBrokenRecordsExcel = () => {
+        if (!competitionInfo || brokenRecords.length === 0) return;
+        const NUM_COLS = 1; 
+        const headerInfo = getExcelHeaderAOA('Daftar Rekor Terpecahkan', NUM_COLS);
+        const aoa: any[][] = headerInfo.aoa;
+        let currentRow = headerInfo.currentRow;
+        const merges: any[] = headerInfo.merges;
+
+        brokenRecords.forEach(br => {
+            aoa.push([br.newEventName]);
+            merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
+            currentRow++;
+            const newRecordInfo = `${br.newHolder.name.toUpperCase()} (${br.newHolder.club.toUpperCase()}) - ${formatTime(br.newTime)} ${br.record.type.toUpperCase()}`;
+            aoa.push([newRecordInfo]);
+            merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
+            currentRow++;
+            const oldRecordInfo = `Memecahkan Rekor ${br.record.type.toUpperCase()} (${formatTime(br.record.time)}) atas nama ${br.record.holderName.toUpperCase()} (${br.record.yearSet})`;
+            aoa.push([oldRecordInfo]);
+            merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
+            currentRow++;
+            aoa.push([]); currentRow++;
+        });
+        const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+        worksheet['!merges'] = merges;
+        worksheet['!cols'] = [{ wch: 120 }];
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Rekor Terpecahkan");
+        XLSX.writeFile(workbook, "Daftar_Rekor_Terpecahkan.xlsx");
+    };
+
+    const downloadRekapJuaraKategoriExcel = () => {
+        if (!competitionInfo) return;
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
+         const getCategoryKey = (event: SwimEvent): string => {
+            const category = event.category?.trim() || 'Umum'; return category;
+        };
+        const eventsWithWinners = events
+            .filter((e: SwimEvent) => e.results && e.results.length > 0)
+            .map((event: SwimEvent) => ({ ...event, winners: [...event.results].filter((r: Result) => r.time > 0).sort((a: Result,b: Result) => a.time - b.time).slice(0, 3) .map((result: Result, i: number) => ({ rank: i + 1, time: result.time, swimmer: swimmersMap.get(result.swimmerId) })), categoryKey: getCategoryKey(event) }))
+            .filter(e => e.winners.length > 0);
+        const groupedByCategory = eventsWithWinners.reduce((acc: Record<string, typeof eventsWithWinners>, event) => { if (!acc[event.categoryKey]) acc[event.categoryKey] = []; acc[event.categoryKey].push(event); return acc; }, {} as Record<string, typeof eventsWithWinners>);
+        const sortedGroupedData = Object.entries(groupedByCategory).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
+
+        const NUM_COLS = 5;
+        const headerInfo = getExcelHeaderAOA("Rekapitulasi Juara per Kategori", NUM_COLS);
+        const aoa: any[][] = headerInfo.aoa;
+        const merges: any[] = headerInfo.merges;
+        let currentRow = headerInfo.currentRow;
+        
+        sortedGroupedData.forEach(([categoryKey, categoryEvents]: [string, (SwimEvent & { winners: any[], categoryKey: string })[]]) => {
+            aoa.push([]); currentRow++;
+            aoa.push([categoryKey]); merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } }); currentRow++;
+            aoa.push([]); currentRow++;
+            categoryEvents.sort((a,b) => formatEventName(a).localeCompare(formatEventName(b))).forEach(event => {
+                aoa.push([formatEventName(event)]); merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } }); currentRow++;
+                aoa.push(['Peringkat', 'Medali', 'Nama Peserta', 'Klub/Tim', 'Waktu']); currentRow++;
+                event.winners.forEach(winner => {
+                    aoa.push([winner.rank, winner.rank === 1 ? '🥇' : winner.rank === 2 ? '🥈' : '🥉', winner.swimmer?.name || 'N/A', winner.swimmer?.club || 'N/A', formatTime(winner.time)]);
+                    currentRow++;
+                });
+                aoa.push([]); currentRow++;
+            });
+        });
+        const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+        worksheet['!merges'] = merges;
+        worksheet['!cols'] = [{ wch: 10 }, { wch: 8 }, { wch: 30 }, { wch: 30 }, { wch: 15 }];
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Juara per Kategori");
+        XLSX.writeFile(workbook, "Rekap_Juara_per_Kategori.xlsx");
+    };
+
+    const downloadClubAthleteRecapExcel = () => {
+        if (!competitionInfo) return;
+        type MedalInfo = { club: string; event: string; athleteName: string; time: number; rank: number; recordBreakType: RecordType | null; };
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
+        const allMedals: MedalInfo[] = [];
+        events.forEach((event: SwimEvent) => {
+            if (event.results && event.results.length > 0) {
+                const winners = [...event.results].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3);
+                winners.forEach((result: Result, index: number) => {
+                    const swimmer = swimmersMap.get(result.swimmerId);
+                    if (swimmer) {
+                        const recordBreakInfo = brokenRecords.find(br => br.newHolder.id === swimmer.id && br.newTime === result.time && br.record.style === event.style && br.record.distance === event.distance && br.record.gender === event.gender && (br.record.category ?? null) === (event.category ?? null));
+                        allMedals.push({ club: swimmer.club, event: formatEventName(event), athleteName: swimmer.name, time: result.time, rank: index + 1, recordBreakType: recordBreakInfo ? recordBreakInfo.record.type : null });
+                    }
+                });
+            }
+        });
+        const groupedByClub = allMedals.reduce((acc: Record<string, MedalInfo[]>, medal: MedalInfo) => { if (!acc[medal.club]) acc[medal.club] = []; acc[medal.club].push(medal); return acc; }, {} as Record<string, MedalInfo[]>);
+        const clubData = Object.entries(groupedByClub).map(([clubName, medals]) => {
+            const counts = medals.reduce((acc, medal) => { if (medal.rank === 1) acc.gold++; else if (medal.rank === 2) acc.silver++; else if (medal.rank === 3) acc.bronze++; return acc; }, { gold: 0, silver: 0, bronze: 0 });
+            return { clubName, medals: medals.sort((a,b) => a.event.localeCompare(b.event)), counts };
+        }).sort((a,b) => b.counts.gold - a.counts.gold || b.counts.silver - a.counts.silver || b.counts.bronze - a.counts.bronze || a.clubName.localeCompare(b.clubName));
+
+        const NUM_COLS = 7;
+        const headerInfo = getExcelHeaderAOA("Rekapitulasi Medali Klub & Atlet", NUM_COLS);
+        const aoa: any[][] = headerInfo.aoa;
+        const merges: any[] = headerInfo.merges;
+        let currentRow = headerInfo.currentRow;
+
+        clubData.forEach(({ clubName, medals, counts }) => {
+            const summaryText = `Emas: ${counts.gold}, Perak: ${counts.silver}, Perunggu: ${counts.bronze}`;
+            aoa.push([`${clubName}`]); merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } }); currentRow++;
+            aoa.push([summaryText]); merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } }); currentRow++;
+            aoa.push(['No', 'Medali', 'Nomor Lomba', 'Nama Atlet', 'Klub/Tim', 'Catatan Waktu', 'Keterangan']); currentRow++;
+            medals.forEach((medal, index) => {
+                const medalText = medal.rank === 1 ? 'Emas' : medal.rank === 2 ? 'Perak' : 'Perunggu';
+                const note = medal.recordBreakType ? `REKOR BARU ${medal.recordBreakType}` : '';
+                aoa.push([index + 1, medalText, medal.event, medal.athleteName, medal.club, formatTime(medal.time), note]); currentRow++;
+            });
+            aoa.push([]); currentRow++;
+        });
+        const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+        worksheet['!merges'] = merges;
+        worksheet['!cols'] = [ { wch: 5 }, { wch: 10 }, { wch: 40 }, { wch: 30 }, { wch: 30 }, { wch: 15 }, { wch: 25 } ];
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Medali per Klub");
+        XLSX.writeFile(workbook, "Rekap_Medali_per_Klub.xlsx");
+    };
+
+    const handleDownloadExcel = () => {
+        if (typeof XLSX === 'undefined') {
+            alert('Pustaka untuk membuat file Excel belum termuat. Periksa koneksi internet Anda dan muat ulang halaman.');
+            return;
+        }
+        setIsDownloading(true);
+        try {
+            switch (activeTab) {
+                case 'scheduleOfEvents': downloadScheduleOfEventsExcel(); break;
+                case 'programBook': downloadProgramBookExcel(); break;
+                case 'eventResults': downloadEventResultsExcel(); break;
+                case 'clubStandings': downloadClubStandingsExcel(); break;
+                case 'individualStandings': downloadIndividualStandingsExcel(); break;
+                case 'brokenRecords': downloadBrokenRecordsExcel(); break;
+                case 'rekapJuaraKategori': downloadRekapJuaraKategoriExcel(); break;
+                case 'clubAthleteRecap': downloadClubAthleteRecapExcel(); break;
+            }
+        } catch (error) {
+            console.error("Failed to generate Excel file:", error);
+            alert("Terjadi kesalahan saat membuat file Excel.");
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
+    const renderContent = () => {
+        if (isLoading) return <div className="flex justify-center items-center py-20"><Spinner /></div>;
+        if (!competitionInfo) return <p>Informasi kompetisi belum diatur.</p>;
+
+        switch (activeTab) {
+            case 'scheduleOfEvents': return <ScheduleOfEvents events={events} />;
+            case 'programBook': return <ProgramBook events={events} swimmers={swimmers} info={competitionInfo} records={records} />;
+            case 'eventResults': {
+                const filteredEvents = selectedEventIdForPrint === 'all'
+                    ? numberedEventsWithResults
+                    : numberedEventsWithResults.filter(e => e.id === selectedEventIdForPrint);
+                const filteredBrokenRecords = brokenRecords.filter(br => 
+                    filteredEvents.some(fe => formatEventName(fe) === br.newEventName)
+                );
+                return <EventResults events={filteredEvents} swimmers={swimmers} info={competitionInfo} records={records} brokenRecords={filteredBrokenRecords} />;
+            }
+            case 'clubStandings': return <ClubMedalStandings events={events} swimmers={swimmers} info={competitionInfo} />;
+            case 'individualStandings': return <IndividualStandings events={events} swimmers={swimmers} info={competitionInfo} records={records} />;
+            case 'brokenRecords': return <BrokenRecordsReport brokenRecords={brokenRecords} info={competitionInfo} />;
+            case 'rekapJuaraKategori': return <RekapJuaraPerKategori events={events} swimmers={swimmers} info={competitionInfo} />;
+            case 'clubAthleteRecap': return <ClubAthleteMedalRecap events={events} swimmers={swimmers} info={competitionInfo} brokenRecords={brokenRecords} selectedClub={selectedClubForRecap} />;
+            default: return null;
+        }
+    };
+
+    const TabButton: React.FC<{ tab: PrintTab, label: string }> = ({ tab, label }) => (
+        <button
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${activeTab === tab ? 'bg-surface text-primary border-b-2 border-primary' : 'text-text-secondary hover:bg-background'}`}
+        >{label}</button>
+    );
+
+    const printTitle = useMemo(() => {
+        if (activeTab === 'eventResults' && selectedEventIdForPrint !== 'all') {
+            const selectedEvent = numberedEventsWithResults.find(e => e.id === selectedEventIdForPrint);
+            if (selectedEvent) {
+                return `Hasil Acara ${selectedEvent.globalEventNumber}: ${formatEventName(selectedEvent)}`;
+            }
+        }
+        return PRINT_TITLES[activeTab] || 'Laporan Kompetisi';
+    }, [activeTab, selectedEventIdForPrint, numberedEventsWithResults]);
+
+
+    return (
+        <div>
+            <div className="no-print">
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-3xl font-bold">Unduh Laporan</h1>
+                    <div className="flex space-x-2">
+                         <Button onClick={handleDownloadExcel} disabled={isLoading || isDownloading} variant="secondary">
+                            {isDownloading ? <Spinner /> : 'Unduh Excel'}
+                        </Button>
+                        <Button onClick={() => window.print()} disabled={isLoading}>
+                            Unduh PDF
+                        </Button>
+                    </div>
+                </div>
+
+                <Card>
+                    <div className="border-b border-border flex flex-wrap">
+                        <TabButton tab="scheduleOfEvents" label="Susunan Acara" />
+                        <TabButton tab="programBook" label="Buku Acara" />
+                        <TabButton tab="eventResults" label="Hasil per Nomor" />
+                        <TabButton tab="rekapJuaraKategori" label="Rekap Juara (Kategori)" />
+                        <TabButton tab="clubStandings" label="Rekap Medali Klub" />
+                        <TabButton tab="clubAthleteRecap" label="Rekap Medali Klub & Atlet" />
+                        <TabButton tab="individualStandings" label="Klasemen Perorangan" />
+                        <TabButton tab="brokenRecords" label="Rekor Terpecahkan" />
+                    </div>
+                    {activeTab === 'eventResults' && numberedEventsWithResults.length > 0 && (
+                        <div className="p-4 border-b border-border">
+                            <label htmlFor="event-print-select" className="block text-sm font-medium text-text-secondary mb-1">
+                                Pilih Nomor Lomba untuk Dicetak
+                            </label>
+                            <select
+                                id="event-print-select"
+                                value={selectedEventIdForPrint}
+                                onChange={(e) => setSelectedEventIdForPrint(e.target.value)}
+                                className="w-full bg-background border border-border rounded-md px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                            >
+                                <option value="all">Semua Nomor Lomba</option>
+                                {numberedEventsWithResults.map(event => (
+                                    <option key={event.id} value={event.id}>
+                                        {`No. Acara ${event.globalEventNumber}: ${formatEventName(event)}`}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                    {activeTab === 'clubAthleteRecap' && (
+                        <div className="p-4 border-b border-border">
+                            <label htmlFor="club-recap-select" className="block text-sm font-medium text-text-secondary mb-1">
+                                Pilih Klub
+                            </label>
+                            <select
+                                id="club-recap-select"
+                                value={selectedClubForRecap}
+                                onChange={(e) => setSelectedClubForRecap(e.target.value)}
+                                className="w-full bg-background border border-border rounded-md px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                            >
+                                <option value="all">Semua Klub</option>
+                                {uniqueClubs.map(club => (
+                                    <option key={club} value={club}>{club}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </Card>
+            </div>
+            {/* The on-screen preview and printable content */}
+            <div className="print-preview-content-wrapper">
+                <div className="print-preview-content">
+                    {competitionInfo && <ReportHeader info={competitionInfo} title={printTitle} />}
+                    {renderContent()}
+                    {competitionInfo && <ReportFooter info={competitionInfo} />}
+                </div>
+            </div>
+        </div>
+    );
+};

@@ -406,7 +406,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                         </div>
                                     )}
                                 </div>
-                                <Input label="Nama Tim" id="club" name="club" value={formData.club} onChange={handleFormChange} required />
+                                <Input label="Nama Tim / Klub" id="club" name="club" value={formData.club} onChange={handleFormChange} required />
                                 <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={formData.birthYear} onChange={handleFormChange} required />
                                 <Select label="Jenis Kelamin" id="gender" name="gender" value={formData.gender} onChange={handleFormChange}>
                                     <option value="Male">Laki-laki (Male)</option>
