@@ -294,7 +294,7 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
                 </>
             ) : (
                 <Card className="mt-6 text-center py-10 text-text-secondary">
-                    Tidak ada peserta terdaftar untuk nomor lomba ini.
+                    Tidak ada atlet terdaftar untuk nomor lomba ini.
                 </Card>
             )}
         </div>

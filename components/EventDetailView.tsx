@@ -165,14 +165,14 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <Card>
-                    <h2 className="text-xl font-bold mb-4">Perenang Terdaftar</h2>
+                    <h2 className="text-xl font-bold mb-4">Atlet Terdaftar</h2>
                     <ul className="space-y-2">
                         {detailedEntries.length > 0 ? detailedEntries.map(entry => (
                             <li key={entry.swimmerId} className="flex justify-between p-2 border-b border-border last:border-0">
                                 <span>{entry.swimmer.name} ({entry.swimmer.club})</span>
                                 <span className="font-mono text-text-secondary">Seed: {formatTime(entry.seedTime)}</span>
                             </li>
-                        )) : <p className="text-text-secondary">Belum ada perenang terdaftar.</p>}
+                        )) : <p className="text-text-secondary">Belum ada atlet terdaftar.</p>}
                     </ul>
                 </Card>
 

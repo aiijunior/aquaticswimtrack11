@@ -90,17 +90,17 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
 
         const templateData: any[] = [];
         const columnHeaders = {
-            "Nama Peserta": "",
+            "Nama Atlet": "",
             "Tahun Lahir": "",
             "Jenis Kelamin (L/P)": "",
-            "Klub/Tim": "",
+            "Nama Tim": "",
             "KU": "",
             "Nomor Lomba": "",
             "Waktu Unggulan (mm:ss.SS)": ""
         };
 
         const addSectionHeader = (title: string) => {
-            templateData.push({ ...columnHeaders, "Nama Peserta": `--- ${title.toUpperCase()} ---` });
+            templateData.push({ ...columnHeaders, "Nama Atlet": `--- ${title.toUpperCase()} ---` });
         };
 
         // --- EXAMPLE: PERORANGAN PUTRA ---
@@ -110,10 +110,10 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
             const exampleEvents = maleEvents.slice(0, 2); // Take up to 2 examples
             exampleEvents.forEach((event, index) => {
                 templateData.push({
-                    "Nama Peserta": "Budi Perkasa",
+                    "Nama Atlet": "Budi Perkasa",
                     "Tahun Lahir": 2005,
                     "Jenis Kelamin (L/P)": "L",
-                    "Klub/Tim": "Klub Cepat",
+                    "Nama Tim": "Klub Cepat",
                     "KU": "KU 1",
                     "Nomor Lomba": formatEventName(event),
                     "Waktu Unggulan (mm:ss.SS)": index === 0 ? "01:05.50" : "99:99.99"
@@ -129,10 +129,10 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
             const exampleEvents = femaleEvents.slice(0, 2);
             exampleEvents.forEach((event, index) => {
                 templateData.push({
-                    "Nama Peserta": "Siti Cepat",
+                    "Nama Atlet": "Siti Cepat",
                     "Tahun Lahir": 2006,
                     "Jenis Kelamin (L/P)": "P",
-                    "Klub/Tim": "Klub Cepat",
+                    "Nama Tim": "Klub Cepat",
                     "KU": "KU Senior",
                     "Nomor Lomba": formatEventName(event),
                     "Waktu Unggulan (mm:ss.SS)": index === 0 ? "01:15.20" : "00:31.40"
@@ -150,15 +150,15 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
             addSectionHeader("Contoh Pendaftaran Estafet (Relay)");
             templateData.push({
                 ...columnHeaders,
-                "Nama Peserta": "CATATAN: Untuk Estafet, 'Nama Peserta' diisi NAMA TIM, 'Tahun Lahir' dan 'KU' dikosongkan."
+                "Nama Atlet": "CATATAN: Untuk Estafet, 'Nama Atlet' diisi NAMA TIM, 'Tahun Lahir' dan 'KU' dikosongkan."
             });
 
             if (relayMaleEvent) {
                 templateData.push({
-                    "Nama Peserta": `Tim Putra Klub Cepat`,
+                    "Nama Atlet": `Tim Putra Klub Cepat`,
                     "Tahun Lahir": "", // Intentionally blank for relays
                     "Jenis Kelamin (L/P)": "L", // Gender is used to identify the team type
-                    "Klub/Tim": "Klub Cepat",
+                    "Nama Tim": "Klub Cepat",
                     "KU": "",
                     "Nomor Lomba": formatEventName(relayMaleEvent),
                     "Waktu Unggulan (mm:ss.SS)": "04:10.00"
@@ -166,10 +166,10 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
             }
             if (relayFemaleEvent) {
                 templateData.push({
-                    "Nama Peserta": `Tim Putri Klub Cepat`,
+                    "Nama Atlet": `Tim Putri Klub Cepat`,
                     "Tahun Lahir": "",
                     "Jenis Kelamin (L/P)": "P",
-                    "Klub/Tim": "Klub Cepat",
+                    "Nama Tim": "Klub Cepat",
                      "KU": "",
                     "Nomor Lomba": formatEventName(relayFemaleEvent),
                     "Waktu Unggulan (mm:ss.SS)": "04:30.00"
@@ -177,10 +177,10 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
             }
             if (relayMixedEvent) {
                 templateData.push({
-                    "Nama Peserta": `Tim Campuran Klub Cepat`,
+                    "Nama Atlet": `Tim Campuran Klub Cepat`,
                     "Tahun Lahir": "",
                     "Jenis Kelamin (L/P)": "L", // For mixed, can be L or P, often tied to team contact
-                    "Klub/Tim": "Klub Cepat",
+                    "Nama Tim": "Klub Cepat",
                      "KU": "",
                     "Nomor Lomba": formatEventName(relayMixedEvent),
                     "Waktu Unggulan (mm:ss.SS)": "04:20.00"
@@ -192,10 +192,10 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         // --- If no examples could be generated ---
         if (templateData.length === 0) {
              templateData.push({
-                "Nama Peserta": "Contoh Nama",
+                "Nama Atlet": "Contoh Nama",
                 "Tahun Lahir": 2005,
                 "Jenis Kelamin (L/P)": "L",
-                "Klub/Tim": "Klub Contoh",
+                "Nama Tim": "Klub Contoh",
                 "KU": "KU 1",
                 "Nomor Lomba": events.length > 0 ? formatEventName(events[0]) : "Tidak ada nomor lomba",
                 "Waktu Unggulan (mm:ss.SS)": "01:25.50"
@@ -208,7 +208,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         const wsTemplate = XLSX.utils.json_to_sheet(templateData, { skipHeader: true }); // Use skipHeader and manually add it
         
         // Manually create the header row
-        const header = ["Nama Peserta", "Tahun Lahir", "Jenis Kelamin (L/P)", "Klub/Tim", "KU", "Nomor Lomba", "Waktu Unggulan (mm:ss.SS)"];
+        const header = ["Nama Atlet", "Tahun Lahir", "Jenis Kelamin (L/P)", "Nama Tim", "KU", "Nomor Lomba", "Waktu Unggulan (mm:ss.SS)"];
         XLSX.utils.sheet_add_aoa(wsTemplate, [header], { origin: "A1" });
 
         const maxRows = 2000;
@@ -271,18 +271,18 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
     }
 
     if (swimmers.length === 0) {
-      alert('Tidak ada data peserta untuk diunduh.');
+      alert('Tidak ada data atlet untuk diunduh.');
       return;
     }
 
     const workbook = XLSX.utils.book_new();
 
-    // --- Sheet 1: Rekap Peserta ---
+    // --- Sheet 1: Rekap Atlet ---
     const sortedSwimmers = [...swimmers].sort((a, b) => a.name.localeCompare(b.name));
     const participantsData = sortedSwimmers.map((swimmer, index) => ({
       "No": index + 1,
-      "Nama Peserta": swimmer.name,
-      "Klub/Tim": swimmer.club,
+      "Nama Atlet": swimmer.name,
+      "Nama Tim": swimmer.club,
       "Jenis Kelamin (L/P)": swimmer.gender === 'Male' ? 'L' : 'P'
     }));
     const wsParticipants = XLSX.utils.json_to_sheet(participantsData, { skipHeader: false });
@@ -297,7 +297,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
     const totalFemale = swimmers.filter(s => s.gender === 'Female').length;
     XLSX.utils.sheet_add_aoa(wsParticipants, [
         [], // Spacer row
-        ["REKAPITULASI JUMLAH PESERTA"],
+        ["REKAPITULASI JUMLAH ATLET"],
         ["Total Putra (L)", totalMale],
         ["Total Putri (P)", totalFemale],
         ["Total Keseluruhan", swimmers.length]
@@ -305,9 +305,9 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
     const summaryHeaderRowIndex = participantsData.length + 2;
     if (!wsParticipants['!merges']) wsParticipants['!merges'] = [];
     wsParticipants['!merges'].push({ s: { r: summaryHeaderRowIndex, c: 0 }, e: { r: summaryHeaderRowIndex, c: 1 } });
-    XLSX.utils.book_append_sheet(workbook, wsParticipants, "Rekap Peserta");
+    XLSX.utils.book_append_sheet(workbook, wsParticipants, "Rekap Atlet");
 
-    // --- Sheet 2: Rekap Klub ---
+    // --- Sheet 2: Rekap Tim ---
     const clubRecap: Record<string, { male: number; female: number }> = {};
     swimmers.forEach(swimmer => {
       if (!clubRecap[swimmer.club]) {
@@ -323,10 +323,10 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
     const sortedClubs = Object.entries(clubRecap).sort((a, b) => a[0].localeCompare(b[0]));
     const clubsData = sortedClubs.map(([clubName, counts], index) => ({
       "No": index + 1,
-      "Nama Klub/Tim": clubName,
+      "Nama Tim": clubName,
       "Jumlah Putra (L)": counts.male,
       "Jumlah Putri (P)": counts.female,
-      "Total Peserta": counts.male + counts.female
+      "Total Atlet": counts.male + counts.female
     }));
     const wsClubs = XLSX.utils.json_to_sheet(clubsData, { skipHeader: false });
     wsClubs['!cols'] = [
@@ -346,7 +346,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         ["", "TOTAL KESELURUHAN", grandTotalMale, grandTotalFemale, grandTotal]
     ], { origin: -1 });
 
-    XLSX.utils.book_append_sheet(workbook, wsClubs, "Rekap Klub");
+    XLSX.utils.book_append_sheet(workbook, wsClubs, "Rekap Tim");
 
     XLSX.writeFile(workbook, "Rekap_Peserta_Kompetisi.xlsx");
   };
@@ -374,10 +374,10 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                 const swimmer: Swimmer | undefined = swimmersMap.get(entry.swimmerId);
                 if (swimmer) {
                     dataToExport.push({
-                        "Nama Peserta": swimmer.name,
+                        "Nama Atlet": swimmer.name,
                         "Jenis Kelamin": swimmer.gender === 'Male' ? 'L' : 'P',
                         "Tahun Lahir": swimmer.birthYear,
-                        "Klub/Tim": swimmer.club,
+                        "Nama Tim": swimmer.club,
                         "Nomor Lomba": formatEventName(event),
                         "Waktu Unggulan": formatTime(entry.seedTime)
                     });
@@ -386,9 +386,9 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         }
         
         dataToExport.sort((a, b) => {
-            const clubCompare = a["Klub/Tim"].localeCompare(b["Klub/Tim"]);
+            const clubCompare = a["Nama Tim"].localeCompare(b["Nama Tim"]);
             if (clubCompare !== 0) return clubCompare;
-            const nameCompare = a["Nama Peserta"].localeCompare(b["Nama Peserta"]);
+            const nameCompare = a["Nama Atlet"].localeCompare(b["Nama Atlet"]);
             if (nameCompare !== 0) return nameCompare;
             return a["Nomor Lomba"].localeCompare(b["Nomor Lomba"]);
         });
@@ -443,7 +443,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
   const handleManualRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualForm.swimmerId || !manualForm.eventId) {
-        addNotification('Silakan pilih perenang dan nomor lomba.', 'error');
+        addNotification('Silakan pilih atlet dan nomor lomba.', 'error');
         return;
     }
 
@@ -485,8 +485,8 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         <Card>
           <h2 className="text-xl font-bold mb-4">Pendaftaran Manual</h2>
           <form onSubmit={handleManualRegister} className="space-y-4">
-            <Select label="Pilih Perenang" id="manual-swimmer" name="swimmerId" value={manualForm.swimmerId} onChange={handleManualFormChange}>
-                <option value="">-- Pilih Perenang --</option>
+            <Select label="Pilih Atlet" id="manual-swimmer" name="swimmerId" value={manualForm.swimmerId} onChange={handleManualFormChange}>
+                <option value="">-- Pilih Atlet --</option>
                 {swimmers.sort((a,b) => a.name.localeCompare(b.name)).map(s => <option key={s.id} value={s.id}>{s.name} ({s.club})</option>)}
             </Select>
             <Select
@@ -525,7 +525,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
             </div>
             <div className="pt-2">
                 <Button type="submit" className="w-full" disabled={isProcessing}>
-                    {isProcessing ? <Spinner/> : 'Daftarkan Peserta'}
+                    {isProcessing ? <Spinner/> : 'Daftarkan Atlet'}
                 </Button>
             </div>
           </form>
@@ -536,14 +536,14 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
           <div className="bg-background p-4 rounded-md border border-border space-y-3 mb-4">
               <div>
                 <p className="text-text-secondary">Unggah file Excel (.xlsx) dengan kolom berikut untuk mendaftarkan peserta ke nomor lomba:</p>
-                <code className="block text-sm bg-surface p-2 rounded-md whitespace-pre mt-1">Nama Peserta | Tahun Lahir | Jenis Kelamin (L/P) | Klub/Tim | KU | Nomor Lomba | Waktu Unggulan (mm:ss.SS)</code>
+                <code className="block text-sm bg-surface p-2 rounded-md whitespace-pre mt-1">Nama Atlet | Tahun Lahir | Jenis Kelamin (L/P) | Nama Tim | KU | Nomor Lomba | Waktu Unggulan (mm:ss.SS)</code>
               </div>
               <div className="flex flex-wrap gap-2">
                   <Button variant="secondary" onClick={downloadTemplate} disabled={isDownloading || !canDownload} title={!canDownload ? "Buat 'Nomor Lomba' terlebih dahulu untuk mengunduh template" : "Unduh template Excel dengan daftar nomor lomba"}>
                       {isDownloading ? <Spinner /> : 'Unduh Template Pendaftaran'}
                   </Button>
-                  <Button variant="secondary" onClick={handleDownloadParticipants} disabled={swimmers.length === 0} title={swimmers.length === 0 ? "Tidak ada peserta untuk diunduh" : "Unduh rekap semua peserta"}>
-                      Unduh Rekap Peserta
+                  <Button variant="secondary" onClick={handleDownloadParticipants} disabled={swimmers.length === 0} title={swimmers.length === 0 ? "Tidak ada atlet untuk diunduh" : "Unduh rekap semua atlet"}>
+                      Unduh Rekap Atlet
                   </Button>
                    <Button variant="secondary" onClick={handleDownloadFullRegistration} disabled={isDownloading || events.length === 0 || swimmers.length === 0} title="Unduh rekap lengkap semua pendaftaran per nomor lomba">
                       {isDownloading ? <Spinner /> : 'Unduh Rekap Pendaftaran Lengkap'}
@@ -565,7 +565,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                   <h3 className="font-bold text-lg">Hasil Impor:</h3>
                   {(uploadResult.newSwimmers > 0 || uploadResult.updatedSwimmers > 0) && (
                       <div className="text-green-400 space-y-1 my-2"><p><strong>Total entri lomba berhasil diproses: {uploadResult.updatedSwimmers}</strong></p>
-                      {uploadResult.newSwimmers > 0 && <p className="text-sm pl-2">({uploadResult.newSwimmers} perenang/tim baru ditambahkan ke database)</p>}
+                      {uploadResult.newSwimmers > 0 && <p className="text-sm pl-2">({uploadResult.newSwimmers} atlet/tim baru ditambahkan ke database)</p>}
                       </div>
                   )}
                   {uploadResult.errors.length > 0 && (

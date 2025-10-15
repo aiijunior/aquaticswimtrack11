@@ -125,7 +125,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     const isFormValid = useMemo(() => {
         const hasPersonalInfo = formData.name.trim() !== '' && formData.club.trim() !== '';
         // FIX: Explicitly type `e` to resolve 'unknown' type error.
-        const hasSelectedEvent = Object.values(selectedEvents).some((e: { selected: boolean }) => e.selected);
+        const hasSelectedEvent = Object.values(selectedEvents).some((e: { selected: boolean; }) => e.selected);
         return hasPersonalInfo && hasSelectedEvent;
     }, [formData, selectedEvents]);
     
@@ -247,7 +247,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         setIsSubmitting(true);
 
         if (!formData.name.trim() || !formData.club.trim()) {
-            setError('Nama lengkap dan klub/tim wajib diisi.');
+            setError('Nama atlet dan nama tim wajib diisi.');
             setIsSubmitting(false);
             return;
         }
@@ -309,261 +309,198 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             });
 
             // Combine all event strings and sort them for a clean list
+            // FIX: Corrected typo from `newlyRegisteredEvents` to `newlyRegisteredEventsList`.
             const allRegisteredEventsString = [
                 ...newlyRegisteredEventsList,
-                ...previouslyRegisteredEventsList
+                ...previouslyRegisteredEventsList,
             ].sort().join('\n');
 
-            const successHeader = `Pendaftaran untuk ${swimmerName} berhasil diterima!`;
-            const eventListSection = `\n\nDaftar nomor lomba yang diikuti:\n${allRegisteredEventsString}`;
-            const confirmationFooter = `\n\nSelamat! Anda telah terdaftar. Silakan hubungi panitia untuk konfirmasi.`;
+            const successText = (
+                <div className="text-left">
+                    <p className="font-bold text-lg mb-2">Pendaftaran untuk {swimmerName} berhasil!</p>
+                    <p className="mb-2">Anda sekarang terdaftar di nomor lomba berikut:</p>
+                    <pre className="bg-background p-2 rounded-md text-sm whitespace-pre-wrap max-h-60 overflow-y-auto">
+                        {allRegisteredEventsString}
+                    </pre>
+                </div>
+            );
 
-            const detailedSuccessMessage = successHeader + eventListSection + confirmationFooter;
-
-            setSuccessMessage(detailedSuccessMessage);
-            onRegistrationSuccess(); // Refresh data in the background
-            // Reset form
-            setFormData({ name: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', club: '', ageGroup: '' });
-            setSelectedEvents({});
-            setExistingSwimmer(null);
-        } else if (result.success) { // Fallback just in case
-            setSuccessMessage(`${result.message} Selamat! Anda telah terdaftar. Silakan hubungi panitia untuk konfirmasi.`);
+            setSuccessMessage(successText as any); // Cast to any to allow ReactNode
             onRegistrationSuccess();
-            setFormData({ name: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', club: '', ageGroup: '' });
+
+            // Reset form for next entry
+            setFormData({
+                name: '',
+                birthYear: new Date().getFullYear() - 10,
+                gender: 'Male',
+                club: '',
+                ageGroup: '',
+            });
             setSelectedEvents({});
             setExistingSwimmer(null);
+
         } else {
-            setError(result.message);
+            setError(result.message || 'Terjadi kesalahan yang tidak diketahui.');
         }
     };
-
-    const renderHeader = () => (
-        <header className="relative text-center p-4 md:p-6 mb-6">
-            {competitionInfo ? (
-                competitionInfo.eventName.split('\n').map((line, index) => (
-                    <h1 key={index} className="text-3xl md:text-4xl font-extrabold text-primary tracking-tight">{line}</h1>
-                ))
-            ) : (
-                <h1 className="text-3xl md:text-4xl font-extrabold text-primary tracking-tight">Pendaftaran Lomba Renang</h1>
-            )}
-            <p className="text-md md:text-lg text-text-secondary mt-2">
-                {competitionInfo?.eventDate ? new Date(competitionInfo.eventDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Formulir Pendaftaran Online'}
-            </p>
-            {competitionInfo?.registrationDeadline && (
-                <div className={`mt-4 text-lg font-semibold p-3 rounded-md ${isDeadlinePassed ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary'}`}>
-                    <p className="text-sm font-normal">{isDeadlinePassed ? 'Batas Waktu Pendaftaran Telah Berakhir' : 'Pendaftaran Ditutup Dalam:'}</p>
-                    <p className="text-2xl font-bold tracking-wider">{timeLeft}</p>
-                    {!isDeadlinePassed && (
-                        <p className="text-xs font-normal mt-1">
-                            Batas akhir: {new Date(competitionInfo.registrationDeadline).toLocaleString('id-ID', {
-                                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                            })}
-                        </p>
-                    )}
-                </div>
-            )}
-        </header>
-    );
     
-    const renderLayout = (content: React.ReactNode) => (
-         <div className="min-h-screen bg-background text-text-primary">
-            <div className="sticky top-0 z-20 bg-surface/80 backdrop-blur-sm shadow-sm">
-                {renderHeader()}
-                <div className="absolute top-4 right-4">
-                    <Button type="button" variant="secondary" onClick={onBackToLogin}>
-                        Login Admin
-                    </Button>
-                </div>
-            </div>
-            <main className="container mx-auto max-w-3xl p-4">
-                {content}
-            </main>
-             <footer className="text-center p-4 mt-8 border-t border-border">
-                <Button type="button" variant="primary" onClick={onBackToLogin} className="px-6 py-3 text-lg">
-                    &larr; Kembali ke Halaman Utama
-                </Button>
-            </footer>
-        </div>
-    );
+    const isRegistrationDisabled = isDeadlinePassed || !competitionInfo?.isRegistrationOpen;
 
     if (isDataLoading) {
-        return <div className="flex justify-center items-center h-screen"><Spinner /></div>;
+        return (
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+                <Spinner />
+                <p className="text-text-secondary mt-4">Memuat data kompetisi...</p>
+            </div>
+        );
     }
     
-    const isRegistrationOpen = (competitionInfo?.isRegistrationOpen ?? false) && !isDeadlinePassed;
-
-    // Show closed message if not open and success message is not being displayed
-    if (!isRegistrationOpen && !successMessage) {
-         return renderLayout(
-             <Card>
-                <div className="text-center p-10">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-yellow-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <h2 className="text-2xl font-bold mb-4">Pendaftaran Ditutup</h2>
-                    <p className="text-text-secondary">
-                        {isDeadlinePassed 
-                            ? 'Batas waktu pendaftaran telah berakhir.' 
-                            : 'Pendaftaran online untuk acara ini saat ini sedang ditutup oleh panitia.'
-                        }
-                        {' '}Silakan kembali lagi nanti atau hubungi panitia untuk informasi lebih lanjut.
+     if (isRegistrationDisabled && !isDataLoading) {
+        return (
+             <div className="min-h-screen bg-gradient-to-br from-gray-100 to-slate-200 dark:from-slate-800 dark:to-gray-900 flex flex-col items-center justify-center p-4 text-center">
+                <Card className="max-w-xl">
+                    <h1 className="text-2xl font-bold text-primary mb-4">{competitionInfo?.eventName.split('\n')[0]}</h1>
+                    <p className="text-lg text-red-500 font-semibold mb-2">Pendaftaran Online Saat Ini Ditutup</p>
+                    <p className="text-text-secondary mb-6">
+                        {timeLeft || 'Pendaftaran untuk kompetisi ini belum dibuka atau sudah berakhir. Silakan hubungi panitia untuk informasi lebih lanjut.'}
                     </p>
-                </div>
-            </Card>
+                    <Button onClick={onBackToLogin}>Kembali ke Halaman Utama</Button>
+                </Card>
+            </div>
         );
     }
 
-    if (!successMessage && localEvents.length === 0) {
-        return renderLayout(
-             <Card>
-                <div className="text-center p-10">
-                     <h2 className="text-2xl font-bold mb-4">Belum Ada Nomor Lomba Tersedia</h2>
-                    <p className="text-text-secondary">Saat ini belum ada nomor lomba yang tersedia untuk pendaftaran. Silakan kembali lagi nanti.</p>
-                </div>
-            </Card>
-        );
-    }
-
-    if (successMessage) {
-        return renderLayout(
-            <Card>
-                <div className="text-center p-10">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-green-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <h2 className="text-2xl font-bold mb-4">Pendaftaran Berhasil!</h2>
-                    <p className="text-text-secondary whitespace-pre-wrap text-left">{successMessage}</p>
-                </div>
-            </Card>
-        );
-    }
-
-    return renderLayout(
-        <form onSubmit={handleSubmit}>
-            <Card>
-                <h2 className="text-2xl font-bold mb-4 border-b border-border pb-2">Data Diri Perenang</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="relative">
-                         <Input 
-                            label="Nama Lengkap" 
-                            id="name" 
-                            name="name" 
-                            value={formData.name} 
-                            onChange={handleFormChange} 
-                            onBlur={handleNameBlur} 
-                            required 
-                        />
-                        {isCheckingName && (
-                            <div className="absolute right-3 top-8">
-                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-                            </div>
-                        )}
-                        {existingSwimmer && !isCheckingName && (
-                            <button 
-                                type="button" 
-                                onClick={clearAutoFilledData} 
-                                className="absolute right-2 top-8 text-xs text-blue-500 hover:underline px-2 py-1 bg-background/80 rounded"
-                                title="Daftarkan sebagai perenang baru atau ganti data"
-                            >
-                                Ganti
-                            </button>
-                        )}
-                    </div>
-                    <Input label="Klub / Tim" id="club" name="club" value={formData.club} onChange={handleFormChange} required disabled={!!existingSwimmer} />
-                    <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={formData.birthYear} onChange={handleFormChange} required disabled={!!existingSwimmer} />
-                    <Select label="Jenis Kelamin" id="gender" name="gender" value={formData.gender} onChange={handleFormChange} disabled={!!existingSwimmer}>
-                        <option value="Male">Laki-laki (Male)</option>
-                        <option value="Female">Perempuan (Female)</option>
-                    </Select>
-                     <div className="md:col-span-2">
-                        <Select label="Kelompok Umur (KU) (Opsional)" id="ageGroup" name="ageGroup" value={formData.ageGroup} onChange={handleFormChange} disabled={!!existingSwimmer}>
-                            <option value="">-- Tanpa KU / Umum --</option>
-                            {AGE_GROUP_OPTIONS.map(ku => <option key={ku} value={ku}>{ku}</option>)}
-                        </Select>
-                    </div>
-                     {existingSwimmer && (
-                        <div className="md:col-span-2 text-sm text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/40 p-3 rounded-md border border-green-200 dark:border-green-700">
-                            <p className="font-semibold">Data perenang ditemukan!</p>
-                            <p>Data klub, tahun lahir, jenis kelamin, dan KU telah diisi otomatis. Jika ini bukan perenang yang benar, klik 'Ganti' di atas.</p>
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-sky-100 to-blue-200 dark:from-slate-800 dark:to-sky-900 flex flex-col items-center p-4">
+            <div className="w-full max-w-4xl mx-auto">
+                 <header className="text-center py-6">
+                    {competitionInfo?.eventLogo && <img src={competitionInfo.eventLogo} alt="Logo Acara" className="mx-auto h-20 md:h-24 object-contain mb-4" />}
+                    {competitionInfo && (
+                        <div>
+                            <h1 className="text-3xl md:text-5xl font-extrabold text-primary tracking-tight">{competitionInfo.eventName.split('\n')[0]}</h1>
+                            <h2 className="text-xl md:text-2xl font-semibold text-text-secondary tracking-wide mt-1">{competitionInfo.eventName.split('\n')[1]}</h2>
                         </div>
                     )}
-                </div>
-            </Card>
+                    <h3 className="text-2xl font-bold text-text-primary mt-4">Formulir Pendaftaran Online</h3>
+                </header>
 
-            <Card className="mt-6">
-                <div className="flex justify-between items-center mb-4 border-b border-border pb-2">
-                    <h2 className="text-2xl font-bold">Pilih Nomor Lomba</h2>
-                    <div className="text-right">
-                        <p className="font-bold text-lg text-primary">{selectedEventCount}</p>
-                        <p className="text-xs text-text-secondary -mt-1">Terpilih</p>
-                    </div>
-                </div>
-                
-                <p className="text-sm text-text-secondary mb-4">Pilih nomor lomba yang akan diikuti dan masukkan waktu unggulan (seed time) Anda. Jika tidak punya, klik tombol "Tanpa Waktu".</p>
-                
-                <div className="space-y-2">
-                    {Object.keys(groupedAvailableEvents).length > 0 ? Object.entries(groupedAvailableEvents).map(([style, eventsInStyle]) => {
-                        const isOpen = openAccordion === style;
-                        return (
-                            <div key={style} className="border border-border rounded-lg overflow-hidden transition-all duration-300">
-                                <button
-                                    type="button"
-                                    onClick={() => handleAccordionToggle(style as SwimStyle)}
-                                    className="w-full flex justify-between items-center p-4 bg-background hover:bg-surface transition-colors"
-                                    aria-expanded={isOpen}
-                                >
-                                    <div className="text-left">
-                                        <h3 className="font-bold text-lg text-text-primary">{translateSwimStyle(style as SwimStyle)}</h3>
-                                        <p className="text-sm text-text-secondary">{eventsInStyle.length} nomor tersedia</p>
-                                    </div>
-                                    <ChevronDownIcon isOpen={isOpen} />
-                                </button>
-                                {isOpen && (
-                                    <div className="p-4 space-y-3 bg-surface border-t border-border">
-                                        {eventsInStyle.map(event => (
-                                            <div key={event.id} className="bg-background p-3 rounded-md border border-border">
-                                                <div className="flex items-start">
-                                                    <input
-                                                        type="checkbox"
-                                                        id={`event-${event.id}`}
-                                                        checked={selectedEvents[event.id]?.selected || false}
-                                                        onChange={() => handleEventSelectionChange(event.id)}
-                                                        className="h-6 w-6 rounded border-gray-300 text-primary focus:ring-primary mt-1"
-                                                    />
-                                                    <div className="ml-3 flex-grow">
-                                                        <label htmlFor={`event-${event.id}`} className="font-semibold text-md text-text-primary cursor-pointer">
-                                                            {formatEventName(event)}
-                                                        </label>
-                                                        {selectedEvents[event.id]?.selected && (
-                                                            <div className="mt-2 grid grid-cols-3 md:grid-cols-4 gap-2 items-end">
-                                                                <Input label="Menit" type="number" min="0" value={selectedEvents[event.id].time.min} onChange={(e) => handleTimeChange(event.id, 'min', e.target.value)} id={`min-${event.id}`} />
-                                                                <Input label="Detik" type="number" min="0" max="99" value={selectedEvents[event.id].time.sec} onChange={(e) => handleTimeChange(event.id, 'sec', e.target.value)} id={`sec-${event.id}`} />
-                                                                <Input label="ss/100" type="number" min="0" max="99" value={selectedEvents[event.id].time.ms} onChange={(e) => handleTimeChange(event.id, 'ms', e.target.value)} id={`ms-${event.id}`} />
-                                                                <Button type="button" variant="secondary" onClick={() => handleSetNoTime(event.id)} className="h-10">Tanpa Waktu</Button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                {timeLeft && (
+                    <Card className="text-center mb-4 border-primary/50 bg-primary/5">
+                        <p className="font-semibold text-text-secondary">Sisa Waktu Pendaftaran:</p>
+                        <p className="text-2xl font-bold text-primary">{timeLeft}</p>
+                    </Card>
+                )}
+
+                {!successMessage ? (
+                    <form onSubmit={handleSubmit}>
+                        <Card className="mb-4">
+                            <h2 className="text-xl font-bold mb-4">Data Atlet</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <Input label="Nama Lengkap Atlet" id="name" name="name" value={formData.name} onChange={handleFormChange} onBlur={handleNameBlur} required />
+                                    {isCheckingName && <p className="text-xs text-text-secondary mt-1">Mencari data atlet...</p>}
+                                    {existingSwimmer && (
+                                        <div className="text-xs text-green-600 dark:text-green-400 mt-1 p-2 bg-green-500/10 rounded-md">
+                                            Data ditemukan dan diisi otomatis. Bukan atlet yang benar?{' '}
+                                            <button type="button" onClick={clearAutoFilledData} className="underline font-semibold">Klik di sini</button> untuk mengisi manual.
+                                        </div>
+                                    )}
+                                </div>
+                                <Input label="Nama Tim / Klub" id="club" name="club" value={formData.club} onChange={handleFormChange} required />
+                                <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={formData.birthYear} onChange={handleFormChange} required />
+                                <Select label="Jenis Kelamin" id="gender" name="gender" value={formData.gender} onChange={handleFormChange}>
+                                    <option value="Male">Laki-laki (Male)</option>
+                                    <option value="Female">Perempuan (Female)</option>
+                                </Select>
+                                 <Select label="Kelompok Umur (KU) (Opsional)" id="ageGroup" name="ageGroup" value={formData.ageGroup} onChange={handleFormChange}>
+                                    <option value="">-- Tanpa KU --</option>
+                                    {AGE_GROUP_OPTIONS.map(ku => <option key={ku} value={ku}>{ku}</option>)}
+                                </Select>
                             </div>
-                        );
-                    }) : (
-                        <p className="text-center text-text-secondary py-4">Tidak ada nomor lomba yang tersedia untuk jenis kelamin ini, atau semua nomor lomba yang tersedia sudah Anda ikuti.</p>
-                    )}
-                </div>
-            </Card>
-
-            <div className="mt-6">
-                {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-                <div className="flex justify-end items-center">
-                    <Button type="submit" disabled={isSubmitting || !isFormValid}>
-                        {isSubmitting ? <Spinner /> : 'Kirim Pendaftaran'}
+                        </Card>
+                        
+                        <Card>
+                            <h2 className="text-xl font-bold mb-4">Pilih Nomor Lomba</h2>
+                            {Object.entries(groupedAvailableEvents).length > 0 ? (
+                                <div className="space-y-2">
+                                    {Object.entries(groupedAvailableEvents).map(([style, eventsInStyle]) => (
+                                        <div key={style} className="border border-border rounded-lg">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleAccordionToggle(style as SwimStyle)}
+                                                className="w-full flex justify-between items-center p-4 bg-background hover:bg-surface/50"
+                                            >
+                                                <h3 className="text-lg font-semibold">{translateSwimStyle(style as SwimStyle)}</h3>
+                                                <ChevronDownIcon isOpen={openAccordion === style} />
+                                            </button>
+                                            {openAccordion === style && (
+                                                <div className="p-4 space-y-4">
+                                                    {eventsInStyle.map(event => (
+                                                        <div key={event.id} className="border-b border-border last:border-b-0 pb-4 last:pb-0">
+                                                            <div className="flex items-start">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    id={`event-${event.id}`}
+                                                                    checked={selectedEvents[event.id]?.selected || false}
+                                                                    onChange={() => handleEventSelectionChange(event.id)}
+                                                                    className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary mt-1"
+                                                                />
+                                                                <label htmlFor={`event-${event.id}`} className="ml-3 flex-grow">
+                                                                    <span className="font-semibold text-text-primary">{formatEventName(event)}</span>
+                                                                </label>
+                                                            </div>
+                                                            {selectedEvents[event.id]?.selected && (
+                                                                <div className="mt-2 ml-8 grid grid-cols-3 md:grid-cols-4 gap-2 items-end">
+                                                                    <Input label="Menit" id={`min-${event.id}`} type="number" min="0" value={selectedEvents[event.id].time.min} onChange={e => handleTimeChange(event.id, 'min', e.target.value)} />
+                                                                    <Input label="Detik" id={`sec-${event.id}`} type="number" min="0" max="99" value={selectedEvents[event.id].time.sec} onChange={e => handleTimeChange(event.id, 'sec', e.target.value)} />
+                                                                    <Input label="ss/100" id={`ms-${event.id}`} type="number" min="0" max="99" value={selectedEvents[event.id].time.ms} onChange={e => handleTimeChange(event.id, 'ms', e.target.value)} />
+                                                                    <Button type="button" variant="secondary" onClick={() => handleSetNoTime(event.id)} className="whitespace-nowrap">No Time</Button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-text-secondary text-center py-4">Tidak ada nomor lomba yang tersedia untuk jenis kelamin yang dipilih, atau semua nomor lomba sudah terdaftar.</p>
+                            )}
+                        </Card>
+                        
+                        <div className="mt-6">
+                            {error && <p className="text-red-500 text-center mb-4 font-semibold">{error}</p>}
+                             <Card className="sticky bottom-4 z-10 shadow-2xl">
+                                <div className="flex justify-between items-center">
+                                    <p className="text-text-secondary"><span className="font-bold text-text-primary">{selectedEventCount}</span> nomor lomba dipilih.</p>
+                                    <Button type="submit" disabled={isSubmitting || !isFormValid}>
+                                        {isSubmitting ? <Spinner /> : 'Kirim Pendaftaran'}
+                                    </Button>
+                                </div>
+                            </Card>
+                        </div>
+                    </form>
+                ) : (
+                     <Card>
+                        <div className="text-center p-4">
+                            <div className="text-green-500 mx-auto h-16 w-16 mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-full w-full" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div className="text-text-primary">{successMessage}</div>
+                            <Button onClick={() => setSuccessMessage('')} className="mt-6">Daftarkan Atlet Lain</Button>
+                        </div>
+                    </Card>
+                )}
+                
+                <footer className="text-center p-4 mt-8">
+                    <Button variant="secondary" onClick={onBackToLogin}>
+                        &larr; Kembali ke Halaman Utama
                     </Button>
-                </div>
+                </footer>
             </div>
-        </form>
+        </div>
     );
 };

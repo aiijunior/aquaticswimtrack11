@@ -343,7 +343,7 @@ const App: React.FC = () => {
                 <NavLink label="Pengaturan Acara" icon={<CogIcon />} isActive={currentView === View.EVENT_SETTINGS} onClick={() => navigateTo(View.EVENT_SETTINGS)}/>
                 <NavLink label="Nomor Lomba" icon={<ClipboardListIcon />} isActive={currentView === View.RACES || currentView === View.LIVE_TIMING} onClick={() => navigateTo(View.RACES)}/>
                 <NavLink label="Unggah Peserta" icon={<UploadIcon />} isActive={currentView === View.PARTICIPANTS} onClick={() => navigateTo(View.PARTICIPANTS)}/>
-                <NavLink label="Daftar Perenang" icon={<UsersIcon />} isActive={currentView === View.SWIMMERS_LIST} onClick={() => navigateTo(View.SWIMMERS_LIST)}/>
+                <NavLink label="Daftar Atlet" icon={<UsersIcon />} isActive={currentView === View.SWIMMERS_LIST} onClick={() => navigateTo(View.SWIMMERS_LIST)}/>
                 <NavLink label="Hasil Lomba" icon={<MedalIcon />} isActive={currentView === View.RESULTS} onClick={() => navigateTo(View.RESULTS)}/>
                 <NavLink label="Unduh Laporan" icon={<PrintIcon />} isActive={currentView === View.PRINT_MENU} onClick={() => navigateTo(View.PRINT_MENU)}/>
                 {currentUser?.role === 'SUPER_ADMIN' && (

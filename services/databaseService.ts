@@ -359,7 +359,7 @@ export const registerSwimmerToEvent = async (eventId: string, swimmerId: string,
     const { error } = await supabase.from('event_entries').upsert(payload);
     if (error) {
         if (error.message.includes('duplicate key')) {
-            return { success: false, message: 'Perenang sudah terdaftar.' };
+            return { success: false, message: 'Atlet sudah terdaftar.' };
         }
         return { success: false, message: error.message };
     }
@@ -628,16 +628,16 @@ export const processParticipantUpload = async (data: any[]): Promise<{ newSwimme
         const rowNum = index + 2;
 
         try {
-            const name = toTitleCase(row['Nama Peserta']?.toString().trim() || '');
+            const name = toTitleCase(row['Nama Atlet']?.toString().trim() || '');
             const birthYearStr = row['Tahun Lahir']?.toString().trim();
             const genderStr = row['Jenis Kelamin (L/P)']?.toString().trim().toUpperCase();
-            const club = toTitleCase(row['Klub/Tim']?.toString().trim() || '');
+            const club = toTitleCase(row['Nama Tim']?.toString().trim() || '');
             const ageGroup = toTitleCase(row['KU']?.toString().trim() || '') || null;
             const eventName = row['Nomor Lomba']?.toString().trim();
             const seedTimeStr = row['Waktu Unggulan (mm:ss.SS)']?.toString().trim();
             
             const isRelayRegistration = !birthYearStr;
-            if (!name || !club || !eventName) throw new Error("Kolom 'Nama Peserta', 'Klub/Tim', dan 'Nomor Lomba' wajib diisi.");
+            if (!name || !club || !eventName) throw new Error("Kolom 'Nama Atlet', 'Nama Tim', dan 'Nomor Lomba' wajib diisi.");
             if (!isRelayRegistration && (!birthYearStr || isNaN(parseInt(birthYearStr)))) throw new Error("'Tahun Lahir' wajib diisi dan harus berupa angka.");
             if (!genderStr || !['L', 'P'].includes(genderStr)) throw new Error("'Jenis Kelamin (L/P)' harus diisi dengan 'L' atau 'P'.");
 
