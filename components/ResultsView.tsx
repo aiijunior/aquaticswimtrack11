@@ -249,11 +249,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Team Scores */}
                 <Card>
-                    <div className="flex items-center space-x-4 mb-4"><TrophyIcon /><h2 className="text-2xl font-bold">Rekapitulasi Medali Klub</h2></div>
+                    <div className="flex items-center space-x-4 mb-4"><TrophyIcon /><h2 className="text-2xl font-bold">Rekapitulasi Medali Tim</h2></div>
                     {clubMedals.length > 0 ? (
                         <div className="overflow-y-auto max-h-96">
                             <table className="w-full text-left">
-                                <thead><tr className="border-b-2 border-border"><th className="p-2 w-12 text-center">#</th><th className="p-2">Klub</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
+                                <thead><tr className="border-b-2 border-border"><th className="p-2 w-12 text-center">#</th><th className="p-2">Tim</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
                                 <tbody>{clubMedals.map(([club, medals], index) => (<tr key={club} className="border-b border-border last:border-b-0 hover:bg-background"><td className="p-2 text-center font-bold">{index + 1}</td><td className="p-2 font-semibold">{club}</td><td className="p-2 text-center">{medals.gold}</td><td className="p-2 text-center">{medals.silver}</td><td className="p-2 text-center">{medals.bronze}</td></tr>))}</tbody>
                             </table>
                         </div>
@@ -346,7 +346,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
                         {expandedEventId === event.id && (
                              <div className="pb-4 px-4"><div className="mt-2 pt-4 border-t border-border overflow-x-auto">
                                 <table className="w-full text-left">
-                                    <thead><tr className="border-b border-border"><th className="p-2 text-center w-12">Rank</th><th className="p-2">Nama</th><th className="p-2">Klub</th><th className="p-2 text-right">Waktu</th><th className="p-2 text-center w-16">Medali</th></tr></thead>
+                                    <thead><tr className="border-b border-border"><th className="p-2 text-center w-12">Rank</th><th className="p-2">Nama</th><th className="p-2">Tim</th><th className="p-2 text-right">Waktu</th><th className="p-2 text-center w-16">Medali</th></tr></thead>
                                     <tbody>{event.sortedResults.map(result => (
                                         <tr key={result.swimmerId} className="border-b border-border last:border-b-0 text-sm hover:bg-background">
                                             <td className="p-2 text-center font-bold">{result.rank > 0 ? result.rank : formatTime(result.time)}</td>

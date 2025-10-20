@@ -5,11 +5,11 @@ Aquatic Swimtrack 11 adalah aplikasi modern, *offline-first*, dan *real-time* ya
 ## Fitur Unggulan
 
 - **Pengaturan Kompetisi**: Konfigurasi detail acara, tanggal, logo, dan aturan kompetisi.
-- **Manajemen Peserta**: Tambah perenang secara manual, atau unggah peserta dan nomor lomba yang diikuti secara massal melalui file Excel.
+- **Manajemen Peserta**: Tambah atlet secara manual, atau unggah peserta dan nomor lomba yang diikuti secara massal melalui file Excel.
 - **Manajemen Nomor & Jadwal Lomba**: Buat nomor lomba perorangan dan estafet, lalu atur ke dalam sesi dengan penjadwal *drag-and-drop*.
 - **Live Timing**: Antarmuka intuitif untuk menjalankan seri (*heat*), lengkap dengan stopwatch manual, pencatat waktu, dan manajemen diskualifikasi (DQ).
 - **Hasil Real-time**: Hasil diperbarui secara *real-time* dan dapat dilihat di halaman publik.
-- **Klasemen Medali**: Perhitungan dan tampilan otomatis klasemen medali untuk klub dan perorangan.
+- **Klasemen Medali**: Perhitungan dan tampilan otomatis klasemen medali untuk tim dan perorangan.
 - **Manajemen Data**:
     - Impor/Ekspor nomor lomba dan rekor melalui Excel.
     - Fungsi backup dan restore seluruh database menggunakan file JSON.
@@ -26,12 +26,12 @@ Catatan ini melacak semua perubahan signifikan yang diterapkan pada aplikasi Aqu
 ### **Pembaruan Terkini: Penambahan Kelompok Umur (KU)**
 *Tanggal Rilis: Sesuai pembaruan terakhir*
 
-Pembaruan ini memperkenalkan fungsionalitas Kelompok Umur (KU) untuk setiap perenang, meningkatkan kemampuan aplikasi dalam mengelola kompetisi berbasis usia.
+Pembaruan ini memperkenalkan fungsionalitas Kelompok Umur (KU) untuk setiap atlet, meningkatkan kemampuan aplikasi dalam mengelola kompetisi berbasis usia.
 
 - **Fitur Baru: Data Kelompok Umur (KU)**
-  - **Data Perenang**: Setiap perenang kini memiliki kolom "KU" opsional (`KU Senior`, `KU 1` - `KU 5`).
-  - **Manajemen Admin**: Kolom KU ditambahkan pada tabel, formulir tambah, dan edit perenang di halaman "Daftar Perenang".
-  - **Pendaftaran Online**: Formulir pendaftaran online sekarang menyertakan input dropdown untuk KU, dengan fungsionalitas pengisian otomatis untuk perenang yang sudah ada.
+  - **Data Atlet**: Setiap atlet kini memiliki kolom "KU" opsional (`KU Senior`, `KU 1` - `KU 5`).
+  - **Manajemen Admin**: Kolom KU ditambahkan pada tabel, formulir tambah, dan edit atlet di halaman "Daftar Atlet".
+  - **Pendaftaran Online**: Formulir pendaftaran online sekarang menyertakan input dropdown untuk KU, dengan fungsionalitas pengisian otomatis untuk atlet yang sudah ada.
   - **Unggah Massal**: Template Excel untuk pendaftaran massal diperbarui dengan kolom "KU" baru.
   - **Skema Database**: Skema SQL diperbarui untuk menyertakan kolom `age_group` pada tabel `swimmers`.
 
@@ -57,8 +57,8 @@ Pembaruan ini memperkenalkan fitur baru untuk administrator tingkat lanjut dan m
 Pembaruan ini berfokus pada perombakan dasbor admin untuk memberikan wawasan data yang lebih kaya dan meningkatkan pengalaman pengguna secara keseluruhan.
 
 - **Fitur Baru: Dasbor Analitik**
-  - **Statistik Kunci**: Dasbor kini menampilkan empat statistik utama: Total Perenang, Total Nomor Lomba, Total Klub, dan Total Pendaftaran, memberikan gambaran cepat mengenai skala kompetisi.
-  - **Bagan Distribusi Klub**: Menambahkan bagan (chart) visual baru yang menampilkan distribusi jumlah perenang per klub. Bagan ini menyorot 7 klub teratas untuk analisis yang mudah dan mengelompokkan sisanya.
+  - **Statistik Kunci**: Dasbor kini menampilkan empat statistik utama: Total Atlet, Total Nomor Lomba, Total Tim, dan Total Pendaftaran, memberikan gambaran cepat mengenai skala kompetisi.
+  - **Bagan Distribusi Tim**: Menambahkan bagan (chart) visual baru yang menampilkan distribusi jumlah atlet per tim. Bagan ini menyorot 7 tim teratas untuk analisis yang mudah dan mengelompokkan sisanya.
 
 - **Penyempurnaan UI/UX**:
   - **Tata Letak Dasbor Baru**: Mengatur ulang tata letak dasbor untuk tampilan yang lebih modern, bersih, dan fokus pada data.
@@ -73,7 +73,7 @@ Versi ini mengatasi beberapa masalah mendasar terkait interaksi pengguna dan mem
   - Memperbaiki masalah kritis di mana tombol di dalam formulir (seperti 'Hapus', 'Tambah', atau 'Buka Modal') secara tidak sengaja bertindak sebagai tombol 'submit', yang menyebabkan perilaku aplikasi yang tidak diharapkan. Semua tombol sekarang secara default diatur ke `type="button"`, kecuali jika secara eksplisit ditujukan untuk mengirimkan formulir.
 
 - **Perbaikan: Notifikasi Pendaftaran yang Lebih Informatif**
-  - Notifikasi keberhasilan pendaftaran online sekarang telah disempurnakan. Selain menampilkan nomor lomba yang baru didaftarkan, notifikasi kini juga mencantumkan riwayat nomor lomba yang sudah pernah didaftarkan oleh perenang tersebut sebelumnya, memberikan konfirmasi yang lebih lengkap kepada pengguna.
+  - Notifikasi keberhasilan pendaftaran online sekarang telah disempurnakan. Selain menampilkan nomor lomba yang baru didaftarkan, notifikasi kini juga mencantumkan riwayat nomor lomba yang sudah pernah didaftarkan oleh atlet tersebut sebelumnya, memberikan konfirmasi yang lebih lengkap kepada pengguna.
 
 ---
 ### **Versi 1.1.2: Optimasi Kinerja & Keamanan**
@@ -355,159 +355,4 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
     *   Dari menu kiri, klik ikon pengguna untuk membuka **Authentication**.
     *   Di bawah **Configuration**, pilih **Providers**.
     *   Di dalam **Email** provider, **matikan** (toggle **OFF**) opsi **Confirm email**. Ini krusial karena aplikasi tidak memiliki alur konfirmasi email bawaan.
-    *   Selanjutnya, di bawah **Configuration**, pilih **URL Configuration**.
-        *   Di field **Site URL**, masukkan URL utama tempat aplikasi Anda akan di-deploy. Jika Anda menggunakan Netlify, ini akan terlihat seperti `https://nama-unik-anda.netlify.app`. **Jangan tambahkan garis miring di akhir.**
-        *   Di bagian **Redirect URLs**, tambahkan URL berikut untuk memastikan login berfungsi baik saat pengembangan lokal maupun setelah di-deploy:
-            ```
-            http://localhost:8888
-            ```
-        *   **PENTING**: Jika Anda sudah memiliki URL Netlify, tambahkan juga di sini, misalnya: `https://nama-unik-anda.netlify.app`.
-        *   Klik **Save**. Langkah ini sangat penting untuk mengizinkan aplikasi Anda berkomunikasi dengan Supabase tanpa error CORS atau masalah koneksi.
-
-### Langkah 2: Pengaturan Kode Aplikasi (Lokal)
-
-Sekarang Anda akan mengkonfigurasi kode aplikasi untuk terhubung ke backend Supabase Anda.
-
-1.  **Dapatkan Kode**: Unduh atau kloning repositori ini ke komputer Anda.
-
-2.  **Buat File Konfigurasi**:
-    *   Di dalam folder proyek yang baru Anda unduh, temukan file bernama `config.ts.txt`.
-    *   Ubah nama file ini menjadi `config.ts`.
-
-3.  **Isi Kredensial**:
-    *   Buka file `config.ts` yang baru.
-    *   **Supabase**:
-        *   Ganti `YOUR_SUPABASE_URL_HERE` dengan **Project URL** yang Anda salin dari Supabase.
-        *   Ganti `YOUR_SUPABASE_ANON_KEY_HERE` dengan kunci **anon public** yang Anda salin dari Supabase.
-    *   **Super Admin**:
-        *   Ganti `email` dan `password` di dalam objek `superAdmin` dengan kredensial yang Anda inginkan untuk akun admin utama. Akun ini memiliki hak akses tertinggi dan tidak disimpan di database.
-    *   **Supabase Service Key**: Kunci ini tidak lagi diatur di sini. Kunci ini akan diatur di Netlify pada langkah selanjutnya untuk keamanan.
-    *   Simpan file `config.ts`.
-
-### Langkah 3: Unggah Kode ke GitHub (Penyimpanan Kode)
-
-GitHub adalah tempat Anda akan menyimpan kode aplikasi Anda secara online, yang memungkinkan Netlify untuk mengakses dan mempublikasikannya.
-
-1.  **Buat Akun & Repositori GitHub**:
-    *   Buka [github.com](https://github.com/) dan daftar untuk akun gratis.
-    *   Setelah masuk, klik tombol **+** di pojok kanan atas, lalu pilih "**New repository**".
-    *   Beri nama repositori Anda (misalnya, `aquatic-swimtrack-app`).
-    *   Pilih **Public** (Publik).
-    *   Klik "**Create repository**".
-
-2.  **Siapkan Git & Unggah Kode**:
-    *   Pastikan Anda telah menginstal [Git](https://git-scm.com/downloads) di komputer Anda.
-    *   Buka terminal atau command prompt di dalam folder proyek Anda (folder yang sama dengan `index.html`).
-    *   Jalankan perintah berikut satu per satu. Ganti `<URL_REPOSITORI_ANDA>` dengan URL yang Anda dapatkan dari GitHub setelah membuat repositori (misalnya, `https://github.com/username/aquatic-swimtrack-app.git`).
-
-    ```bash
-    # Inisialisasi Git di folder Anda
-    git init
-
-    # Tambahkan semua file untuk dilacak (kecuali yang ada di .gitignore)
-    git add .
-
-    # Buat "snapshot" pertama dari kode Anda
-    git commit -m "Initial commit"
-
-    # Ganti nama branch utama menjadi "main"
-    git branch -M main
-
-    # Hubungkan folder lokal Anda ke repositori online di GitHub
-    git remote add origin <URL_REPOSITORI_ANDA>
-
-    # Unggah (push) kode Anda ke GitHub
-    git push -u origin main
-    ```
-    *   Refresh halaman repositori GitHub Anda. Anda sekarang akan melihat semua file proyek Anda di sana. File `config.ts` tidak akan diunggah karena sudah tercantum di `.gitignore`, yang menjaga keamanan kredensial Anda.
-
-### Langkah 4: Publikasi ke Netlify (Hosting)
-
-Netlify akan mengambil kode dari GitHub Anda dan mempublikasikannya ke web.
-
-1.  **Buat Akun & Hubungkan ke GitHub**:
-    *   Buka [netlify.com](https://www.netlify.com/) dan daftar untuk akun gratis. Cara termudah adalah mendaftar menggunakan akun GitHub Anda.
-    *   Izinkan Netlify untuk mengakses repositori GitHub Anda.
-
-2.  **Buat Situs Baru**:
-    *   Dari dasbor Netlify, klik "**Add new site**" > "**Import an existing project**".
-    *   Pilih **GitHub** sebagai provider Git Anda.
-    *   Temukan dan pilih repositori yang baru saja Anda buat (`aquatic-swimtrack-app`).
-
-3.  **Konfigurasi Pengaturan Build**:
-    *   Netlify akan otomatis mendeteksi file `package.json` dan `netlify.toml` Anda. Pengaturan default sudah benar:
-        *   **Build command**: Netlify akan menjalankan `npm install` secara otomatis.
-        *   **Publish directory**: `.` (sesuai `netlify.toml`).
-    *   Klik "**Deploy site**". Netlify akan mulai mem-build dan mempublikasikan situs Anda, termasuk serverless function.
-
-4.  **Atur Kunci API & Variabel Lingkungan (Langkah Paling Penting)**:
-    *   Setelah Netlify selesai melakukan deploy awal, buka **Site configuration** untuk situs baru Anda.
-    *   Di menu kiri, pilih **Build & deploy** > **Environment** > **Environment variables**.
-    *   Klik "**Add a variable**" dan tambahkan **dua** variabel berikut, satu per satu:
-        *   **Untuk Pendaftaran Online & Koneksi Server:**
-            *   **Key**: `SUPABASE_URL`
-            *   **Value**: Tempelkan **Project URL** Supabase Anda di sini (dari Langkah 1).
-            *   **Key**: `SUPABASE_SERVICE_KEY`
-            *   **Value**: Tempelkan kunci **service_role secret** Supabase Anda di sini (dari Langkah 1).
-    *   Variabel-variabel ini akan disuntikkan secara aman ke serverless function Anda oleh Netlify.
-
-5.  **Redeploy dengan Kunci API**:
-    *   Pergi ke tab **Deploys** untuk situs Anda.
-    *   Di bagian atas, klik tombol "**Trigger deploy**" dan pilih "**Deploy site**". Ini akan mempublikasikan ulang situs Anda, kali ini dengan serverless function yang sudah memiliki akses ke kunci API.
-
-6.  **Selesai!**
-    *   Setelah deploy selesai, Netlify akan memberikan URL publik untuk situs Anda (misalnya, `nama-unik.netlify.app`). Klik URL tersebut untuk melihat aplikasi Anda yang sudah aktif!
-
----
-
-## Menjalankan Secara Lokal
-
-Untuk menjalankan aplikasi ini secara lokal, termasuk *serverless functions* untuk pendaftaran, Anda perlu menggunakan Netlify CLI. Ini akan mensimulasikan lingkungan Netlify di komputer Anda.
-
-1.  Pastikan Anda telah menginstal [Node.js](https://nodejs.org/).
-2.  Pastikan Anda telah mengisi file `config.ts` sesuai petunjuk di atas.
-3.  Buka terminal di direktori utama proyek.
-4.  **Instal Dependensi**: Jalankan perintah berikut untuk menginstal semua yang dibutuhkan, termasuk Netlify CLI:
-    ```bash
-    npm install
-    ```
-5.  **Siapkan Variabel Lingkungan Lokal**:
-    *   Buat file baru di root proyek dengan nama `.env`.
-    *   Salin (**copy**) dan tempel (**paste**) konten berikut ke dalam file `.env` tersebut, lalu isi dengan kunci rahasia Anda. File ini sudah ada di `.gitignore` sehingga tidak akan terunggah ke GitHub.
-    ```
-# Kunci untuk Pendaftaran Online & fungsi server lainnya (Supabase)
-SUPABASE_URL=MASUKKAN_URL_SUPABASE_ANDA_DI_SINI
-SUPABASE_SERVICE_KEY=MASUKKAN_KUNCI_SERVICE_ROLE_SUPABASE_ANDA_DI_SINI
-    ```
-6.  **Jalankan Server Pengembangan**:
-    *   Jalankan perintah berikut:
-    ```bash
-    npm run dev
-    ```
-    *   Netlify CLI akan memulai server pengembangan, biasanya di `http://localhost:8888`.
-7.  Buka browser Anda dan navigasikan ke alamat yang ditampilkan di terminal. Aplikasi sekarang akan berjalan penuh, termasuk semua fitur backend.
-
----
-## Panduan Penggunaan Aplikasi
-
-1.  **Login**: Akses dasbor admin menggunakan kredensial yang telah Anda buat di Supabase atau kredensial Super Admin dari `config.ts`.
-2.  **Pengaturan Acara**:
-    *   Buka "Pengaturan Acara".
-    *   Atur nama kompetisi, tanggal, dan logo.
-    *   Gunakan tab "Pengaturan Jadwal" untuk membuat sesi dan seret-lepas (*drag-and-drop*) nomor lomba ke dalamnya.
-3.  **Tambah Peserta**:
-    *   Buka "Unggah Peserta".
-    *   Unduh templat Excel.
-    *   Isi dengan informasi perenang dan nomor lomba yang mereka ikuti.
-    *   Unggah file tersebut untuk mendaftarkan semua peserta sekaligus.
-    *   Atau, tambahkan perenang satu per satu di "Daftar Perenang".
-4.  **Jalankan Lomba**:
-    *   Buka "Nomor Lomba".
-    *   Klik "Timing" pada nomor lomba yang sudah memiliki peserta terdaftar.
-    *   Gunakan antarmuka *live timing* untuk memulai lomba dan ketuk untuk mencatat waktu finis.
-5.  **Lihat Hasil**:
-    *   Halaman "Hasil Lomba" dan halaman hasil publik akan diperbarui secara otomatis saat hasil disimpan.
-6.  **Cetak Laporan**:
-    *   Buka "Unduh Laporan".
-    *   Pilih laporan yang ingin Anda lihat/cetak (misalnya, Buku Acara).
-    *   Gunakan fungsi cetak browser untuk menghasilkan PDF atau mencetak salinan fisik.
+    *   Selanjutnya, di bawah **Configuration**, pilih

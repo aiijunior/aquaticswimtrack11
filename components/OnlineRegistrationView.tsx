@@ -247,7 +247,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         setIsSubmitting(true);
 
         if (!formData.name.trim() || !formData.club.trim()) {
-            setError('Nama perenang dan nama klub wajib diisi.');
+            setError('Nama atlet dan nama tim wajib diisi.');
             setIsSubmitting(false);
             return;
         }
@@ -395,19 +395,19 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 {!successMessage ? (
                     <form onSubmit={handleSubmit}>
                         <Card className="mb-4">
-                            <h2 className="text-xl font-bold mb-4">Data Perenang</h2>
+                            <h2 className="text-xl font-bold mb-4">Data Atlet</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <Input label="Nama Lengkap Perenang" id="name" name="name" value={formData.name} onChange={handleFormChange} onBlur={handleNameBlur} required />
-                                    {isCheckingName && <p className="text-xs text-text-secondary mt-1">Mencari data perenang...</p>}
+                                    <Input label="Nama Lengkap Atlet" id="name" name="name" value={formData.name} onChange={handleFormChange} onBlur={handleNameBlur} required />
+                                    {isCheckingName && <p className="text-xs text-text-secondary mt-1">Mencari data atlet...</p>}
                                     {existingSwimmer && (
                                         <div className="text-xs text-green-600 dark:text-green-400 mt-1 p-2 bg-green-500/10 rounded-md">
-                                            Data ditemukan dan diisi otomatis. Bukan perenang yang benar?{' '}
+                                            Data ditemukan dan diisi otomatis. Bukan atlet yang benar?{' '}
                                             <button type="button" onClick={clearAutoFilledData} className="underline font-semibold">Klik di sini</button> untuk mengisi manual.
                                         </div>
                                     )}
                                 </div>
-                                <Input label="Nama Klub" id="club" name="club" value={formData.club} onChange={handleFormChange} required />
+                                <Input label="Nama Tim" id="club" name="club" value={formData.club} onChange={handleFormChange} required />
                                 <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={formData.birthYear} onChange={handleFormChange} required />
                                 <Select label="Jenis Kelamin" id="gender" name="gender" value={formData.gender} onChange={handleFormChange}>
                                     <option value="Male">Laki-laki (Male)</option>
@@ -491,7 +491,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 </svg>
                             </div>
                             <div className="text-text-primary">{successMessage}</div>
-                            <Button onClick={() => setSuccessMessage('')} className="mt-6">Daftarkan Perenang Lain</Button>
+                            <Button onClick={() => setSuccessMessage('')} className="mt-6">Daftarkan Atlet Lain</Button>
                         </div>
                     </Card>
                 )}
