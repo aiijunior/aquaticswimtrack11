@@ -220,7 +220,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
     if (!selectedSwimmer) return;
     try {
         await updateSwimmer(selectedSwimmer.id, editFormData);
-        addNotification('Data atlet berhasil diperbarui.', 'info');
+        addNotification('Data perenang berhasil diperbarui.', 'info');
         closeModal();
         onDataUpdate();
     } catch (error: any) {
@@ -232,7 +232,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
     if (!selectedSwimmer) return;
     try {
         await deleteSwimmer(selectedSwimmer.id);
-        addNotification(`Atlet ${selectedSwimmer.name} berhasil dihapus.`, 'error');
+        addNotification(`Perenang ${selectedSwimmer.name} berhasil dihapus.`, 'error');
         closeModal();
         onDataUpdate();
     } catch (error: any) {
@@ -243,11 +243,11 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
   const handleConfirmDeleteAll = async () => {
     try {
         await deleteAllSwimmers();
-        addNotification('Semua data atlet berhasil dihapus.', 'error');
+        addNotification('Semua data perenang berhasil dihapus.', 'error');
         setIsDeleteAllModalOpen(false);
         onDataUpdate();
     } catch (error: any) {
-        addNotification(`Gagal menghapus semua atlet: ${error.message}`, 'error');
+        addNotification(`Gagal menghapus semua perenang: ${error.message}`, 'error');
     }
   };
 
@@ -281,11 +281,11 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
     if (!addFormData.name || !addFormData.club) return;
     try {
         await addSwimmer(addFormData);
-        addNotification(`Atlet ${addFormData.name} berhasil ditambahkan.`, 'success');
+        addNotification(`Perenang ${addFormData.name} berhasil ditambahkan.`, 'success');
         closeModal();
         onDataUpdate();
     } catch (error: any) {
-        addNotification(`Gagal menambahkan atlet: ${error.message}`, 'error');
+        addNotification(`Gagal menambahkan perenang: ${error.message}`, 'error');
     }
   };
 
@@ -384,7 +384,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
       try {
         const result = await registerSwimmerToEvent(registrationData.eventId, selectedSwimmer.id, newSeedTime);
         if(result.success) {
-            addNotification('Atlet berhasil didaftarkan.', 'success');
+            addNotification('Perenang berhasil didaftarkan.', 'success');
             closeModal();
             onDataUpdate();
         } else {
@@ -397,24 +397,24 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">Daftar Atlet</h1>
+      <h1 className="text-3xl font-bold mb-6">Daftar Perenang</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <StatCard icon={<UsersGroupIcon />} label="Total Atlet" value={stats.totalSwimmers} onClick={() => { setViewMode('swimmerList'); setGenderFilter('All'); }} isActive={viewMode === 'swimmerList' && genderFilter === 'All'} />
+          <StatCard icon={<UsersGroupIcon />} label="Total Perenang" value={stats.totalSwimmers} onClick={() => { setViewMode('swimmerList'); setGenderFilter('All'); }} isActive={viewMode === 'swimmerList' && genderFilter === 'All'} />
           <StatCard icon={<MaleIcon />} label="Total Putra" value={stats.maleSwimmers} onClick={() => { setViewMode('swimmerList'); setGenderFilter('Male'); }} isActive={viewMode === 'swimmerList' && genderFilter === 'Male'} />
           <StatCard icon={<FemaleIcon />} label="Total Putri" value={stats.femaleSwimmers} onClick={() => { setViewMode('swimmerList'); setGenderFilter('Female'); }} isActive={viewMode === 'swimmerList' && genderFilter === 'Female'} />
-          <StatCard icon={<ShieldIcon />} label="Total Tim" value={stats.totalClubs} onClick={() => setViewMode('clubRecap')} isActive={viewMode === 'clubRecap'} />
+          <StatCard icon={<ShieldIcon />} label="Total Klub" value={stats.totalClubs} onClick={() => setViewMode('clubRecap')} isActive={viewMode === 'clubRecap'} />
       </div>
 
       <Card>
         {isLoading ? (
-          <p>Memuat daftar atlet...</p>
+          <p>Memuat daftar perenang...</p>
         ) : viewMode === 'swimmerList' ? (
           <>
             <div className="flex justify-between items-end mb-4 gap-4 flex-wrap">
                 <div className="flex-grow">
                     <Input 
-                        label="Cari berdasarkan Nama Atlet atau Nama Tim"
+                        label="Cari berdasarkan Nama Perenang atau Nama Klub"
                         id="swimmer-search"
                         type="text"
                         placeholder="Ketik untuk mencari..."
@@ -424,15 +424,15 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                 </div>
                  <div className="flex space-x-2 flex-shrink-0">
                     <Button onClick={handleOpenAddModal}>
-                        Tambah Atlet
+                        Tambah Perenang
                     </Button>
                     <Button 
                         variant="danger" 
                         onClick={() => setIsDeleteAllModalOpen(true)}
                         disabled={swimmers.length === 0}
-                        title={swimmers.length === 0 ? "Tidak ada atlet untuk dihapus" : "Hapus semua data atlet"}
+                        title={swimmers.length === 0 ? "Tidak ada perenang untuk dihapus" : "Hapus semua data perenang"}
                     >
-                        Hapus Semua Atlet
+                        Hapus Semua Perenang
                     </Button>
                 </div>
             </div>
@@ -440,11 +440,11 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="p-3">Nama Atlet</th>
+                    <th className="p-3">Nama Perenang</th>
                     <th className="p-3">Tahun Lahir</th>
                     <th className="p-3">Jenis Kelamin</th>
                     <th className="p-3">KU</th>
-                    <th className="p-3">Nama Tim</th>
+                    <th className="p-3">Klub</th>
                     <th className="p-3 text-center">Aksi</th>
                   </tr>
                 </thead>
@@ -460,8 +460,8 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                         <td className="p-3">
                             <div className="flex justify-center items-center space-x-2">
                               <button onClick={() => handleOpenEventsModal(swimmer)} className="p-2 text-green-500 hover:text-green-400 transition-colors" title="Lihat Nomor Lomba"><ClipboardCheckIcon /></button>
-                              <button onClick={() => handleOpenEditModal(swimmer)} className="p-2 text-blue-400 hover:text-blue-300 transition-colors" title="Edit Atlet"><EditIcon /></button>
-                              <button onClick={() => handleOpenDeleteModal(swimmer)} className="p-2 text-red-500 hover:text-red-400 transition-colors" title="Hapus Atlet"><TrashIcon /></button>
+                              <button onClick={() => handleOpenEditModal(swimmer)} className="p-2 text-blue-400 hover:text-blue-300 transition-colors" title="Edit Perenang"><EditIcon /></button>
+                              <button onClick={() => handleOpenDeleteModal(swimmer)} className="p-2 text-red-500 hover:text-red-400 transition-colors" title="Hapus Perenang"><TrashIcon /></button>
                             </div>
                         </td>
                       </tr>
@@ -469,7 +469,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                   ) : (
                     <tr>
                       <td colSpan={6} className="text-center p-6 text-text-secondary">
-                        {searchQuery ? "Tidak ada atlet yang cocok dengan pencarian Anda." : "Tidak ada atlet yang cocok dengan filter yang dipilih."}
+                        {searchQuery ? "Tidak ada perenang yang cocok dengan pencarian Anda." : "Tidak ada perenang yang cocok dengan filter yang dipilih."}
                       </td>
                     </tr>
                   )}
@@ -479,13 +479,13 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
           </>
         ) : (
           <div>
-            <h2 className="text-xl font-bold mb-4">Rekap Tim Peserta</h2>
+            <h2 className="text-xl font-bold mb-4">Rekap Klub Peserta</h2>
             <div className="overflow-x-auto">
                 <table className="w-full text-left">
                     <thead>
                         <tr className="border-b border-border">
-                            <th className="p-3">Nama Tim</th>
-                            <th className="p-3 text-center">Jumlah Atlet</th>
+                            <th className="p-3">Nama Klub</th>
+                            <th className="p-3 text-center">Jumlah Perenang</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -503,9 +503,9 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
       </Card>
       
       {/* Add Modal */}
-      <Modal isOpen={isAddModalOpen} onClose={closeModal} title="Tambah Atlet Baru">
+      <Modal isOpen={isAddModalOpen} onClose={closeModal} title="Tambah Perenang Baru">
         <form onSubmit={handleAddSwimmer} className="space-y-4">
-            <Input label="Nama Atlet" id="add-name" name="name" value={addFormData.name} onChange={handleAddFormChange} required />
+            <Input label="Nama Perenang" id="add-name" name="name" value={addFormData.name} onChange={handleAddFormChange} required />
             <Input label="Tahun Lahir" id="add-birthYear" name="birthYear" type="number" value={addFormData.birthYear} onChange={handleAddFormChange} required />
             <Select label="Jenis Kelamin" id="add-gender" name="gender" value={addFormData.gender} onChange={handleAddFormChange}>
                 <option value="Male">Laki-laki (Male)</option>
@@ -515,7 +515,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                 <option value="">-- Tanpa KU --</option>
                 {AGE_GROUP_OPTIONS.map(ku => <option key={ku} value={ku}>{ku}</option>)}
             </Select>
-            <Input label="Nama Tim" id="add-club" name="club" value={addFormData.club} onChange={handleAddFormChange} required />
+            <Input label="Nama Klub" id="add-club" name="club" value={addFormData.club} onChange={handleAddFormChange} required />
             <div className="flex justify-end pt-4 space-x-2">
                 <Button type="button" variant="secondary" onClick={closeModal}>Batal</Button>
                 <Button type="submit">Tambah</Button>
@@ -524,9 +524,9 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
       </Modal>
 
       {/* Edit Modal */}
-      <Modal isOpen={isEditModalOpen} onClose={closeModal} title="Edit Data Atlet">
+      <Modal isOpen={isEditModalOpen} onClose={closeModal} title="Edit Data Perenang">
         <form onSubmit={handleUpdate} className="space-y-4">
-            <Input label="Nama Atlet" id="name" name="name" value={editFormData.name} onChange={handleEditFormChange} required />
+            <Input label="Nama Perenang" id="name" name="name" value={editFormData.name} onChange={handleEditFormChange} required />
             <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={editFormData.birthYear} onChange={handleEditFormChange} required />
             <Select label="Jenis Kelamin" id="gender" name="gender" value={editFormData.gender} onChange={handleEditFormChange}>
                 <option value="Male">Laki-laki (Male)</option>
@@ -536,7 +536,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                 <option value="">-- Tanpa KU --</option>
                 {AGE_GROUP_OPTIONS.map(ku => <option key={ku} value={ku}>{ku}</option>)}
             </Select>
-            <Input label="Nama Tim" id="club" name="club" value={editFormData.club} onChange={handleEditFormChange} required />
+            <Input label="Nama Klub" id="club" name="club" value={editFormData.club} onChange={handleEditFormChange} required />
             <div className="flex justify-end pt-4 space-x-2">
                 <Button type="button" variant="secondary" onClick={closeModal}>Batal</Button>
                 <Button type="submit">Simpan Perubahan</Button>
@@ -545,11 +545,11 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
       </Modal>
 
       {/* Delete Modal */}
-      <Modal isOpen={isDeleteModalOpen} onClose={closeModal} title="Konfirmasi Hapus Atlet">
+      <Modal isOpen={isDeleteModalOpen} onClose={closeModal} title="Konfirmasi Hapus Perenang">
         {selectedSwimmer && (
             <div className="space-y-6">
                 <p className="text-text-secondary">
-                    Anda yakin ingin menghapus atlet <strong className="text-text-primary">{selectedSwimmer.name}</strong> dari tim <strong className="text-text-primary">{selectedSwimmer.club}</strong>?
+                    Anda yakin ingin menghapus perenang <strong className="text-text-primary">{selectedSwimmer.name}</strong> dari klub <strong className="text-text-primary">{selectedSwimmer.club}</strong>?
                     <br/>
                     Semua data pendaftaran dan hasil lomba yang terkait juga akan dihapus. Tindakan ini tidak dapat dibatalkan.
                 </p>
@@ -562,14 +562,14 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
       </Modal>
 
       {/* Delete All Modal */}
-        <Modal isOpen={isDeleteAllModalOpen} onClose={() => setIsDeleteAllModalOpen(false)} title="Konfirmasi Hapus Semua Atlet">
+        <Modal isOpen={isDeleteAllModalOpen} onClose={() => setIsDeleteAllModalOpen(false)} title="Konfirmasi Hapus Semua Perenang">
             <div className="space-y-6">
                 <p className="text-text-secondary">
-                    Anda benar-benar yakin ingin menghapus <strong className="text-text-primary">SEMUA</strong> data atlet?
+                    Anda benar-benar yakin ingin menghapus <strong className="text-text-primary">SEMUA</strong> data perenang?
                     <br/><br/>
                     Tindakan ini akan <strong className="text-red-500">menghapus permanen</strong>:
                     <ul className="list-disc list-inside mt-2 text-red-400">
-                        <li>Semua profil atlet</li>
+                        <li>Semua profil perenang</li>
                         <li>Semua pendaftaran mereka di setiap nomor lomba</li>
                         <li>Semua hasil lomba yang tercatat</li>
                     </ul>
@@ -604,7 +604,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                     </ul>
                 ) : (
                     <p className="text-text-secondary text-center py-4">
-                    Atlet ini belum terdaftar di nomor lomba manapun.
+                    Perenang ini belum terdaftar di nomor lomba manapun.
                     </p>
                 )}
                 <div className="flex justify-between pt-2 border-t border-border">
@@ -649,7 +649,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
           {selectedSwimmer && actionTarget && (
               <div className="space-y-6">
                   <p className="text-text-secondary">
-                      Anda yakin ingin menghapus pendaftaran atlet <strong className="text-text-primary">{selectedSwimmer.name}</strong> dari nomor lomba <strong className="text-text-primary">{formatEventName(actionTarget.event)}</strong>?
+                      Anda yakin ingin menghapus pendaftaran perenang <strong className="text-text-primary">{selectedSwimmer.name}</strong> dari nomor lomba <strong className="text-text-primary">{formatEventName(actionTarget.event)}</strong>?
                   </p>
                   <div className="flex justify-end space-x-4">
                       <Button variant="secondary" onClick={closeModal}>Batal</Button>

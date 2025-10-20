@@ -221,7 +221,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
             {swimmers.length > 0 ? (
                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                     <div>
-                        <h3 className="text-lg font-semibold text-text-primary mb-2 text-center">Top 7 Klub Berdasarkan Jumlah Atlet</h3>
+                        <h3 className="text-lg font-semibold text-text-primary mb-2 text-center">Top 7 Klub Berdasarkan Jumlah Perenang</h3>
                          <div style={{ position: 'relative', height: '50vh', minHeight: '350px' }}>
                             <canvas ref={chartRef}></canvas>
                         </div>
