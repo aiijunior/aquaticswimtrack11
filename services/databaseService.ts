@@ -519,7 +519,7 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
             const distance = parseInt(row['Jarak (m)'], 10);
             
             const category = toTitleCase(row['Kategori']?.toString().trim() || '') || null;
-            const relayLegsStr = row['Jumlah Perenang']?.toString().trim();
+            const relayLegsStr = row['Jumlah Atlet']?.toString().trim();
             const relayLegs = relayLegsStr ? parseInt(relayLegsStr, 10) : null;
             
             const lowerStyleStr = styleStr?.toLowerCase();
@@ -528,7 +528,7 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
             if (!distance || isNaN(distance) || distance <= 0) throw new Error("'Jarak (m)' harus berupa angka positif.");
             if (!lowerStyleStr || !styleReverseMap.has(lowerStyleStr)) throw new Error(`'Gaya' tidak valid. Gunakan salah satu dari: ${[...Object.values(SWIM_STYLE_TRANSLATIONS), 'Kickboard'].join(', ')}.`);
             if (!lowerGenderStr || !genderReverseMap.has(lowerGenderStr)) throw new Error(`'Jenis Kelamin' tidak valid. Gunakan salah satu dari: ${Object.values(GENDER_TRANSLATIONS).join(', ')}.`);
-            if (relayLegs !== null && (isNaN(relayLegs) || relayLegs <= 1)) throw new Error("'Jumlah Perenang' harus berupa angka lebih dari 1 untuk estafet.");
+            if (relayLegs !== null && (isNaN(relayLegs) || relayLegs <= 1)) throw new Error("'Jumlah Atlet' harus berupa angka lebih dari 1 untuk estafet.");
 
             await addEvent({
                 distance,
@@ -575,7 +575,7 @@ export const processRecordUpload = async (data: any[]): Promise<{ success: numbe
             const timeStr = row['Waktu (mm:ss.SS)']?.toString().trim();
             const holderName = toTitleCase(row['Nama Pemegang Rekor']?.toString().trim() || '');
             const yearSet = parseInt(row['Tahun'], 10);
-            const relayLegsStr = row['Jumlah Perenang (Estafet)']?.toString().trim();
+            const relayLegsStr = row['Jumlah Atlet (Estafet)']?.toString().trim();
             const relayLegs = relayLegsStr ? parseInt(relayLegsStr, 10) : null;
             const locationSet = toTitleCase(row['Lokasi']?.toString().trim() || '') || null;
 

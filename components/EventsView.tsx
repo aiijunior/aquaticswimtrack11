@@ -262,7 +262,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         ["2. Kolom 'Jarak (m)', 'Gaya', dan 'Jenis Kelamin' wajib diisi."],
         ["3. Untuk Gaya dan Jenis Kelamin, mohon gunakan pilihan yang tersedia di dropdown."],
         ["4. Kolom 'Kategori' bersifat opsional. Kosongkan jika tidak ada (cth: untuk event senior/open)."],
-        ["5. Kolom 'Jumlah Perenang' HANYA diisi untuk nomor estafet (relay), contoh: 4. Kosongkan untuk perorangan."],
+        ["5. Kolom 'Jumlah Atlet' HANYA diisi untuk nomor estafet (relay), contoh: 4. Kosongkan untuk perorangan."],
         [], // Spacer
         ["DAFTAR PILIHAN VALID"],
         [],
@@ -288,28 +288,28 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
             "Gaya": "Gaya Kupu-kupu",
             "Jenis Kelamin": "Putri",
             "Kategori": "KU 1-2",
-            "Jumlah Perenang": "" // Individual event
+            "Jumlah Atlet": "" // Individual event
         },
         {
             "Jarak (m)": 200,
             "Gaya": "Gaya Bebas",
             "Jenis Kelamin": "Putra",
             "Kategori": "", // Open/Senior event
-            "Jumlah Perenang": ""
+            "Jumlah Atlet": ""
         },
         {
             "Jarak (m)": 100, // Distance per leg
             "Gaya": "Gaya Ganti",
             "Jenis Kelamin": "Campuran",
             "Kategori": "KU-3",
-            "Jumlah Perenang": 4 // Relay event
+            "Jumlah Atlet": 4 // Relay event
         },
         {
             "Jarak (m)": 25,
             "Gaya": "Papan Luncur / Kickboard",
             "Jenis Kelamin": "Putra",
             "Kategori": "KU-4",
-            "Jumlah Perenang": ""
+            "Jumlah Atlet": ""
         }
     ];
 
@@ -353,7 +353,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         "Gaya": translateSwimStyle(event.style),
         "Jenis Kelamin": translateGender(event.gender),
         "Kategori": event.category || "",
-        "Jumlah Perenang": event.relayLegs || ""
+        "Jumlah Atlet": event.relayLegs || ""
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -362,7 +362,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         { wch: 25 }, // Gaya
         { wch: 15 }, // Jenis Kelamin
         { wch: 15 }, // Kategori
-        { wch: 20 }  // Jumlah Perenang
+        { wch: 20 }  // Jumlah Atlet
     ];
 
     const workbook = XLSX.utils.book_new();
@@ -519,7 +519,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
 
             {newEvent.isRelay && (
                 <Input
-                    label="Jumlah Perenang per Tim"
+                    label="Jumlah Atlet per Tim"
                     id="event-relay-legs"
                     type="number"
                     value={newEvent.relayLegs}
@@ -528,7 +528,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 />
             )}
             <Input
-                label={newEvent.isRelay ? 'Jarak per Perenang (meter)' : 'Jarak (meter)'}
+                label={newEvent.isRelay ? 'Jarak per Atlet (meter)' : 'Jarak (meter)'}
                 id="event-distance"
                 type="number"
                 value={newEvent.distance}
@@ -624,8 +624,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         <div className="space-y-4">
             <div>
                 <p className="text-text-secondary mb-2">Unggah file Excel (.xlsx) untuk menambahkan beberapa nomor lomba sekaligus. File harus memiliki kolom berikut:</p>
-                <code className="block text-sm bg-surface p-2 rounded-md whitespace-pre">Jarak (m) | Gaya | Jenis Kelamin | Kategori | Jumlah Perenang</code>
-                <p className="text-xs text-text-secondary mt-1">Kolom 'Kategori' dan 'Jumlah Perenang' bersifat opsional.</p>
+                <code className="block text-sm bg-surface p-2 rounded-md whitespace-pre">Jarak (m) | Gaya | Jenis Kelamin | Kategori | Jumlah Atlet</code>
+                <p className="text-xs text-text-secondary mt-1">Kolom 'Kategori' dan 'Jumlah Atlet' bersifat opsional.</p>
                 
                 <div className="mt-4 pt-4 border-t border-border">
                     <p className="text-sm font-semibold text-text-secondary mb-2">Contoh untuk nomor estafet (misal: 4x100m Estafet Gaya Ganti Campuran KU-3):</p>
@@ -637,7 +637,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                                     <th className="p-1 font-semibold">Gaya</th>
                                     <th className="p-1 font-semibold">Jenis Kelamin</th>
                                     <th className="p-1 font-semibold">Kategori</th>
-                                    <th className="p-1 font-semibold">Jumlah Perenang</th>
+                                    <th className="p-1 font-semibold">Jumlah Atlet</th>
                                 </tr>
                             </thead>
                             <tbody>

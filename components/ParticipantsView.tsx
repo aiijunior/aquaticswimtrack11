@@ -113,7 +113,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                     "Nama Atlet": "Budi Perkasa",
                     "Tahun Lahir": 2005,
                     "Jenis Kelamin (L/P)": "L",
-                    "Nama Tim": "Klub Cepat",
+                    "Nama Tim": "Tim Cepat",
                     "KU": "KU 1",
                     "Nomor Lomba": formatEventName(event),
                     "Waktu Unggulan (mm:ss.SS)": index === 0 ? "01:05.50" : "99:99.99"
@@ -132,7 +132,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                     "Nama Atlet": "Siti Cepat",
                     "Tahun Lahir": 2006,
                     "Jenis Kelamin (L/P)": "P",
-                    "Nama Tim": "Klub Cepat",
+                    "Nama Tim": "Tim Cepat",
                     "KU": "KU Senior",
                     "Nomor Lomba": formatEventName(event),
                     "Waktu Unggulan (mm:ss.SS)": index === 0 ? "01:15.20" : "00:31.40"
@@ -155,10 +155,10 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
 
             if (relayMaleEvent) {
                 templateData.push({
-                    "Nama Atlet": `Tim Putra Klub Cepat`,
+                    "Nama Atlet": `Tim Putra Tim Cepat`,
                     "Tahun Lahir": "", // Intentionally blank for relays
                     "Jenis Kelamin (L/P)": "L", // Gender is used to identify the team type
-                    "Nama Tim": "Klub Cepat",
+                    "Nama Tim": "Tim Cepat",
                     "KU": "",
                     "Nomor Lomba": formatEventName(relayMaleEvent),
                     "Waktu Unggulan (mm:ss.SS)": "04:10.00"
@@ -166,10 +166,10 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
             }
             if (relayFemaleEvent) {
                 templateData.push({
-                    "Nama Atlet": `Tim Putri Klub Cepat`,
+                    "Nama Atlet": `Tim Putri Tim Cepat`,
                     "Tahun Lahir": "",
                     "Jenis Kelamin (L/P)": "P",
-                    "Nama Tim": "Klub Cepat",
+                    "Nama Tim": "Tim Cepat",
                      "KU": "",
                     "Nomor Lomba": formatEventName(relayFemaleEvent),
                     "Waktu Unggulan (mm:ss.SS)": "04:30.00"
@@ -177,10 +177,10 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
             }
             if (relayMixedEvent) {
                 templateData.push({
-                    "Nama Atlet": `Tim Campuran Klub Cepat`,
+                    "Nama Atlet": `Tim Campuran Tim Cepat`,
                     "Tahun Lahir": "",
                     "Jenis Kelamin (L/P)": "L", // For mixed, can be L or P, often tied to team contact
-                    "Nama Tim": "Klub Cepat",
+                    "Nama Tim": "Tim Cepat",
                      "KU": "",
                     "Nomor Lomba": formatEventName(relayMixedEvent),
                     "Waktu Unggulan (mm:ss.SS)": "04:20.00"
@@ -195,7 +195,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                 "Nama Atlet": "Contoh Nama",
                 "Tahun Lahir": 2005,
                 "Jenis Kelamin (L/P)": "L",
-                "Nama Tim": "Klub Contoh",
+                "Nama Tim": "Tim Contoh",
                 "KU": "KU 1",
                 "Nomor Lomba": events.length > 0 ? formatEventName(events[0]) : "Tidak ada nomor lomba",
                 "Waktu Unggulan (mm:ss.SS)": "01:25.50"
