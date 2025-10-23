@@ -1,8 +1,8 @@
 {
-  "name": "react-aquatic-timing",
+  "name": "react-aquatic-timing-11-swim",
   "version": "1.2.0",
   "private": true,
-  "description": "Real-time Evaluation for Aquatic Competition & Timing.",
+  "description": "R.E.A.C.T 11 - SWIM: Real-time Evaluation for Aquatic Competition & Timing.",
   "scripts": {
     "build": "esbuild index.tsx --bundle --outfile=dist/main.js --jsx=automatic && cp index.html dist/index.html && cp metadata.json dist/metadata.json",
     "dev": "netlify dev"

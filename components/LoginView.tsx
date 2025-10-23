@@ -110,7 +110,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onShowPubl
                 <path d="M45.37 15.21c6.53 5.44 15.62 5.44 22.15 0" stroke="currentColor" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <div className="text-left">
-                <h1 className="text-6xl lg:text-7xl font-bold text-primary" style={{fontStyle: 'italic', color: '#0284c7'}}>REACT</h1>
+                <h1 className="text-5xl lg:text-6xl font-bold text-primary" style={{fontStyle: 'italic', color: '#0284c7'}}>R.E.A.C.T 11 - SWIM</h1>
                 <p className="text-md text-text-secondary mt-1 max-w-[250px] font-semibold" style={{color: '#0284c7'}}>Real-time Evaluation for Aquatic Competition & Timing</p>
             </div>
         </div>

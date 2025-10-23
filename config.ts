@@ -36,9 +36,9 @@ export const config = {
    * Used in page titles and headers.
    */
   app: {
-    name: "R.E.A.C.T",
-    title: "R.E.A.C.T",
-    shortTitle: "REACT",
+    name: "R.E.A.C.T 11 - SWIM",
+    title: "R.E.A.C.T 11 - SWIM",
+    shortTitle: "REACT 11",
   },
 
   /**

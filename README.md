@@ -1,6 +1,6 @@
-# R.E.A.C.T (Real-time Evaluation for Aquatic Competition & Timing)
+# R.E.A.C.T 11 - SWIM (Real-time Evaluation for Aquatic Competition & Timing)
 
-R.E.A.C.T adalah aplikasi modern, *offline-first*, dan *real-time* yang dirancang untuk mengelola kompetisi renang secara komprehensif. Mulai dari pendaftaran atlet, penjadwalan nomor lomba, hingga pencatatan waktu langsung (*live timing*), dan publikasi hasil, aplikasi ini menyediakan semua yang dibutuhkan oleh panitia penyelenggara.
+R.E.A.C.T 11 - SWIM adalah aplikasi modern, *offline-first*, dan *real-time* yang dirancang untuk mengelola kompetisi renang secara komprehensif. Mulai dari pendaftaran atlet, penjadwalan nomor lomba, hingga pencatatan waktu langsung (*live timing*), dan publikasi hasil, aplikasi ini menyediakan semua yang dibutuhkan oleh panitia penyelenggara.
 
 ## Fitur Unggulan
 
@@ -20,7 +20,7 @@ R.E.A.C.T adalah aplikasi modern, *offline-first*, dan *real-time* yang dirancan
 ---
 ## Pembaruan Aplikasi (Changelog)
 
-Catatan ini melacak semua perubahan signifikan yang diterapkan pada aplikasi R.E.A.C.T.
+Catatan ini melacak semua perubahan signifikan yang diterapkan pada aplikasi R.E.A.C.T 11 - SWIM.
 
 ---
 ### **Pembaruan Terkini: Penambahan Kelompok Umur (KU)**
@@ -355,4 +355,4 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
     *   Dari menu kiri, klik ikon pengguna untuk membuka **Authentication**.
     *   Di bawah **Configuration**, pilih **Providers**.
     *   Di dalam **Email** provider, **matikan** (toggle **OFF**) opsi **Confirm email**. Ini krusial karena aplikasi tidak memiliki alur konfirmasi email bawaan.
-    *   Selanjutnya, di bawah **Configuration**, pilih---
+    *   Selanjutnya, di bawah **Configuration**, pilih------

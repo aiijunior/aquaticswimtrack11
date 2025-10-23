@@ -330,7 +330,7 @@ const App: React.FC = () => {
                     <path d="M45.37 15.21c6.53 5.44 15.62 5.44 22.15 0" stroke="currentColor" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
                 <div>
-                    <h1 className="text-xl font-bold text-primary" style={{fontStyle: 'italic'}}>R.E.A.C.T</h1>
+                    <h1 className="text-xl font-bold text-primary" style={{fontStyle: 'italic'}}>R.E.A.C.T 11</h1>
                     <p className="text-xs text-text-secondary leading-tight">Real-time Evaluation for Aquatic Competition & Timing</p>
                 </div>
             </div>
@@ -367,7 +367,7 @@ const App: React.FC = () => {
                 <HamburgerIcon />
             </button>
             <h1 className="text-lg font-bold text-primary ml-4 truncate">
-                {competitionInfo?.eventName.split('\n')[0] || "R.E.A.C.T"}
+                {competitionInfo?.eventName.split('\n')[0] || "R.E.A.C.T 11"}
             </h1>
         </header>
 

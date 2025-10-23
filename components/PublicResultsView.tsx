@@ -278,7 +278,7 @@ export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ onAdminLog
                     <Button variant="primary" onClick={onAdminLogin} className="px-6 py-3 text-lg mb-4">
                         &larr; Kembali ke Halaman Utama
                     </Button>
-                    <p className="text-xs text-text-secondary">&copy; {new Date().getFullYear()} {localCompetitionInfo?.eventName.split('\n')[0]}. Didukung oleh R.E.A.C.T.</p>
+                    <p className="text-xs text-text-secondary">&copy; {new Date().getFullYear()} {localCompetitionInfo?.eventName.split('\n')[0]}. Didukung oleh R.E.A.C.T 11 - SWIM.</p>
                 </footer>
             </div>
             <div className="secure-view-print-message" />
