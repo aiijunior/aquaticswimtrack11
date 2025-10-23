@@ -104,14 +104,25 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onShowPubl
       {/* Main Centered Content */}
       <div className="flex flex-col items-center text-center z-10">
         <div className="flex items-center justify-center space-x-4 mb-8">
-            <svg viewBox="0 0 100 100" className="h-24 w-24 text-primary" fill="none" xmlns="http://www.w3.org/2000/svg" style={{color: '#0284c7'}}>
-                <path d="M85 50c0 19.33-15.67 35-35 35S15 69.33 15 50 30.67 15 50 15c8.39 0 16.12 2.79 22.21 7.5" stroke="currentColor" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M38 50c5.52-8.28 19.48-8.28 25 0" stroke="currentColor" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M45.37 15.21c6.53 5.44 15.62 5.44 22.15 0" stroke="currentColor" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg viewBox="0 0 100 100" className="h-24 w-24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="waveGradient" x1="20" y1="70" x2="80" y2="40" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#0077BE"/>
+                        <stop offset="1" stopColor="#00A8E8"/>
+                    </linearGradient>
+                </defs>
+                {/* Stopwatch shape */}
+                <circle cx="50" cy="54" r="38" stroke="#003F88" strokeWidth="6" fill="white"/>
+                <path d="M42 16 H58" stroke="#003F88" strokeWidth="6" strokeLinecap="round"/>
+                <path d="M50 16 V8" stroke="#003F88" strokeWidth="6" strokeLinecap="round"/>
+                <path d="M78 28 L84 22" stroke="#003F88" strokeWidth="6" strokeLinecap="round"/>
+                
+                {/* Wave */}
+                <path d="M25 68 C 35 50, 55 52, 60 62 C 65 72, 75 70, 80 65 L 80 85 L 25 85 Z" fill="url(#waveGradient)"/>
             </svg>
             <div className="text-left">
-                <h1 className="text-6xl lg:text-7xl font-bold text-primary" style={{fontStyle: 'italic', color: '#0284c7'}}>REACT</h1>
-                <p className="text-md text-text-secondary mt-1 max-w-[250px] font-semibold" style={{color: '#0284c7'}}>Real-time Evaluation for Aquatic Competition & Timing</p>
+                <h1 className="text-6xl lg:text-7xl font-bold" style={{fontStyle: 'italic', color: '#003F88'}}>REACT</h1>
+                <p className="text-md mt-1 max-w-[250px] font-semibold" style={{color: '#003F88'}}>Real-time Evaluation for Aquatic Competition & Timing</p>
             </div>
         </div>
 

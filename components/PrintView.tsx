@@ -259,7 +259,7 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                     
                     heats.forEach(heat => {
                         // FIX: Explicitly cast to any to resolve potential type conflicts, although typing parameters would be better.
-                        (event.heatsWithTimes as any)?.push({
+                        (event.heatsWithTimes as TimedHeat[])?.push({
                             ...heat,
                             estimatedHeatStartTime: runningTime
                         });
@@ -474,6 +474,7 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
 
         // Tally medals for clubs that have won.
+        // FIX: Add explicit type annotations to forEach and other callbacks to resolve 'unknown' type issues.
         events.forEach((event: SwimEvent) => {
             if (!event.results) return;
             [...(event.results as Result[])]
@@ -1701,7 +1702,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             case 'individualStandings': return <IndividualStandings events={events} swimmers={swimmers} info={competitionInfo} records={records} />;
             case 'brokenRecords': return <BrokenRecordsReport brokenRecords={brokenRecords} info={competitionInfo} />;
             case 'rekapJuaraKategori': return <RekapJuaraPerKategori events={events} swimmers={swimmers} info={competitionInfo} />;
-            case 'clubAthleteRecap': return <ClubAthleteRecap events={events} swimmers={swimmers} info={competitionInfo} brokenRecords={brokenRecords} selectedClub={selectedClubForRecap} />;
+            case 'clubAthleteRecap': return <ClubAthleteMedalRecap events={events} swimmers={swimmers} info={competitionInfo} brokenRecords={brokenRecords} selectedClub={selectedClubForRecap} />;
             default: return null;
         }
     };

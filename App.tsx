@@ -324,10 +324,21 @@ const App: React.FC = () => {
       } transition-transform duration-300 ease-in-out md:relative md:translate-x-0 no-print`}>
         <div>
             <div className="flex items-center space-x-3 pb-4 mb-4 border-b border-border">
-                <svg viewBox="0 0 100 100" className="h-12 w-12 text-primary flex-shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M85 50c0 19.33-15.67 35-35 35S15 69.33 15 50 30.67 15 50 15c8.39 0 16.12 2.79 22.21 7.5" stroke="currentColor" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M38 50c5.52-8.28 19.48-8.28 25 0" stroke="currentColor" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M45.37 15.21c6.53 5.44 15.62 5.44 22.15 0" stroke="currentColor" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
+                <svg viewBox="0 0 100 100" className="h-12 w-12 flex-shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="waveGradient" x1="20" y1="70" x2="80" y2="40" gradientUnits="userSpaceOnUse">
+                            <stop stopColor="#0077BE"/>
+                            <stop offset="1" stopColor="#00A8E8"/>
+                        </linearGradient>
+                    </defs>
+                    {/* Stopwatch shape */}
+                    <circle cx="50" cy="54" r="38" stroke="#003F88" strokeWidth="6" fill="white"/>
+                    <path d="M42 16 H58" stroke="#003F88" strokeWidth="6" strokeLinecap="round"/>
+                    <path d="M50 16 V8" stroke="#003F88" strokeWidth="6" strokeLinecap="round"/>
+                    <path d="M78 28 L84 22" stroke="#003F88" strokeWidth="6" strokeLinecap="round"/>
+                    
+                    {/* Wave */}
+                    <path d="M25 68 C 35 50, 55 52, 60 62 C 65 72, 75 70, 80 65 L 80 85 L 25 85 Z" fill="url(#waveGradient)"/>
                 </svg>
                 <div>
                     <h1 className="text-xl font-bold text-primary" style={{fontStyle: 'italic'}}>R.E.A.C.T</h1>
