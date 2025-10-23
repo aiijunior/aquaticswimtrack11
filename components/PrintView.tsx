@@ -241,7 +241,8 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
         }, {} as Record<string, TimedEvent[]>);
 
         // NEW: Post-process to add timing estimates
-        Object.values(sessionsData).forEach(sessionEvents => {
+        // FIX: Explicitly type forEach parameter to resolve 'unknown' type error.
+        Object.values(sessionsData).forEach((sessionEvents: TimedEvent[]) => {
             if (sessionEvents.length === 0) return;
 
             const firstEvent = sessionEvents[0];
@@ -257,7 +258,8 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                     event.heatsWithTimes = [];
                     
                     heats.forEach(heat => {
-                        event.heatsWithTimes?.push({
+                        // FIX: Explicitly cast to any to resolve potential type conflicts, although typing parameters would be better.
+                        (event.heatsWithTimes as any)?.push({
                             ...heat,
                             estimatedHeatStartTime: runningTime
                         });
@@ -271,7 +273,8 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
 
     }, [events, swimmers, info, records]);
 
-    if (Object.keys(data).length === 0) return <p className="text-center text-text-secondary py-10">Tidak ada data untuk ditampilkan. Jadwalkan nomor lomba ke dalam sesi terlebih dahulu.</p>;
+    // FIX: Add explicit type check for data before accessing its properties.
+    if (!data || Object.keys(data).length === 0) return <p className="text-center text-text-secondary py-10">Tidak ada data untuk ditampilkan. Jadwalkan nomor lomba ke dalam sesi terlebih dahulu.</p>;
 
     return (
         <main className="space-y-8">
@@ -309,6 +312,7 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                                         <PrintRecordRow record={porprovRecord} type={RecordType.PORPROV} />
                                         <PrintRecordRow record={nasionalRecord} type={RecordType.NASIONAL} />
                                     </div>
+                                    {/* FIX: Explicitly type the 'heat' parameter to resolve 'unknown' type error. */}
                                     {(event.heatsWithTimes || []).map((heat: TimedHeat) => (
                                         <div key={heat.heatNumber} className="mt-3">
                                             <h5 className="font-bold text-center mb-1">
@@ -461,8 +465,8 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
     const data = useMemo(() => {
         // Initialize clubMedals with all unique clubs from the swimmers list.
         const allClubs = [...new Set(swimmers.map(s => s.club))];
-        // FIX: Explicitly type `club` parameter to resolve index signature error on `acc`.
-        const clubMedals: Record<string, { gold: number, silver: number, bronze: number }> = allClubs.reduce((acc, club: string) => {
+        // FIX: Explicitly type `acc` and `club` parameters and provide a typed initial value to resolve index signature error.
+        const clubMedals = allClubs.reduce((acc: Record<string, { gold: number, silver: number, bronze: number }>, club: string) => {
             acc[club] = { gold: 0, silver: 0, bronze: 0 };
             return acc;
         }, {} as Record<string, { gold: number, silver: number, bronze: number }>);
@@ -1697,7 +1701,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             case 'individualStandings': return <IndividualStandings events={events} swimmers={swimmers} info={competitionInfo} records={records} />;
             case 'brokenRecords': return <BrokenRecordsReport brokenRecords={brokenRecords} info={competitionInfo} />;
             case 'rekapJuaraKategori': return <RekapJuaraPerKategori events={events} swimmers={swimmers} info={competitionInfo} />;
-            case 'clubAthleteRecap': return <ClubAthleteMedalRecap events={events} swimmers={swimmers} info={competitionInfo} brokenRecords={brokenRecords} selectedClub={selectedClubForRecap} />;
+            case 'clubAthleteRecap': return <ClubAthleteRecap events={events} swimmers={swimmers} info={competitionInfo} brokenRecords={brokenRecords} selectedClub={selectedClubForRecap} />;
             default: return null;
         }
     };

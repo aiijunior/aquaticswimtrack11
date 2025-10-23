@@ -1,8 +1,8 @@
 {
-  "name": "aquatic-swimtrack-11",
-  "version": "1.1.0",
+  "name": "react-aquatic-timing",
+  "version": "1.2.0",
   "private": true,
-  "description": "An offline-first application to manage swimming competitions, from athlete registration to event timing and results.",
+  "description": "Real-time Evaluation for Aquatic Competition & Timing.",
   "scripts": {
     "build": "esbuild index.tsx --bundle --outfile=dist/main.js --jsx=automatic && cp index.html dist/index.html && cp metadata.json dist/metadata.json",
     "dev": "netlify dev"

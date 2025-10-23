@@ -323,19 +323,15 @@ const App: React.FC = () => {
         isMenuOpen ? 'translate-x-0' : '-translate-x-full'
       } transition-transform duration-300 ease-in-out md:relative md:translate-x-0 no-print`}>
         <div>
-            <div className="border-b-2 border-red-500 pb-4 mb-4">
-                <div className="flex flex-col items-center text-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-blue-800 dark:text-blue-500" viewBox="0 0 80 60" fill="none">
-                      <path d="M40.1,10.6c-4.6-1.1-8.5-3.6-10.9-7.1c-0.6-0.8-1.7-1-2.5-0.4c-0.8,0.6-1,1.7-0.4,2.5c2.8,4.1,7.3,7,12.5,8.2c1,0.2,2-0.5,2.2-1.5C41.2,11.3,40.9,10.7,40.1,10.6z" fill="currentColor"/>
-                      <path d="M42.4,21.7c-2.3,0-4.5,0.7-6.4,1.9c-1.4,0.9-3.2,0.5-4.1-0.9c-0.9-1.4-0.5-3.2,0.9-4.1c2.8-1.8,6.1-2.8,9.5-2.8c1.6,0,3,1.3,3,3S44,21.7,42.4,21.7z" fill="currentColor"/>
-                      <path d="M66,35.7C59.5,32,50.7,30,41,30c-2.8,0-5.6,0.3-8.3,0.9c-1.5,0.3-2.9-0.7-3.2-2.2c-0.3-1.5,0.7-2.9,2.2-3.2c3.1-0.6,6.3-1,9.3-1c10.3,0,19.7,2.1,26.7,6.2c1.3,0.8,1.8,2.4,1,3.7C69.1,38.7,67.3,38.8,66,35.7z" fill="#0ea5e9"/>
-                      <path d="M78.9,47.7c-8.1-4.7-19.1-7.5-30.8-7.5c-4.9,0-9.7,0.8-14.2,2.3c-1.5,0.5-3.1-0.2-3.6-1.7c-0.5-1.5,0.2-3.1,1.7-3.6c5-1.7,10.3-2.5,15.6-2.5c12.3,0,24,2.9,32.7,8.1c1.3,0.8,1.7,2.4,0.9,3.7C80.4,48.2,79.7,48.5,78.9,47.7z" fill="#0ea5e9"/>
-                      <path d="M78.9,56.7C64.9,47,46.9,42.5,28.5,42.5c-4.9,0-9.8,0.5-14.5,1.5c-1.6,0.3-3.1-0.7-3.4-2.2c-0.3-1.6,0.7-3.1,2.2-3.4c5.2-1,10.4-1.5,15.7-1.5c19,0,37.6,4.7,52.2,14.8c1.2,0.8,1.6,2.5,0.7,3.6C81.1,56.5,80.1,57.1,78.9,56.7z" fill="#0ea5e9"/>
-                    </svg>
-                    <div className="mt-2">
-                         <div className="text-xl font-bold uppercase tracking-wide text-primary">Aquatic</div>
-                         <div className="text-lg font-semibold uppercase text-primary opacity-80">Swimtrack 11</div>
-                    </div>
+            <div className="flex items-center space-x-3 pb-4 mb-4 border-b border-border">
+                <svg viewBox="0 0 100 100" className="h-12 w-12 text-primary flex-shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M85 50c0 19.33-15.67 35-35 35S15 69.33 15 50 30.67 15 50 15c8.39 0 16.12 2.79 22.21 7.5" stroke="currentColor" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M38 50c5.52-8.28 19.48-8.28 25 0" stroke="currentColor" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M45.37 15.21c6.53 5.44 15.62 5.44 22.15 0" stroke="currentColor" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <div>
+                    <h1 className="text-xl font-bold text-primary" style={{fontStyle: 'italic'}}>R.E.A.C.T</h1>
+                    <p className="text-xs text-text-secondary leading-tight">Real-time Evaluation for Aquatic Competition & Timing</p>
                 </div>
             </div>
             <nav className="space-y-2">
@@ -371,7 +367,7 @@ const App: React.FC = () => {
                 <HamburgerIcon />
             </button>
             <h1 className="text-lg font-bold text-primary ml-4 truncate">
-                {competitionInfo?.eventName.split('\n')[0] || "Aquatic Swimtrack 11"}
+                {competitionInfo?.eventName.split('\n')[0] || "R.E.A.C.T"}
             </h1>
         </header>
 

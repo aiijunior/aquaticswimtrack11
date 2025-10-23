@@ -570,7 +570,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.gender}
                 onChange={(e) => setNewEvent({ ...newEvent, gender: e.target.value as Gender })}
             >
-                {/* FIX: Explicitly type the 'gender' parameter in the filter callback to resolve the 'unknown' type error on the subsequent '.map()' call. */}
+                {/* FIX: Explicitly type the 'gender' parameter in the filter callback to resolve the 'unknown' type error. */}
                 {(GENDER_OPTIONS as Gender[]).filter((gender: Gender) => newEvent.isRelay || gender !== Gender.MIXED).map((gender: Gender) => (
                 <option key={gender} value={gender}>
                     {translateGender(gender)}

@@ -1,6 +1,6 @@
 {
-  "name": "Aquatic Swimtrack 11",
-  "description": "An offline-first application to manage swimming competitions, from athlete registration to event timing and results.",
+  "name": "R.E.A.C.T",
+  "description": "Real-time Evaluation for Aquatic Competition & Timing.",
   "requestFramePermissions": [],
   "prompt": ""
 }

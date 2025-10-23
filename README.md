@@ -1,6 +1,6 @@
-# Aquatic Swimtrack 11
+# R.E.A.C.T (Real-time Evaluation for Aquatic Competition & Timing)
 
-Aquatic Swimtrack 11 adalah aplikasi modern, *offline-first*, dan *real-time* yang dirancang untuk mengelola kompetisi renang secara komprehensif. Mulai dari pendaftaran atlet, penjadwalan nomor lomba, hingga pencatatan waktu langsung (*live timing*), dan publikasi hasil, aplikasi ini menyediakan semua yang dibutuhkan oleh panitia penyelenggara.
+R.E.A.C.T adalah aplikasi modern, *offline-first*, dan *real-time* yang dirancang untuk mengelola kompetisi renang secara komprehensif. Mulai dari pendaftaran atlet, penjadwalan nomor lomba, hingga pencatatan waktu langsung (*live timing*), dan publikasi hasil, aplikasi ini menyediakan semua yang dibutuhkan oleh panitia penyelenggara.
 
 ## Fitur Unggulan
 
@@ -20,7 +20,7 @@ Aquatic Swimtrack 11 adalah aplikasi modern, *offline-first*, dan *real-time* ya
 ---
 ## Pembaruan Aplikasi (Changelog)
 
-Catatan ini melacak semua perubahan signifikan yang diterapkan pada aplikasi Aquatic Swimtrack 11.
+Catatan ini melacak semua perubahan signifikan yang diterapkan pada aplikasi R.E.A.C.T.
 
 ---
 ### **Pembaruan Terkini: Penambahan Kelompok Umur (KU)**
@@ -125,7 +125,7 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
     *   Buka [supabase.com](https://supabase.com/) dan daftar untuk akun gratis.
     *   Setelah masuk, klik "**New project**".
     *   Pilih organisasi Anda (atau buat yang baru).
-    *   Beri nama proyek Anda (misalnya, `swimtrack-app`), buat kata sandi database yang kuat (simpan di tempat aman!), pilih wilayah terdekat, dan klik "**Create new project**".
+    *   Beri nama proyek Anda (misalnya, `react-swim-app`), buat kata sandi database yang kuat (simpan di tempat aman!), pilih wilayah terdekat, dan klik "**Create new project**".
 
 2.  **Jalankan Skema SQL**:
     *   Tunggu hingga proyek Anda selesai dibuat.
@@ -355,4 +355,4 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
     *   Dari menu kiri, klik ikon pengguna untuk membuka **Authentication**.
     *   Di bawah **Configuration**, pilih **Providers**.
     *   Di dalam **Email** provider, **matikan** (toggle **OFF**) opsi **Confirm email**. Ini krusial karena aplikasi tidak memiliki alur konfirmasi email bawaan.
-    *   Selanjutnya, di bawah **Configuration**, pilih
+    *   Selanjutnya, di bawah **Configuration**, pilih---
