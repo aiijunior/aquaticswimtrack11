@@ -62,6 +62,17 @@ const Medal = ({ rank }: { rank: number }) => {
     return null;
 };
 
+const estimateHeatDuration = (distance: number): number => {
+    if (distance <= 50) return 2 * 60 * 1000; // 2 mins
+    if (distance <= 100) return 3 * 60 * 1000; // 3 mins
+    if (distance <= 200) return 5 * 60 * 1000; // 5 mins
+    if (distance <= 400) return 8 * 60 * 1000; // 8 mins
+    if (distance <= 800) return 15 * 60 * 1000; // 15 mins
+    if (distance <= 1500) return 25 * 60 * 1000; // 25 mins
+    return 5 * 60 * 1000; // Default
+};
+
+
 // --- PRINTABLE COMPONENTS ---
 
 const ReportHeader: React.FC<{ info: CompetitionInfo, title: string }> = ({ info, title }) => (
@@ -190,6 +201,17 @@ const ScheduleOfEvents: React.FC<{ events: SwimEvent[] }> = ({ events }) => {
     );
 };
 
+// --- Interfaces for ProgramBook with timing ---
+interface TimedHeat extends Heat {
+    estimatedHeatStartTime?: number;
+}
+interface TimedEvent extends SwimEvent {
+    detailedEntries: Entry[];
+    globalEventNumber: number;
+    estimatedEventStartTime?: number;
+    heatsWithTimes?: TimedHeat[];
+}
+
 const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[] }> = ({ events, swimmers, info, records }) => {
     const data = useMemo(() => {
         let globalEventCounter = 1;
@@ -201,11 +223,12 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                 return (a.heatOrder ?? 0) - (b.heatOrder ?? 0);
             });
         
-        return scheduledEvents.reduce((acc: Record<string, (SwimEvent & { detailedEntries: Entry[], globalEventNumber: number })[]>, event: SwimEvent) => {
+        const sessionsData = scheduledEvents.reduce((acc: Record<string, TimedEvent[]>, event: SwimEvent) => {
             const sessionName = `Sesi ${romanize(event.sessionNumber!)}`;
-            if (!acc[sessionName]) acc[sessionName] = [];
+            if (!acc[sessionName]) {
+                acc[sessionName] = [];
+            }
             
-            // FIX: Explicitly type the 'entry' parameter to resolve 'unknown' type error.
             const eventEntries = (event.entries as EventEntry[]).map((entry: EventEntry) => {
                 const swimmer = swimmers.find(s => s.id === entry.swimmerId);
                 return swimmer ? { ...entry, swimmer } : null;
@@ -215,8 +238,38 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                  acc[sessionName].push({ ...event, detailedEntries: eventEntries, globalEventNumber: globalEventCounter++ });
             }
             return acc;
-        }, {} as Record<string, (SwimEvent & { detailedEntries: Entry[], globalEventNumber: number })[]>);
-    }, [events, swimmers]);
+        }, {} as Record<string, TimedEvent[]>);
+
+        // NEW: Post-process to add timing estimates
+        Object.values(sessionsData).forEach(sessionEvents => {
+            if (sessionEvents.length === 0) return;
+
+            const firstEvent = sessionEvents[0];
+            const sessionDT = firstEvent?.sessionDateTime ? new Date(firstEvent.sessionDateTime) : null;
+            let runningTime = sessionDT ? sessionDT.getTime() : null;
+
+            sessionEvents.forEach(event => {
+                if (runningTime !== null) {
+                    event.estimatedEventStartTime = runningTime; // Attach event start time
+                    
+                    const lanes = info.numberOfLanes || 8;
+                    const heats = generateHeats(event.detailedEntries, lanes);
+                    event.heatsWithTimes = [];
+                    
+                    heats.forEach(heat => {
+                        event.heatsWithTimes?.push({
+                            ...heat,
+                            estimatedHeatStartTime: runningTime
+                        });
+                        runningTime += estimateHeatDuration(event.distance); // Increment time for next heat
+                    });
+                }
+            });
+        });
+
+        return sessionsData;
+
+    }, [events, swimmers, info, records]);
 
     if (Object.keys(data).length === 0) return <p className="text-center text-text-secondary py-10">Tidak ada data untuk ditampilkan. Jadwalkan nomor lomba ke dalam sesi terlebih dahulu.</p>;
 
@@ -237,9 +290,7 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                                 </span>
                             )}
                         </h3>
-                        {sessionEvents.map(event => {
-                            const lanes = info.numberOfLanes || 8;
-                            const heats = generateHeats(event.detailedEntries, lanes);
+                        {sessionEvents.map((event: TimedEvent) => {
                             const porprovRecord = records.find(r => r.type.toUpperCase() === RecordType.PORPROV.toUpperCase() && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
                             const nasionalRecord = records.find(r => r.type.toUpperCase() === RecordType.NASIONAL.toUpperCase() && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
                             const isRelay = event.relayLegs && event.relayLegs > 1;
@@ -248,14 +299,26 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                                 <section key={event.id} className="mb-6 print-event-section">
                                     <h4 className="text-lg font-semibold bg-gray-100 p-2 rounded-t-md border-b-2 border-gray-400">
                                        {`Nomor Acara ${event.globalEventNumber}: ${formatEventName(event)}`}
+                                       {event.estimatedEventStartTime && (
+                                            <span className="font-normal text-sm block">
+                                                Estimasi Mulai: {new Date(event.estimatedEventStartTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        )}
                                     </h4>
                                     <div className="text-xs text-gray-600 my-2 px-2 border-l-2 border-gray-300 space-y-1">
                                         <PrintRecordRow record={porprovRecord} type={RecordType.PORPROV} />
                                         <PrintRecordRow record={nasionalRecord} type={RecordType.NASIONAL} />
                                     </div>
-                                    {heats.map((heat) => (
+                                    {(event.heatsWithTimes || []).map((heat: TimedHeat) => (
                                         <div key={heat.heatNumber} className="mt-3">
-                                            <h5 className="font-bold text-center mb-1">Seri {heat.heatNumber} dari {heats.length}</h5>
+                                            <h5 className="font-bold text-center mb-1">
+                                                Seri {heat.heatNumber} dari {event.heatsWithTimes?.length || 0}
+                                                {heat.estimatedHeatStartTime && (
+                                                    <span className="font-normal text-gray-600 text-sm ml-4">
+                                                        (Estimasi: {new Date(heat.estimatedHeatStartTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })})
+                                                    </span>
+                                                )}
+                                            </h5>
                                             <table className="w-full text-left text-sm">
                                                 <colgroup>
                                                     <col style={{ width: '8%' }} />
@@ -265,9 +328,9 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                                                     <col style={{ width: '27%' }} />
                                                     <col style={{ width: '15%' }} />
                                                 </colgroup>
-                                                <thead><tr><th>Lane</th><th>Nama Atlet</th><th>KU</th><th>Tahun</th><th>Nama Tim</th><th className="text-right">Waktu Unggulan</th></tr></thead>
+                                                <thead><tr><th>Lintasan</th><th>Nama Atlet</th><th>KU</th><th>Tahun</th><th>Nama Tim</th><th className="text-right">Waktu Unggulan</th></tr></thead>
                                                 <tbody>
-                                                    {Array.from({ length: lanes }, (_, i) => i + 1).map(lane => {
+                                                    {Array.from({ length: info.numberOfLanes || 8 }, (_, i) => i + 1).map(lane => {
                                                         const assignment = heat.assignments.find(a => a.lane === lane);
                                                         const displayName = assignment ? (isRelay ? assignment.entry.swimmer.club : assignment.entry.swimmer.name) : '-';
                                                         const displayClub = assignment ? assignment.entry.swimmer.club : '-';
@@ -300,7 +363,7 @@ const EventResults: React.FC<{ events: (SwimEvent & { globalEventNumber: number 
     const data = useMemo(() => {
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
         return events
-            .map((event) => {
+            .map((event: SwimEvent & { globalEventNumber: number }) => {
                 const getPenalty = (time: number) => {
                     if (time > 0) return 0; // Valid time
                     if (time === -1 || (time < 0 && time !== -2)) return 1; // DQ
@@ -358,7 +421,7 @@ const EventResults: React.FC<{ events: (SwimEvent & { globalEventNumber: number 
                                 <col style={{ width: '13%' }} />
                                 <col style={{ width: '8%' }} />
                             </colgroup>
-                            <thead><tr><th className="text-center">Rank</th><th>Nama Atlet</th><th>KU</th><th>Tahun</th><th>Nama Tim</th><th className="text-right">Waktu</th><th className="text-center">Medali</th></tr></thead>
+                            <thead><tr><th className="text-center">Peringkat</th><th>Nama Atlet</th><th>KU</th><th>Tahun</th><th>Nama Tim</th><th className="text-right">Waktu</th><th className="text-center">Medali</th></tr></thead>
                             <tbody>
                                 {event.sortedResults.map(res => {
                                     let rankClass = '';
@@ -565,7 +628,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
 
         // 1. Calculate Medals
         // FIX: Add explicit type annotations to forEach and other callbacks to resolve 'unknown' type issues.
-        events.filter(e => e.gender !== Gender.MIXED && e.results && e.results.length > 0).forEach((event: SwimEvent) => {
+        events.filter((e: SwimEvent) => e.gender !== Gender.MIXED && e.results && e.results.length > 0).forEach((event: SwimEvent) => {
             [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => {
                 const rank = i + 1;
                 const swimmer = swimmersMap.get(result.swimmerId);
@@ -855,8 +918,8 @@ const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
                                     <thead>
                                         <tr>
                                             <th className="w-16">Peringkat</th>
-                                            <th>Nama</th>
-                                            <th>Tim</th>
+                                            <th>Nama Atlet</th>
+                                            <th>Nama Tim</th>
                                             <th className="text-right">Waktu</th>
                                         </tr>
                                     </thead>
@@ -1260,7 +1323,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
                     currentRow++;
                     
-                    aoa.push(['Lane', 'Nama Atlet', 'KU', 'Tahun', 'Nama Tim', 'Waktu Unggulan']);
+                    aoa.push(['Lintasan', 'Nama Atlet', 'KU', 'Tahun', 'Nama Tim', 'Waktu Unggulan']);
                     currentRow++;
 
                     Array.from({ length: competitionInfo.numberOfLanes || 8 }, (_, i) => i + 1).forEach(lane => {
@@ -1311,7 +1374,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             aoa.push([formatEventName(event)]);
             merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
             currentRow++;
-            aoa.push(['Rank', 'Medali', 'Nama Atlet', 'KU', 'Tahun', 'Nama Tim', 'Waktu', 'Catatan']);
+            aoa.push(['Peringkat', 'Medali', 'Nama Atlet', 'KU', 'Tahun', 'Nama Tim', 'Waktu', 'Catatan']);
             currentRow++;
             
             // FIX: Add explicit type annotation to sort callback parameters to resolve 'unknown' type.
@@ -1355,7 +1418,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
         // Initialize with all clubs to include those with zero medals
         const allClubs = [...new Set(swimmers.map(s => s.club))];
-        const clubMedals = allClubs.reduce((acc: Record<string, { gold: number, silver: number, bronze: number }>, club) => {
+        const clubMedals = allClubs.reduce((acc: Record<string, { gold: number, silver: number, bronze: number }>, club: string) => {
             acc[club] = { gold: 0, silver: 0, bronze: 0 };
             return acc;
         }, {} as Record<string, { gold: number, silver: number, bronze: number }>);
@@ -1408,7 +1471,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
             const nationalRecordsMap = new Map(records.filter(r => r.type === RecordType.NASIONAL).map(r => [`${r.gender}_${r.distance}_${r.style}_${r.category ?? null}_${r.relayLegs ?? null}`, r]));
             const individualData: Record<string, IndividualStandingData> = {};
-            events.filter(e => e.gender !== Gender.MIXED && e.results && e.results.length > 0).forEach((event: SwimEvent) => {
+            events.filter((e: SwimEvent) => e.gender !== Gender.MIXED && e.results && e.results.length > 0).forEach((event: SwimEvent) => {
                 [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => {
                     const swimmer = swimmersMap.get(result.swimmerId);
                     if (swimmer) {
