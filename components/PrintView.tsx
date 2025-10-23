@@ -265,7 +265,7 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                                                     <col style={{ width: '27%' }} />
                                                     <col style={{ width: '15%' }} />
                                                 </colgroup>
-                                                <thead><tr><th>Lane</th><th>Nama</th><th>KU</th><th>Tahun</th><th>Tim</th><th className="text-right">Waktu Unggulan</th></tr></thead>
+                                                <thead><tr><th>Lane</th><th>Nama Atlet</th><th>KU</th><th>Tahun</th><th>Nama Tim</th><th className="text-right">Waktu Unggulan</th></tr></thead>
                                                 <tbody>
                                                     {Array.from({ length: lanes }, (_, i) => i + 1).map(lane => {
                                                         const assignment = heat.assignments.find(a => a.lane === lane);
@@ -358,7 +358,7 @@ const EventResults: React.FC<{ events: (SwimEvent & { globalEventNumber: number 
                                 <col style={{ width: '13%' }} />
                                 <col style={{ width: '8%' }} />
                             </colgroup>
-                            <thead><tr><th className="text-center">Rank</th><th>Nama</th><th>KU</th><th>Tahun</th><th>Tim</th><th className="text-right">Waktu</th><th className="text-center">Medali</th></tr></thead>
+                            <thead><tr><th className="text-center">Rank</th><th>Nama Atlet</th><th>KU</th><th>Tahun</th><th>Nama Tim</th><th className="text-right">Waktu</th><th className="text-center">Medali</th></tr></thead>
                             <tbody>
                                 {event.sortedResults.map(res => {
                                     let rankClass = '';
@@ -454,7 +454,7 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
                     <col style={{ width: '10%' }} />
                     <col style={{ width: '15%' }} />
                 </colgroup>
-                <thead><tr><th className="text-center">#</th><th>Tim</th><th className="text-center">🥇</th><th className="text-center">🥈</th><th className="text-center">🥉</th><th className="text-center">Total</th></tr></thead>
+                <thead><tr><th className="text-center">#</th><th>Nama Tim</th><th className="text-center">🥇</th><th className="text-center">🥈</th><th className="text-center">🥉</th><th className="text-center">Total</th></tr></thead>
                 <tbody>
                     {data.map(([club, medals], i) => (
                         <tr key={club}>
@@ -663,7 +663,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
                             <tr className="border-b border-gray-300">
                                 <th className="p-2 text-center">#</th>
                                 <th className="p-2">Nama Atlet</th>
-                                <th className="p-2">Tim</th>
+                                <th className="p-2">Nama Tim</th>
                                 <th className="p-2 text-center">🥇</th>
                                 <th className="p-2 text-center">🥈</th>
                                 <th className="p-2 text-center">🥉</th>
@@ -704,7 +704,7 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
                             <tr className="border-b border-gray-300">
                                 <th className="p-2 text-center">#</th>
                                 <th className="p-2">Nama Atlet</th>
-                                <th className="p-2">Tim</th>
+                                <th className="p-2">Nama Tim</th>
                                 <th className="p-2 text-center">🥇</th>
                                 <th className="p-2 text-center">🥈</th>
                                 <th className="p-2 text-center">🥉</th>
@@ -1001,7 +1001,7 @@ const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
                                 <th>No</th>
                                 <th>Nomor Lomba</th>
                                 <th>Nama Atlet</th>
-                                <th>Tim</th>
+                                <th>Nama Tim</th>
                                 <th>Catatan Waktu</th>
                             </tr>
                         </thead>
@@ -1260,7 +1260,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
                     currentRow++;
                     
-                    aoa.push(['Lane', 'Nama', 'KU', 'Tahun', 'Tim', 'Waktu Unggulan']);
+                    aoa.push(['Lane', 'Nama Atlet', 'KU', 'Tahun', 'Nama Tim', 'Waktu Unggulan']);
                     currentRow++;
 
                     Array.from({ length: competitionInfo.numberOfLanes || 8 }, (_, i) => i + 1).forEach(lane => {
@@ -1311,7 +1311,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             aoa.push([formatEventName(event)]);
             merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } });
             currentRow++;
-            aoa.push(['Rank', 'Medali', 'Nama Peserta', 'KU', 'Tahun', 'Tim', 'Waktu', 'Catatan']);
+            aoa.push(['Rank', 'Medali', 'Nama Atlet', 'KU', 'Tahun', 'Nama Tim', 'Waktu', 'Catatan']);
             currentRow++;
             
             // FIX: Add explicit type annotation to sort callback parameters to resolve 'unknown' type.
@@ -1382,7 +1382,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         const NUM_COLS = 6;
         const headerInfo = getExcelHeaderAOA('Rekapitulasi Medali Tim', NUM_COLS);
         const aoa: any[][] = headerInfo.aoa;
-        aoa.push(['Peringkat', 'Tim', 'Emas 🥇', 'Perak 🥈', 'Perunggu 🥉', 'Total']);
+        aoa.push(['Peringkat', 'Nama Tim', 'Emas 🥇', 'Perak 🥈', 'Perunggu 🥉', 'Total']);
         clubMedalsData.forEach(([club, medals], i) => {
             aoa.push([i + 1, club, medals.gold, medals.silver, medals.bronze, medals.gold + medals.silver + medals.bronze]);
         });
@@ -1456,7 +1456,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         const createSheet = (title: string, reportTitle: string, groups: IndividualStandingData[][]) => {
             const headerInfo = getExcelHeaderAOA(reportTitle, NUM_COLS);
             const aoa = headerInfo.aoa;
-            aoa.push(['Peringkat', 'Nama', 'Tim', 'Emas 🥇', 'Perak 🥈', 'Perunggu 🥉']);
+            aoa.push(['Peringkat', 'Nama Atlet', 'Nama Tim', 'Emas 🥇', 'Perak 🥈', 'Perunggu 🥉']);
             let rankCounter = 1;
             groups.forEach((group: IndividualStandingData[]) => { group.forEach(d => { aoa.push([rankCounter++, d.swimmer.name, d.swimmer.club, d.gold, d.silver, d.bronze]); }); });
             const worksheet = XLSX.utils.aoa_to_sheet(aoa);
@@ -1573,7 +1573,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             const summaryText = `Emas: ${counts.gold}, Perak: ${counts.silver}, Perunggu: ${counts.bronze}`;
             aoa.push([`${clubName}`]); merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } }); currentRow++;
             aoa.push([summaryText]); merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: NUM_COLS - 1 } }); currentRow++;
-            aoa.push(['No', 'Medali', 'Nomor Lomba', 'Nama Atlet', 'Tim', 'Catatan Waktu', 'Keterangan']); currentRow++;
+            aoa.push(['No', 'Medali', 'Nomor Lomba', 'Nama Atlet', 'Nama Tim', 'Catatan Waktu', 'Keterangan']); currentRow++;
             medals.forEach((medal, index) => {
                 const medalText = medal.rank === 1 ? 'Emas' : medal.rank === 2 ? 'Perak' : 'Perunggu';
                 const note = medal.recordBreakType ? `REKOR BARU ${medal.recordBreakType}` : '';

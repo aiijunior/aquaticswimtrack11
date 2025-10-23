@@ -225,8 +225,8 @@ export const PublicResultsView: React.FC<PublicResultsViewProps> = ({ onAdminLog
                                             <thead>
                                                 <tr className="border-b-2 border-border text-sm text-text-secondary uppercase">
                                                     <th className="p-2 font-semibold text-center w-16">Peringkat</th>
-                                                    <th className="p-2 font-semibold">Nama</th>
-                                                    <th className="p-2 font-semibold hidden md:table-cell">Klub</th>
+                                                    <th className="p-2 font-semibold">Nama Peserta</th>
+                                                    <th className="p-2 font-semibold hidden md:table-cell">Klub/Tim</th>
                                                     <th className="p-2 font-semibold text-right">Waktu</th>
                                                 </tr>
                                             </thead>

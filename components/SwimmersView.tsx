@@ -444,7 +444,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                     <th className="p-3">Tahun Lahir</th>
                     <th className="p-3">Jenis Kelamin</th>
                     <th className="p-3">KU</th>
-                    <th className="p-3">Tim</th>
+                    <th className="p-3">Nama Tim</th>
                     <th className="p-3 text-center">Aksi</th>
                   </tr>
                 </thead>

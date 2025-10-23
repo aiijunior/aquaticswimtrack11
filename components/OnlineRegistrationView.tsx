@@ -296,7 +296,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             });
 
             // Previously registered events (without seed time, as we don't have it easily)
-            // FIX: Added a null check `|| []` and explicitly typed the `event` parameter in the `.map()` callback to `FormattableEvent`. This resolves an error where `result.previouslyRegisteredEvents` was inferred as `unknown`, making array methods unavailable.
+            // Fix for 'map' does not exist on type 'unknown'. Add a null check and explicitly type the event parameter.
             const previouslyRegisteredEventsList = (result.previouslyRegisteredEvents || []).map((event: FormattableEvent) => {
                 const formattableEvent: FormattableEvent = {
                     distance: event.distance,
@@ -309,7 +309,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             });
 
             // Combine all event strings and sort them for a clean list
-            // FIX: Corrected typo from `newlyRegisteredEvents` to `newlyRegisteredEventsList`.
+            // Fix for typo from newlyRegisteredEvents to newlyRegisteredEventsList.
             const allRegisteredEventsString = [
                 ...newlyRegisteredEventsList,
                 ...previouslyRegisteredEventsList,

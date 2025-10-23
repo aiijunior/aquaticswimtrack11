@@ -253,7 +253,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
                     {clubMedals.length > 0 ? (
                         <div className="overflow-y-auto max-h-96">
                             <table className="w-full text-left">
-                                <thead><tr className="border-b-2 border-border"><th className="p-2 w-12 text-center">#</th><th className="p-2">Tim</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
+                                <thead><tr className="border-b-2 border-border"><th className="p-2 w-12 text-center">#</th><th className="p-2">Nama Tim</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
                                 <tbody>{clubMedals.map(([club, medals], index) => (<tr key={club} className="border-b border-border last:border-b-0 hover:bg-background"><td className="p-2 text-center font-bold">{index + 1}</td><td className="p-2 font-semibold">{club}</td><td className="p-2 text-center">{medals.gold}</td><td className="p-2 text-center">{medals.silver}</td><td className="p-2 text-center">{medals.bronze}</td></tr>))}</tbody>
                             </table>
                         </div>
@@ -270,7 +270,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
                                 <h3 className="text-lg font-semibold text-center p-2 rounded-t-lg bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200">Putra</h3>
                                 <div className="overflow-y-auto max-h-80">
                                     <table className="w-full text-left">
-                                        <thead><tr className="border-b-2 border-border"><th className="p-2 w-8 text-center">#</th><th className="p-2">Nama</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
+                                        <thead><tr className="border-b-2 border-border"><th className="p-2 w-8 text-center">#</th><th className="p-2">Nama Atlet</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
                                         <tbody>
                                         {maleIndividualMedals.length > 0 ? (
                                             maleIndividualMedals.map((data, index) => (
@@ -292,7 +292,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
                                 <h3 className="text-lg font-semibold text-center p-2 rounded-t-lg bg-pink-100 dark:bg-pink-900/50 text-pink-800 dark:text-pink-200">Putri</h3>
                                 <div className="overflow-y-auto max-h-80">
                                      <table className="w-full text-left">
-                                        <thead><tr className="border-b-2 border-border"><th className="p-2 w-8 text-center">#</th><th className="p-2">Nama</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
+                                        <thead><tr className="border-b-2 border-border"><th className="p-2 w-8 text-center">#</th><th className="p-2">Nama Atlet</th><th className="p-2 text-center">🥇</th><th className="p-2 text-center">🥈</th><th className="p-2 text-center">🥉</th></tr></thead>
                                         <tbody>
                                         {femaleIndividualMedals.length > 0 ? (
                                             femaleIndividualMedals.map((data, index) => (
@@ -346,7 +346,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ events, swimmers, isLo
                         {expandedEventId === event.id && (
                              <div className="pb-4 px-4"><div className="mt-2 pt-4 border-t border-border overflow-x-auto">
                                 <table className="w-full text-left">
-                                    <thead><tr className="border-b border-border"><th className="p-2 text-center w-12">Rank</th><th className="p-2">Nama</th><th className="p-2">Tim</th><th className="p-2 text-right">Waktu</th><th className="p-2 text-center w-16">Medali</th></tr></thead>
+                                    <thead><tr className="border-b border-border"><th className="p-2 text-center w-12">Rank</th><th className="p-2">Nama Peserta</th><th className="p-2">Klub/Tim</th><th className="p-2 text-right">Waktu</th><th className="p-2 text-center w-16">Medali</th></tr></thead>
                                     <tbody>{event.sortedResults.map(result => (
                                         <tr key={result.swimmerId} className="border-b border-border last:border-b-0 text-sm hover:bg-background">
                                             <td className="p-2 text-center font-bold">{result.rank > 0 ? result.rank : formatTime(result.time)}</td>
