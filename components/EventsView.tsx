@@ -299,7 +299,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         },
         {
             "Jarak (m)": 100, // Distance per leg
-            "Gaya": "Gaya Ganti",
+            "Gaya": "Gaya Ganti Perorangan",
             "Jenis Kelamin": "Campuran",
             "Kategori": "KU-3",
             "Jumlah Atlet": 4 // Relay event
@@ -570,7 +570,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.gender}
                 onChange={(e) => setNewEvent({ ...newEvent, gender: e.target.value as Gender })}
             >
-                {/* FIX: Explicitly cast `GENDER_OPTIONS` to `Gender[]` to resolve the issue where its type was being inferred as `unknown`, causing the `.map()` method to be unavailable. */}
+                {/* FIX: Explicitly cast `GENDER_OPTIONS` to `Gender[]` to resolve an error where its type was inferred as `unknown`, causing the `.map()` method to be unavailable. */}
                 {(GENDER_OPTIONS as Gender[]).filter(gender => newEvent.isRelay || gender !== Gender.MIXED).map((gender: Gender) => (
                 <option key={gender} value={gender}>
                     {translateGender(gender)}

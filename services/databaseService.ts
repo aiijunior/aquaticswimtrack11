@@ -507,6 +507,7 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
     let successCount = 0;
     
     const styleReverseMap = new Map(Object.entries(SWIM_STYLE_TRANSLATIONS).map(([key, value]) => [value.toLowerCase(), key as SwimStyle]));
+    styleReverseMap.set('gaya ganti', SwimStyle.MEDLEY); // Alias for backward compatibility
     styleReverseMap.set('kickboard', SwimStyle.PAPAN_LUNCUR); // Alias for Kickboard
     const genderReverseMap = new Map(Object.entries(GENDER_TRANSLATIONS).map(([key, value]) => [value.toLowerCase(), key as Gender]));
 
@@ -560,6 +561,7 @@ export const processRecordUpload = async (data: any[]): Promise<{ success: numbe
     await deleteAllRecords();
     
     const styleReverseMap = new Map(Object.entries(SWIM_STYLE_TRANSLATIONS).map(([key, value]) => [value.toLowerCase(), key as SwimStyle]));
+    styleReverseMap.set('gaya ganti', SwimStyle.MEDLEY); // Alias for backward compatibility
     styleReverseMap.set('kickboard', SwimStyle.PAPAN_LUNCUR); // Alias for Kickboard
     const genderReverseMap = new Map(Object.entries(GENDER_TRANSLATIONS).map(([key, value]) => [value.toLowerCase(), key as Gender]));
 

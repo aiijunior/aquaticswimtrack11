@@ -457,7 +457,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             {
                 "Tipe Rekor": "PORPROV",
                 "Jarak (m)": 100,
-                "Gaya": "Gaya Ganti",
+                "Gaya": "Gaya Ganti Perorangan",
                 "Jenis Kelamin": "Campuran",
                 "Kategori": "KU-3",
                 "Waktu (mm:ss.SS)": "04:01.88",

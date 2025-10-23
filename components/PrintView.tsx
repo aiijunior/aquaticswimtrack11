@@ -398,7 +398,8 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
     const data = useMemo(() => {
         // Initialize clubMedals with all unique clubs from the swimmers list.
         const allClubs = [...new Set(swimmers.map(s => s.club))];
-        const clubMedals: Record<string, { gold: number, silver: number, bronze: number }> = allClubs.reduce((acc: Record<string, { gold: number, silver: number, bronze: number }>, club) => {
+        // FIX: Explicitly type `club` parameter to resolve index signature error on `acc`.
+        const clubMedals: Record<string, { gold: number, silver: number, bronze: number }> = allClubs.reduce((acc, club: string) => {
             acc[club] = { gold: 0, silver: 0, bronze: 0 };
             return acc;
         }, {} as Record<string, { gold: number, silver: number, bronze: number }>);

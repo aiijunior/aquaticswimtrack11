@@ -18,7 +18,7 @@ export const SWIM_STYLE_TRANSLATIONS: Record<SwimStyle, string> = {
     [SwimStyle.BACKSTROKE]: "Gaya Punggung",
     [SwimStyle.BREASTSTROKE]: "Gaya Dada",
     [SwimStyle.BUTTERFLY]: "Gaya Kupu-kupu",
-    [SwimStyle.MEDLEY]: "Gaya Ganti",
+    [SwimStyle.MEDLEY]: "Gaya Ganti Perorangan",
     [SwimStyle.PAPAN_LUNCUR]: "Papan Luncur / Kickboard",
 };
 
@@ -26,13 +26,18 @@ export const translateGender = (gender: Gender): string => GENDER_TRANSLATIONS[g
 export const translateSwimStyle = (style: SwimStyle): string => SWIM_STYLE_TRANSLATIONS[style] || style;
 
 export const formatEventName = (event: FormattableEvent): string => {
-    const style = translateSwimStyle(event.style);
+    let style = translateSwimStyle(event.style);
     const gender = translateGender(event.gender);
     const category = event.category ? `${event.category} ` : '';
 
     if (event.relayLegs && event.relayLegs > 1) {
+        if (event.style === SwimStyle.MEDLEY) {
+            style = "Gaya Ganti"; // For relays, just "Gaya Ganti"
+        }
         return `${event.relayLegs} x ${event.distance}m Estafet ${style} ${category}${gender}`;
     }
+    
+    // For individual events, the default translation is now "Gaya Ganti Perorangan", which is correct.
     return `${event.distance}m ${style} ${category}${gender}`;
 };
 
