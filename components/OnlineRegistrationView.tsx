@@ -296,9 +296,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             });
 
             // Previously registered events (without seed time, as we don't have it easily)
-            // FIX: Cast `result.previouslyRegisteredEvents` to an array to resolve 'unknown' type error on `.map` and `.length`.
-            // FIX: Explicitly typing the event parameter to resolve 'unknown' type.
-            const previouslyRegisteredEventsList = ((result.previouslyRegisteredEvents || []) as FormattableEvent[]).map((event: FormattableEvent) => {
+            // FIX: Added a null check `|| []` and explicitly typed the `event` parameter in the `.map()` callback to `FormattableEvent`. This resolves an error where `result.previouslyRegisteredEvents` was inferred as `unknown`, making array methods unavailable.
+            const previouslyRegisteredEventsList = (result.previouslyRegisteredEvents || []).map((event: FormattableEvent) => {
                 const formattableEvent: FormattableEvent = {
                     distance: event.distance,
                     style: event.style,

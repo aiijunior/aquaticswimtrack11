@@ -512,7 +512,15 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                     id="isRelay" 
                     className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
                     checked={newEvent.isRelay} 
-                    onChange={e => setNewEvent({...newEvent, isRelay: e.target.checked})} 
+                    onChange={e => {
+                        const isRelay = e.target.checked;
+                        setNewEvent(prev => ({
+                            ...prev, 
+                            isRelay,
+                            // If not a relay, and current gender is Mixed, reset to Male.
+                            gender: !isRelay && prev.gender === Gender.MIXED ? Gender.MALE : prev.gender
+                        }));
+                    }} 
                 />
                 <label htmlFor="isRelay" className="font-medium text-text-primary">Nomor Estafet (Relay)</label>
             </div>
@@ -562,8 +570,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.gender}
                 onChange={(e) => setNewEvent({ ...newEvent, gender: e.target.value as Gender })}
             >
-                {/* FIX: Add explicit type annotation for the 'gender' parameter to resolve type inference issues. */}
-                {GENDER_OPTIONS.map((gender: Gender) => (
+                {/* FIX: Explicitly cast `GENDER_OPTIONS` to `Gender[]` to resolve the issue where its type was being inferred as `unknown`, causing the `.map()` method to be unavailable. */}
+                {(GENDER_OPTIONS as Gender[]).filter(gender => newEvent.isRelay || gender !== Gender.MIXED).map((gender: Gender) => (
                 <option key={gender} value={gender}>
                     {translateGender(gender)}
                 </option>
