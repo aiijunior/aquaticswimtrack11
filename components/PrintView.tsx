@@ -1117,7 +1117,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const [activeTab, setActiveTab] = useState<PrintTab>('scheduleOfEvents');
     const [records, setRecords] = useState<SwimRecord[]>([]);
     const [isDownloading, setIsDownloading] = useState(false);
-    const [selectedEventIdForPrint, setSelectedEventIdForPrint] = useState<string>('all');
+    const [selectedEventIdsForPrint, setSelectedEventIdsForPrint] = useState<string[]>([]);
     const [selectedClubForRecap, setSelectedClubForRecap] = useState<string>('all');
 
     const uniqueClubs = useMemo(() => {
@@ -1182,6 +1182,12 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 globalEventNumber: globalEventCounter++,
             }));
     }, [events]);
+
+    useEffect(() => {
+        if (numberedEventsWithResults.length > 0) {
+            setSelectedEventIdsForPrint(numberedEventsWithResults.map(e => e.id));
+        }
+    }, [numberedEventsWithResults]);
     
     // --- EXCEL DOWNLOAD LOGIC ---
     const getExcelHeaderAOA = (reportTitle: string, numCols: number): { aoa: any[][], merges: any[], currentRow: number } => {
@@ -1681,6 +1687,22 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             setIsDownloading(false);
         }
     };
+    
+    const handleEventSelectionChange = (eventId: string) => {
+        setSelectedEventIdsForPrint(prev =>
+            prev.includes(eventId)
+                ? prev.filter(id => id !== eventId)
+                : [...prev, eventId]
+        );
+    };
+
+    const handleSelectAllEventsForPrint = () => {
+        setSelectedEventIdsForPrint(numberedEventsWithResults.map(e => e.id));
+    };
+
+    const handleDeselectAllEventsForPrint = () => {
+        setSelectedEventIdsForPrint([]);
+    };
 
     const renderContent = () => {
         if (isLoading) return <div className="flex justify-center items-center py-20"><Spinner /></div>;
@@ -1690,9 +1712,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             case 'scheduleOfEvents': return <ScheduleOfEvents events={events} />;
             case 'programBook': return <ProgramBook events={events} swimmers={swimmers} info={competitionInfo} records={records} />;
             case 'eventResults': {
-                const filteredEvents = selectedEventIdForPrint === 'all'
-                    ? numberedEventsWithResults
-                    : numberedEventsWithResults.filter(e => e.id === selectedEventIdForPrint);
+                const filteredEvents = numberedEventsWithResults.filter(e => selectedEventIdsForPrint.includes(e.id));
                 const filteredBrokenRecords = brokenRecords.filter(br => 
                     filteredEvents.some(fe => formatEventName(fe) === br.newEventName)
                 );
@@ -1715,14 +1735,19 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     );
 
     const printTitle = useMemo(() => {
-        if (activeTab === 'eventResults' && selectedEventIdForPrint !== 'all') {
-            const selectedEvent = numberedEventsWithResults.find(e => e.id === selectedEventIdForPrint);
-            if (selectedEvent) {
-                return `Hasil Acara ${selectedEvent.globalEventNumber}: ${formatEventName(selectedEvent)}`;
+        if (activeTab === 'eventResults') {
+            if (selectedEventIdsForPrint.length === 1) {
+                const selectedEvent = numberedEventsWithResults.find(e => e.id === selectedEventIdsForPrint[0]);
+                if (selectedEvent) {
+                    return `Hasil Acara ${selectedEvent.globalEventNumber}: ${formatEventName(selectedEvent)}`;
+                }
+            }
+            if (selectedEventIdsForPrint.length > 1 && selectedEventIdsForPrint.length < numberedEventsWithResults.length) {
+                return `Hasil Lomba (${selectedEventIdsForPrint.length} nomor terpilih)`;
             }
         }
         return PRINT_TITLES[activeTab] || 'Laporan Kompetisi';
-    }, [activeTab, selectedEventIdForPrint, numberedEventsWithResults]);
+    }, [activeTab, selectedEventIdsForPrint, numberedEventsWithResults]);
 
 
     return (
@@ -1753,22 +1778,29 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     </div>
                     {activeTab === 'eventResults' && numberedEventsWithResults.length > 0 && (
                         <div className="p-4 border-b border-border">
-                            <label htmlFor="event-print-select" className="block text-sm font-medium text-text-secondary mb-1">
-                                Pilih Nomor Lomba untuk Dicetak
+                            <label className="block text-sm font-medium text-text-secondary mb-2">
+                                Pilih Nomor Lomba untuk Dicetak ({selectedEventIdsForPrint.length} terpilih)
                             </label>
-                            <select
-                                id="event-print-select"
-                                value={selectedEventIdForPrint}
-                                onChange={(e) => setSelectedEventIdForPrint(e.target.value)}
-                                className="w-full bg-background border border-border rounded-md px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
-                            >
-                                <option value="all">Semua Nomor Lomba</option>
+                            <div className="flex space-x-2 mb-2">
+                                <Button onClick={handleSelectAllEventsForPrint} variant="secondary" className="px-3 py-1 text-xs">Pilih Semua</Button>
+                                <Button onClick={handleDeselectAllEventsForPrint} variant="secondary" className="px-3 py-1 text-xs">Hapus Pilihan</Button>
+                            </div>
+                            <div className="max-h-60 overflow-y-auto border border-border rounded-md p-2 space-y-1 bg-background">
                                 {numberedEventsWithResults.map(event => (
-                                    <option key={event.id} value={event.id}>
-                                        {`No. Acara ${event.globalEventNumber}: ${formatEventName(event)}`}
-                                    </option>
+                                    <div key={event.id} className="flex items-center hover:bg-surface p-1 rounded">
+                                        <input
+                                            type="checkbox"
+                                            id={`event-check-${event.id}`}
+                                            checked={selectedEventIdsForPrint.includes(event.id)}
+                                            onChange={() => handleEventSelectionChange(event.id)}
+                                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <label htmlFor={`event-check-${event.id}`} className="ml-3 text-sm text-text-primary cursor-pointer flex-grow">
+                                            {`No. Acara ${event.globalEventNumber}: ${formatEventName(event)}`}
+                                        </label>
+                                    </div>
                                 ))}
-                            </select>
+                            </div>
                         </div>
                     )}
                     {activeTab === 'clubAthleteRecap' && (
