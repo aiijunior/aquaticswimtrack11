@@ -1118,6 +1118,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const [records, setRecords] = useState<SwimRecord[]>([]);
     const [isDownloading, setIsDownloading] = useState(false);
     const [selectedEventIdsForPrint, setSelectedEventIdsForPrint] = useState<string[]>([]);
+    const [selectedEventIdsForProgramBook, setSelectedEventIdsForProgramBook] = useState<string[]>([]);
     const [selectedClubForRecap, setSelectedClubForRecap] = useState<string>('all');
 
     const uniqueClubs = useMemo(() => {
@@ -1182,12 +1183,29 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 globalEventNumber: globalEventCounter++,
             }));
     }, [events]);
+    
+    const scheduledEvents = useMemo(() => {
+        let globalEventCounter = 1;
+        return events
+            .filter((e: SwimEvent) => e.sessionNumber && e.sessionNumber > 0)
+            .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0))
+            .map((event) => ({
+                ...event,
+                globalEventNumber: globalEventCounter++,
+            }));
+    }, [events]);
 
     useEffect(() => {
         if (numberedEventsWithResults.length > 0) {
             setSelectedEventIdsForPrint(numberedEventsWithResults.map(e => e.id));
         }
     }, [numberedEventsWithResults]);
+    
+    useEffect(() => {
+        if (scheduledEvents.length > 0) {
+            setSelectedEventIdsForProgramBook(scheduledEvents.map(e => e.id));
+        }
+    }, [scheduledEvents]);
     
     // --- EXCEL DOWNLOAD LOGIC ---
     const getExcelHeaderAOA = (reportTitle: string, numCols: number): { aoa: any[][], merges: any[], currentRow: number } => {
@@ -1278,7 +1296,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         let globalEventCounter = 1;
         const programBookData = (() => {
             const scheduledEvents = events
-                .filter((e: SwimEvent) => e.sessionNumber && e.sessionNumber > 0)
+                .filter((e: SwimEvent) => selectedEventIdsForProgramBook.includes(e.id))
                 .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
             return scheduledEvents.reduce((acc: Record<string, (SwimEvent & { detailedEntries: Entry[] })[]>, event: SwimEvent) => {
                 const sessionName = `Sesi ${romanize(event.sessionNumber!)}`;
@@ -1377,7 +1395,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         const merges: any[] = headerInfo.merges;
         let currentRow = headerInfo.currentRow;
 
-        const sortedEvents = events.filter(e => e.results && e.results.length > 0)
+        const sortedEvents = events.filter(e => selectedEventIdsForPrint.includes(e.id))
             .sort((a,b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
 
         // FIX: Add explicit type annotation to forEach callback parameter to resolve 'unknown' type.
@@ -1703,6 +1721,22 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const handleDeselectAllEventsForPrint = () => {
         setSelectedEventIdsForPrint([]);
     };
+    
+    const handleProgramBookSelectionChange = (eventId: string) => {
+        setSelectedEventIdsForProgramBook(prev =>
+            prev.includes(eventId)
+                ? prev.filter(id => id !== eventId)
+                : [...prev, eventId]
+        );
+    };
+
+    const handleSelectAllProgramBookEvents = () => {
+        setSelectedEventIdsForProgramBook(scheduledEvents.map(e => e.id));
+    };
+
+    const handleDeselectAllProgramBookEvents = () => {
+        setSelectedEventIdsForProgramBook([]);
+    };
 
     const renderContent = () => {
         if (isLoading) return <div className="flex justify-center items-center py-20"><Spinner /></div>;
@@ -1710,7 +1744,10 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
         switch (activeTab) {
             case 'scheduleOfEvents': return <ScheduleOfEvents events={events} />;
-            case 'programBook': return <ProgramBook events={events} swimmers={swimmers} info={competitionInfo} records={records} />;
+            case 'programBook': {
+                const filteredEventsForProgramBook = events.filter(e => selectedEventIdsForProgramBook.includes(e.id));
+                return <ProgramBook events={filteredEventsForProgramBook} swimmers={swimmers} info={competitionInfo} records={records} />;
+            }
             case 'eventResults': {
                 const filteredEvents = numberedEventsWithResults.filter(e => selectedEventIdsForPrint.includes(e.id));
                 const filteredBrokenRecords = brokenRecords.filter(br => 
@@ -1776,6 +1813,33 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                         <TabButton tab="individualStandings" label="Klasemen Perorangan" />
                         <TabButton tab="brokenRecords" label="Rekor Terpecahkan" />
                     </div>
+                     {activeTab === 'programBook' && scheduledEvents.length > 0 && (
+                        <div className="p-4 border-b border-border">
+                            <label className="block text-sm font-medium text-text-secondary mb-2">
+                                Pilih Nomor Lomba untuk Dicetak ({selectedEventIdsForProgramBook.length} terpilih)
+                            </label>
+                            <div className="flex space-x-2 mb-2">
+                                <Button onClick={handleSelectAllProgramBookEvents} variant="secondary" className="px-3 py-1 text-xs">Pilih Semua</Button>
+                                <Button onClick={handleDeselectAllProgramBookEvents} variant="secondary" className="px-3 py-1 text-xs">Hapus Pilihan</Button>
+                            </div>
+                            <div className="max-h-60 overflow-y-auto border border-border rounded-md p-2 space-y-1 bg-background">
+                                {scheduledEvents.map(event => (
+                                    <div key={event.id} className="flex items-center hover:bg-surface p-1 rounded">
+                                        <input
+                                            type="checkbox"
+                                            id={`program-book-check-${event.id}`}
+                                            checked={selectedEventIdsForProgramBook.includes(event.id)}
+                                            onChange={() => handleProgramBookSelectionChange(event.id)}
+                                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <label htmlFor={`program-book-check-${event.id}`} className="ml-3 text-sm text-text-primary cursor-pointer flex-grow">
+                                            {`No. Acara ${event.globalEventNumber}: ${formatEventName(event)}`}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                     {activeTab === 'eventResults' && numberedEventsWithResults.length > 0 && (
                         <div className="p-4 border-b border-border">
                             <label className="block text-sm font-medium text-text-secondary mb-2">
