@@ -63,12 +63,12 @@ const Medal = ({ rank }: { rank: number }) => {
 };
 
 const estimateHeatDuration = (distance: number): number => {
-    if (distance <= 50) return 2 * 60 * 1000; // 2 mins
-    if (distance <= 100) return 3 * 60 * 1000; // 3 mins
-    if (distance <= 200) return 5 * 60 * 1000; // 5 mins
-    if (distance <= 400) return 8 * 60 * 1000; // 8 mins
-    if (distance <= 800) return 15 * 60 * 1000; // 15 mins
-    if (distance <= 1500) return 25 * 60 * 1000; // 25 mins
+    if (distance <= 50) return 2 * 60 * 1000; // 2 menit
+    if (distance <= 100) return 3 * 60 * 1000; // 3 menit
+    if (distance <= 200) return 5 * 60 * 1000; // 5 menit
+    if (distance <= 400) return 7 * 60 * 1000; // 7 menit
+    if (distance <= 800) return 11 * 60 * 1000; // 11 menit (dari rentang 11-12)
+    if (distance <= 1500) return 24 * 60 * 1000; // 24 menit (dari rentang 23-25)
     return 5 * 60 * 1000; // Default
 };
 
@@ -304,7 +304,7 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                                        {`Nomor Acara ${event.globalEventNumber}: ${formatEventName(event)}`}
                                        {event.estimatedEventStartTime && (
                                             <span className="font-normal text-sm block">
-                                                Estimasi Mulai: {new Date(event.estimatedEventStartTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                                Perkiraan waktu: {new Date(event.estimatedEventStartTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         )}
                                     </h4>
@@ -319,7 +319,7 @@ const ProgramBook: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: Co
                                                 Seri {heat.heatNumber} dari {event.heatsWithTimes?.length || 0}
                                                 {heat.estimatedHeatStartTime && (
                                                     <span className="font-normal text-gray-600 text-sm ml-4">
-                                                        (Estimasi: {new Date(heat.estimatedHeatStartTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })})
+                                                        (Perkiraan waktu: {new Date(heat.estimatedHeatStartTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })})
                                                     </span>
                                                 )}
                                             </h5>
@@ -376,11 +376,12 @@ const EventResults: React.FC<{ events: (SwimEvent & { globalEventNumber: number 
                 };
                 
                 const validResultsForRanking = [...(event.results as Result[])]
-                    .filter(r => r.time > 0)
-                    .sort((a, b) => a.time - b.time);
+                    // FIX: Add explicit type annotation to filter callback parameter to resolve 'unknown' type.
+                    .filter((r: Result) => r.time > 0)
+                    // FIX: Add explicit type annotation to sort callback parameters to resolve 'unknown' type.
+                    .sort((a: Result, b: Result) => a.time - b.time);
     
                 const sortedResults = [...(event.results as Result[])]
-                    // FIX: Add explicit type annotation to sort callback parameters to resolve 'unknown' type.
                     .sort((a: Result,b: Result) => {
                         if (a.time > 0 && b.time > 0) return a.time - b.time;
                         return getPenalty(a.time) - getPenalty(b.time);
@@ -459,6 +460,93 @@ const EventResults: React.FC<{ events: (SwimEvent & { globalEventNumber: number 
             })}
         </main>
     );
+};
+
+// FIX: Corrected the type of the `swimmers` prop from `SwimEvent[]` to `Swimmer[]`.
+const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo }> = ({ events, swimmers, info }) => {
+    const data = useMemo(() => {
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
+        
+        const getCategoryKey = (event: SwimEvent): string => {
+            const category = event.category?.trim() || 'Umum';
+            return category;
+        };
+
+        const eventsWithWinners = events
+            .filter((e: SwimEvent) => e.results && e.results.length > 0)
+            .map((event: SwimEvent) => ({
+                ...event,
+                winners: [...event.results]
+                    .filter((r: Result) => r.time > 0)
+                    .sort((a: Result,b: Result) => a.time - b.time)
+                    .slice(0, 3)
+                    .map((result: Result, i: number) => ({
+                        rank: i + 1,
+                        time: result.time,
+                        swimmer: swimmersMap.get(result.swimmerId)
+                    })),
+                categoryKey: getCategoryKey(event)
+            }))
+            .filter(e => e.winners.length > 0);
+        
+        const groupedByCategory = eventsWithWinners.reduce((acc: Record<string, typeof eventsWithWinners>, event) => {
+            if (!acc[event.categoryKey]) {
+                acc[event.categoryKey] = [];
+            }
+            acc[event.categoryKey].push(event);
+            return acc;
+        }, {} as Record<string, typeof eventsWithWinners>);
+
+        return Object.entries(groupedByCategory).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
+        
+    }, [events, swimmers]);
+
+    const hasData = data.length > 0;
+
+    if (!hasData) return <p className="text-center text-text-secondary py-10">Tidak ada juara untuk ditampilkan.</p>;
+
+    return (
+        <main>
+            {data.map(([categoryKey, categoryEvents]) => (
+                <section key={categoryKey} className="mb-6">
+                    <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md text-center">{categoryKey}</h3>
+                    <div className="space-y-4">
+                        {categoryEvents.sort((a,b) => formatEventName(a).localeCompare(formatEventName(b))).map(event => (
+                            <div key={event.id}>
+                                <h4 className="text-lg font-semibold">{formatEventName(event)}</h4>
+                                <table className="w-full text-left text-sm mt-1">
+                                    <colgroup>
+                                        <col style={{ width: '15%' }} />
+                                        <col style={{ width: '35%' }} />
+                                        <col style={{ width: '35%' }} />
+                                        <col style={{ width: '15%' }} />
+                                    </colgroup>
+                                    <thead>
+                                        <tr>
+                                            <th className="w-16">Peringkat</th>
+                                            <th>Nama Atlet</th>
+                                            <th>Nama Tim</th>
+                                            <th className="text-right">Waktu</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {event.winners.map(winner => (
+                                            <tr key={winner.swimmer?.id}>
+                                                <td className="font-bold text-center">{winner.rank} <Medal rank={winner.rank} /></td>
+                                                <td>{winner.swimmer?.name || 'N/A'}</td>
+                                                <td>{winner.swimmer?.club || 'N/A'}</td>
+                                                <td className="text-right font-mono">{formatTime(winner.time)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            ))}
+        </main>
+    )
 };
 
 const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo }> = ({ events, swimmers, info }) => {
@@ -635,15 +723,12 @@ const IndividualStandings: React.FC<{ events: SwimEvent[]; swimmers: Swimmer[]; 
         // FIX: Add explicit type annotations to forEach and other callbacks to resolve 'unknown' type issues.
         events.filter((e: SwimEvent) => e.gender !== Gender.MIXED && e.results && e.results.length > 0).forEach((event: SwimEvent) => {
             [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => {
-                const rank = i + 1;
                 const swimmer = swimmersMap.get(result.swimmerId);
                 if (swimmer) {
                     if (!individualData[swimmer.id]) {
                         individualData[swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0, tiebreakerScore: 0, tiebreakerDetails: [] };
                     }
-                    if (rank === 1) individualData[swimmer.id].gold++;
-                    else if (rank === 2) individualData[swimmer.id].silver++;
-                    else if (rank === 3) individualData[swimmer.id].bronze++;
+                    if (i === 0) individualData[swimmer.id].gold++; else if (i === 1) individualData[swimmer.id].silver++; else if (i === 2) individualData[swimmer.id].bronze++;
                 }
             });
         });
@@ -859,93 +944,6 @@ const BrokenRecordsReport: React.FC<{ brokenRecords: BrokenRecord[], info: Compe
             </table>
         </main>
     );
-};
-
-// FIX: Corrected the type of the `swimmers` prop from `SwimEvent[]` to `Swimmer[]`.
-const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo }> = ({ events, swimmers, info }) => {
-    const data = useMemo(() => {
-        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-        
-        const getCategoryKey = (event: SwimEvent): string => {
-            const category = event.category?.trim() || 'Umum';
-            return category;
-        };
-
-        const eventsWithWinners = events
-            .filter((e: SwimEvent) => e.results && e.results.length > 0)
-            .map((event: SwimEvent) => ({
-                ...event,
-                winners: [...event.results]
-                    .filter((r: Result) => r.time > 0)
-                    .sort((a: Result,b: Result) => a.time - b.time)
-                    .slice(0, 3)
-                    .map((result: Result, i: number) => ({
-                        rank: i + 1,
-                        time: result.time,
-                        swimmer: swimmersMap.get(result.swimmerId)
-                    })),
-                categoryKey: getCategoryKey(event)
-            }))
-            .filter(e => e.winners.length > 0);
-        
-        const groupedByCategory = eventsWithWinners.reduce((acc: Record<string, typeof eventsWithWinners>, event) => {
-            if (!acc[event.categoryKey]) {
-                acc[event.categoryKey] = [];
-            }
-            acc[event.categoryKey].push(event);
-            return acc;
-        }, {} as Record<string, typeof eventsWithWinners>);
-
-        return Object.entries(groupedByCategory).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
-        
-    }, [events, swimmers]);
-
-    const hasData = data.length > 0;
-
-    if (!hasData) return <p className="text-center text-text-secondary py-10">Tidak ada juara untuk ditampilkan.</p>;
-
-    return (
-        <main>
-            {data.map(([categoryKey, categoryEvents]) => (
-                <section key={categoryKey} className="mb-6">
-                    <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md text-center">{categoryKey}</h3>
-                    <div className="space-y-4">
-                        {categoryEvents.sort((a,b) => formatEventName(a).localeCompare(formatEventName(b))).map(event => (
-                            <div key={event.id}>
-                                <h4 className="text-lg font-semibold">{formatEventName(event)}</h4>
-                                <table className="w-full text-left text-sm mt-1">
-                                    <colgroup>
-                                        <col style={{ width: '15%' }} />
-                                        <col style={{ width: '35%' }} />
-                                        <col style={{ width: '35%' }} />
-                                        <col style={{ width: '15%' }} />
-                                    </colgroup>
-                                    <thead>
-                                        <tr>
-                                            <th className="w-16">Peringkat</th>
-                                            <th>Nama Atlet</th>
-                                            <th>Nama Tim</th>
-                                            <th className="text-right">Waktu</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {event.winners.map(winner => (
-                                            <tr key={winner.swimmer?.id}>
-                                                <td className="font-bold text-center">{winner.rank} <Medal rank={winner.rank} /></td>
-                                                <td>{winner.swimmer?.name || 'N/A'}</td>
-                                                <td>{winner.swimmer?.club || 'N/A'}</td>
-                                                <td className="text-right font-mono">{formatTime(winner.time)}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-            ))}
-        </main>
-    )
 };
 
 const ClubAthleteMedalRecap: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo, brokenRecords: BrokenRecord[], selectedClub: string }> = ({ events, swimmers, info, brokenRecords, selectedClub }) => {
