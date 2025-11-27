@@ -715,6 +715,16 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const [brokenRecords, setBrokenRecords] = useState<BrokenRecord[]>([]);
     // Session selection state
     const [selectedSession, setSelectedSession] = useState<number>(0); // 0 means "All Sessions"
+    // State for the new specific-event filter
+    const [specificEventId, setSpecificEventId] = useState<string>('all'); // 'all' or event.id
+
+     useEffect(() => {
+        // When the user switches to a report that doesn't support event-specific filtering,
+        // reset the filter to avoid confusion and ensure correct data is shown next time.
+        if (!['program', 'results'].includes(activeReport)) {
+            setSpecificEventId('all');
+        }
+    }, [activeReport]);
 
     useEffect(() => {
         const fetchRecords = async () => {
@@ -807,15 +817,36 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
     // Filter the globally numbered events for display
     const eventsToDisplay = useMemo<ScheduledEvent[]>(() => {
-        if (selectedSession === 0) return eventsWithGlobalNumbers;
+        // A specific event filter takes highest precedence
+        if (specificEventId !== 'all') {
+            return eventsWithGlobalNumbers.filter(e => e.id === specificEventId);
+        }
+        // Otherwise, filter by session as before
+        if (selectedSession === 0) {
+            return eventsWithGlobalNumbers;
+        }
         return eventsWithGlobalNumbers.filter(e => e.sessionNumber === selectedSession);
-    }, [eventsWithGlobalNumbers, selectedSession]);
+    }, [eventsWithGlobalNumbers, selectedSession, specificEventId]);
+
+    const eventPrintOptions = useMemo(() => {
+        return eventsWithGlobalNumbers.map(event => (
+            <option key={event.id} value={event.id}>
+                {`No. ${event.globalEventNumber}: ${formatEventName(event)}`}
+            </option>
+        ));
+    }, [eventsWithGlobalNumbers]);
 
 
     if (isLoading) return <div className="flex justify-center mt-8"><Spinner /></div>;
     if (!competitionInfo) return <p className="text-center mt-8">Data kompetisi tidak tersedia.</p>;
 
     const getReportTitle = () => {
+        if (specificEventId !== 'all') {
+            const specificEvent = eventsWithGlobalNumbers.find(e => e.id === specificEventId);
+            const reportType = activeReport === 'program' ? 'Buku Acara' : 'Buku Hasil';
+            return specificEvent ? `${reportType}: ${formatEventName(specificEvent)}` : reportType;
+        }
+        
         const sessionSuffix = selectedSession > 0 && ['schedule', 'program', 'results'].includes(activeReport) ? ` - Sesi ${romanize(selectedSession)}` : '';
         switch (activeReport) {
             case 'schedule': return `Susunan Acara${sessionSuffix}`;
@@ -833,36 +864,58 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         <div className="flex flex-col h-full">
             <div className="no-print space-y-4 mb-6">
                 <h1 className="text-3xl font-bold">Cetak Laporan</h1>
-                <div className="bg-surface p-4 rounded-lg border border-border flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex flex-wrap gap-2">
-                        <Button variant={activeReport === 'schedule' ? 'primary' : 'secondary'} onClick={() => setActiveReport('schedule')}>Susunan Acara</Button>
-                        <Button variant={activeReport === 'program' ? 'primary' : 'secondary'} onClick={() => setActiveReport('program')}>Buku Acara</Button>
-                        <Button variant={activeReport === 'results' ? 'primary' : 'secondary'} onClick={() => setActiveReport('results')}>Buku Hasil</Button>
-                        <Button variant={activeReport === 'winners' ? 'primary' : 'secondary'} onClick={() => setActiveReport('winners')}>Rekap Juara (Kategori)</Button>
-                        <Button variant={activeReport === 'medals' ? 'primary' : 'secondary'} onClick={() => setActiveReport('medals')}>Rekap Medali Tim</Button>
-                        <Button variant={activeReport === 'individualMedals' ? 'primary' : 'secondary'} onClick={() => setActiveReport('individualMedals')}>Klasemen Perorangan</Button>
-                        <Button variant={activeReport === 'brokenRecords' ? 'primary' : 'secondary'} onClick={() => setActiveReport('brokenRecords')}>Rekor Terpecahkan</Button>
-                    </div>
-                    
-                    <div className="flex items-center space-x-4">
-                        {['schedule', 'program', 'results'].includes(activeReport) && (
-                            <select 
-                                value={selectedSession} 
-                                onChange={(e) => setSelectedSession(Number(e.target.value))}
-                                className="bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                            >
-                                <option value={0}>Semua Sesi</option>
-                                {sessionOptions.map(s => (
-                                    <option key={s} value={s}>Sesi {romanize(s)}</option>
-                                ))}
-                            </select>
-                        )}
+                <div className="bg-surface p-4 rounded-lg border border-border flex flex-col gap-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex flex-wrap gap-2">
+                            <Button variant={activeReport === 'schedule' ? 'primary' : 'secondary'} onClick={() => setActiveReport('schedule')}>Susunan Acara</Button>
+                            <Button variant={activeReport === 'program' ? 'primary' : 'secondary'} onClick={() => setActiveReport('program')}>Buku Acara</Button>
+                            <Button variant={activeReport === 'results' ? 'primary' : 'secondary'} onClick={() => setActiveReport('results')}>Buku Hasil</Button>
+                            <Button variant={activeReport === 'winners' ? 'primary' : 'secondary'} onClick={() => setActiveReport('winners')}>Rekap Juara (Kategori)</Button>
+                            <Button variant={activeReport === 'medals' ? 'primary' : 'secondary'} onClick={() => setActiveReport('medals')}>Rekap Medali Tim</Button>
+                            <Button variant={activeReport === 'individualMedals' ? 'primary' : 'secondary'} onClick={() => setActiveReport('individualMedals')}>Klasemen Perorangan</Button>
+                            <Button variant={activeReport === 'brokenRecords' ? 'primary' : 'secondary'} onClick={() => setActiveReport('brokenRecords')}>Rekor Terpecahkan</Button>
+                        </div>
                         <Button onClick={handlePrint} className="flex items-center space-x-2">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm7-14a2 2 0 10-4 0v4a2 2 0 104 0V3z" />
                             </svg>
                             <span>Cetak / PDF</span>
                         </Button>
+                    </div>
+                     {/* Filter Section */}
+                    <div className="flex flex-wrap items-end gap-4 pt-4 border-t border-border">
+                        {['schedule', 'program', 'results'].includes(activeReport) && (
+                            <div>
+                                <label htmlFor="session-filter" className="text-sm font-medium text-text-secondary">Filter Sesi</label>
+                                <select 
+                                    id="session-filter"
+                                    value={selectedSession} 
+                                    onChange={(e) => setSelectedSession(Number(e.target.value))}
+                                    className="w-full mt-1 bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={specificEventId !== 'all'}
+                                    title={specificEventId !== 'all' ? 'Filter sesi dinonaktifkan saat nomor lomba spesifik dipilih' : 'Pilih sesi untuk dicetak'}
+                                >
+                                    <option value={0}>Semua Sesi</option>
+                                    {sessionOptions.map(s => (
+                                        <option key={s} value={s}>Sesi {romanize(s)}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                         {['program', 'results'].includes(activeReport) && (
+                             <div className="flex-grow max-w-md">
+                                <label htmlFor="event-filter" className="text-sm font-medium text-text-secondary">Pilih Nomor Lomba untuk Dicetak</label>
+                                <select
+                                    id="event-filter"
+                                    value={specificEventId}
+                                    onChange={(e) => setSpecificEventId(e.target.value)}
+                                    className="w-full mt-1 bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                >
+                                    <option value="all">Sesuai Filter Sesi</option>
+                                    {eventPrintOptions}
+                                </select>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
