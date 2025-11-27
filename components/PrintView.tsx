@@ -121,7 +121,7 @@ const ScheduleOfEvents: React.FC<{ events: ScheduledEvent[] }> = ({ events }) =>
         // Use the passed `events` which already have `globalEventNumber` and are sorted.
         // We just need to group them by date.
         const eventsToProcess = events as ScheduledEvent[];
-        const groupedByDate = eventsToProcess.reduce((acc: Record<string, ScheduledEvent[]>, event) => {
+        const groupedByDate = eventsToProcess.reduce((acc, event) => {
             const dateStr = event.sessionDateTime 
                 ? new Date(event.sessionDateTime).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
                 : 'Tanggal Belum Ditentukan';
@@ -132,7 +132,7 @@ const ScheduleOfEvents: React.FC<{ events: ScheduledEvent[] }> = ({ events }) =>
         }, {} as Record<string, ScheduledEvent[]>);
 
         return Object.entries(groupedByDate).map(([date, dateEvents]) => {
-            const groupedBySession = dateEvents.reduce((acc: Record<string, ScheduledEvent[]>, event) => {
+            const groupedBySession = dateEvents.reduce((acc, event) => {
                 const sessionName = `Sesi ${romanize(event.sessionNumber || 0)}`;
                 if (!acc[sessionName]) acc[sessionName] = [];
                 acc[sessionName].push(event);
@@ -196,7 +196,7 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
     const data = useMemo<Record<string, TimedEvent[]>>(() => {
         const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
 
-        const sessionsData = (events as ScheduledEvent[]).reduce<Record<string, TimedEvent[]>>((acc, event) => {
+        const sessionsData = events.reduce<Record<string, TimedEvent[]>>((acc, event) => {
             const sessionName = `Sesi ${romanize(event.sessionNumber || 0)}`;
             if (!acc[sessionName]) {
                 acc[sessionName] = [];
@@ -209,7 +209,7 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
             
             acc[sessionName].push({ ...event, detailedEntries: eventEntries });
             return acc;
-        }, {});
+        }, {} as Record<string, TimedEvent[]>);
 
         Object.values(sessionsData).forEach((sessionEvents: TimedEvent[]) => {
             if (sessionEvents.length === 0) return;
@@ -340,33 +340,32 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
 const EventResults: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[], brokenRecords: BrokenRecord[] }> = ({ events, swimmers, info, records, brokenRecords }) => {
     const data = useMemo(() => {
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-        return (events as ScheduledEvent[])
-            .map((event: ScheduledEvent) => {
-                const getPenalty = (time: number) => {
-                    if (time > 0) return 0; // Valid time
-                    if (time === -1 || (time < 0 && time !== -2)) return 1; // DQ
-                    if (time === -2) return 2; // NS
-                    return 3; // Not yet recorded (NT) or 0
-                };
-                
-                const validResultsForRanking = (event.results as Result[] || [])
-                    .filter((r: Result) => r.time > 0)
-                    .sort((a: Result, b: Result) => a.time - b.time);
-    
-                const sortedResults = (event.results as Result[] || [])
-                    .sort((a: Result,b: Result) => {
-                        if (a.time > 0 && b.time > 0) return a.time - b.time;
-                        return getPenalty(a.time) - getPenalty(b.time);
-                    })
-                    .map((r: Result) => {
-                        const swimmer = swimmersMap.get(r.swimmerId);
-                        const rank = r.time > 0 ? validResultsForRanking.findIndex(vr => vr.swimmerId === r.swimmerId) + 1 : 0;
-                        const recordsBroken = brokenRecords.filter(br => br.newHolder.id === swimmer?.id && br.newTime === r.time && br.record.style === event.style && br.record.distance === event.distance);
-                        return ({ ...r, rank, swimmer, recordsBroken });
-                    });
-    
-                return { ...event, sortedResults };
-            });
+        return events.map(event => {
+            const getPenalty = (time: number) => {
+                if (time > 0) return 0; // Valid time
+                if (time === -1 || (time < 0 && time !== -2)) return 1; // DQ
+                if (time === -2) return 2; // NS
+                return 3; // Not yet recorded (NT) or 0
+            };
+            
+            const validResultsForRanking = (event.results || [])
+                .filter(r => r.time > 0)
+                .sort((a, b) => a.time - b.time);
+
+            const sortedResults = [...(event.results || [])]
+                .sort((a, b) => {
+                    if (a.time > 0 && b.time > 0) return a.time - b.time;
+                    return getPenalty(a.time) - getPenalty(b.time);
+                })
+                .map(r => {
+                    const swimmer = swimmersMap.get(r.swimmerId);
+                    const rank = r.time > 0 ? validResultsForRanking.findIndex(vr => vr.swimmerId === r.swimmerId) + 1 : 0;
+                    const recordsBroken = brokenRecords.filter(br => br.newHolder.id === swimmer?.id && br.newTime === r.time && br.record.style === event.style && br.record.distance === event.distance);
+                    return { ...r, rank, swimmer, recordsBroken };
+                });
+
+            return { ...event, sortedResults };
+        });
     }, [events, swimmers, brokenRecords]);
 
     if (data.length === 0) return <p className="text-center text-text-secondary py-10">Tidak ada hasil lomba yang tercatat untuk nomor yang dipilih.</p>;
