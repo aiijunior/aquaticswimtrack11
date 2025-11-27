@@ -714,14 +714,14 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const [brokenRecords, setBrokenRecords] = useState<BrokenRecord[]>([]);
     // Session selection state
     const [selectedSession, setSelectedSession] = useState<number>(0); // 0 means "All Sessions"
-    // State for the new specific-event filter
-    const [specificEventId, setSpecificEventId] = useState<string>('all'); // 'all' or event.id
+    // State for the new specific-event filter (now multi-select)
+    const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
 
      useEffect(() => {
         // When the user switches to a report that doesn't support event-specific filtering,
         // reset the filter to avoid confusion and ensure correct data is shown next time.
         if (!['program', 'results'].includes(activeReport)) {
-            setSpecificEventId('all');
+            setSelectedEventIds([]);
         }
     }, [activeReport]);
 
@@ -817,15 +817,16 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     // Filter the globally numbered events for display
     const eventsToDisplay = useMemo<ScheduledEvent[]>(() => {
         // A specific event filter takes highest precedence
-        if (specificEventId !== 'all') {
-            return eventsWithGlobalNumbers.filter(e => e.id === specificEventId);
+        if (selectedEventIds.length > 0) {
+            const selectedSet = new Set(selectedEventIds);
+            return eventsWithGlobalNumbers.filter(e => selectedSet.has(e.id));
         }
         // Otherwise, filter by session as before
         if (selectedSession === 0) {
             return eventsWithGlobalNumbers;
         }
         return eventsWithGlobalNumbers.filter(e => e.sessionNumber === selectedSession);
-    }, [eventsWithGlobalNumbers, selectedSession, specificEventId]);
+    }, [eventsWithGlobalNumbers, selectedSession, selectedEventIds]);
 
     const eventPrintOptions = useMemo(() => {
         return eventsWithGlobalNumbers.map(event => (
@@ -840,10 +841,13 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     if (!competitionInfo) return <p className="text-center mt-8">Data kompetisi tidak tersedia.</p>;
 
     const getReportTitle = () => {
-        if (specificEventId !== 'all') {
-            const specificEvent = eventsWithGlobalNumbers.find(e => e.id === specificEventId);
+        if (selectedEventIds.length > 0) {
             const reportType = activeReport === 'program' ? 'Buku Acara' : 'Buku Hasil';
-            return specificEvent ? `${reportType}: ${formatEventName(specificEvent)}` : reportType;
+            if (selectedEventIds.length === 1) {
+                const specificEvent = eventsWithGlobalNumbers.find(e => e.id === selectedEventIds[0]);
+                return specificEvent ? `${reportType}: ${formatEventName(specificEvent)}` : reportType;
+            }
+            return `${reportType} (Pilihan Ganda)`;
         }
         
         const sessionSuffix = selectedSession > 0 && ['schedule', 'program', 'results'].includes(activeReport) ? ` - Sesi ${romanize(selectedSession)}` : '';
@@ -891,8 +895,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                                     value={selectedSession} 
                                     onChange={(e) => setSelectedSession(Number(e.target.value))}
                                     className="w-full mt-1 bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={specificEventId !== 'all'}
-                                    title={specificEventId !== 'all' ? 'Filter sesi dinonaktifkan saat nomor lomba spesifik dipilih' : 'Pilih sesi untuk dicetak'}
+                                    disabled={selectedEventIds.length > 0}
+                                    title={selectedEventIds.length > 0 ? 'Filter sesi dinonaktifkan saat nomor lomba spesifik dipilih' : 'Pilih sesi untuk dicetak'}
                                 >
                                     <option value={0}>Semua Sesi</option>
                                     {sessionOptions.map(s => (
@@ -903,14 +907,22 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                         )}
                          {['program', 'results'].includes(activeReport) && (
                              <div className="flex-grow max-w-md">
-                                <label htmlFor="event-filter" className="text-sm font-medium text-text-secondary">Pilih Nomor Lomba untuk Dicetak</label>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label htmlFor="event-filter" className="text-sm font-medium text-text-secondary">Pilih Nomor Lomba untuk Dicetak (Ctrl/Cmd + Klik)</label>
+                                    {selectedEventIds.length > 0 && (
+                                        <button onClick={() => setSelectedEventIds([])} className="text-xs text-blue-500 hover:underline">Reset Pilihan</button>
+                                    )}
+                                </div>
                                 <select
                                     id="event-filter"
-                                    value={specificEventId}
-                                    onChange={(e) => setSpecificEventId(e.target.value)}
-                                    className="w-full mt-1 bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                    multiple
+                                    value={selectedEventIds}
+                                    onChange={(e) => {
+                                        const selectedOptions = Array.from(e.target.selectedOptions).map(option => option.value);
+                                        setSelectedEventIds(selectedOptions);
+                                    }}
+                                    className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary h-40"
                                 >
-                                    <option value="all">Sesuai Filter Sesi</option>
                                     {eventPrintOptions}
                                 </select>
                             </div>
