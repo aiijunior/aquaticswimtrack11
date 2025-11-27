@@ -68,6 +68,10 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
   const [uploadResult, setUploadResult] = useState<{ success: number; errors: string[] } | null>(null);
 
+  // Explicitly typed options for rendering
+  const genderOptions: Gender[] = GENDER_OPTIONS as Gender[];
+  const styleOptions: SwimStyle[] = SWIM_STYLE_OPTIONS as SwimStyle[];
+
   const hasSchemaError = useMemo(() => {
     if (!uploadResult || !uploadResult.errors) return false;
     return uploadResult.errors.some(err => 
@@ -558,7 +562,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.style}
                 onChange={(e) => setNewEvent({ ...newEvent, style: e.target.value as SwimStyle })}
             >
-                {SWIM_STYLE_OPTIONS.map((style: SwimStyle) => (
+                {styleOptions.map((style) => (
                 <option key={style} value={style}>
                     {translateSwimStyle(style)}
                 </option>
@@ -570,8 +574,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.gender}
                 onChange={(e) => setNewEvent({ ...newEvent, gender: e.target.value as Gender })}
             >
-                {/* FIX: Explicitly type the 'gender' parameter in the filter and map callbacks to resolve the 'unknown' type error. */}
-                {(GENDER_OPTIONS as Gender[]).filter((gender: Gender) => newEvent.isRelay || gender !== Gender.MIXED).map((gender: Gender) => (
+                {genderOptions.filter((gender) => newEvent.isRelay || gender !== Gender.MIXED).map((gender) => (
                 <option key={gender} value={gender}>
                     {translateGender(gender)}
                 </option>
@@ -702,7 +705,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {uploadResult.errors.map((err: string, i: number) => <li key={i}>{err}</li>)}
+                                {/* FIX: Removed explicit type annotation for `err` to allow for correct type inference. */}
+                                {uploadResult.errors.map((err, i: number) => <li key={i}>{err}</li>)}
                             </ul>
                         </div>
                     )}

@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { SwimEvent, Swimmer, Result, Heat, Entry, CompetitionInfo } from '../types';
 import { getEventById, addOrUpdateEventResults } from '../services/databaseService';
@@ -22,6 +21,7 @@ const PlayIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-
 const PauseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const StopIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10h6v4H9z" /></svg>;
 const ResetIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5M20 20v-5h-5" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 9a9 9 0 0114.24-4.76L20 5M20 15a9 9 0 01-14.24 4.76L4 19" /></svg>;
+const UsbIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>;
 
 export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack, onDataUpdate, swimmers, competitionInfo }) => {
     const [event, setEvent] = useState<SwimEvent | null>(null);
@@ -41,6 +41,22 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
     const animationFrameId = useRef<number | undefined>(undefined);
     const startTimeRef = useRef(0);
     const pausedTimeRef = useRef(0);
+
+    // Serial / Arduino State
+    const [isSerialConnected, setIsSerialConnected] = useState(false);
+    const portRef = useRef<any>(null);
+    const readerRef = useRef<ReadableStreamDefaultReader | null>(null);
+
+    // Need refs for accessing current state inside serial callback/loop without dependencies
+    const isStopwatchRunningRef = useRef(isStopwatchRunning);
+    const stopwatchTimeRef = useRef(stopwatchTime);
+    
+    // Update refs when state changes
+    useEffect(() => {
+        isStopwatchRunningRef.current = isStopwatchRunning;
+        stopwatchTimeRef.current = stopwatchTime;
+    }, [isStopwatchRunning, stopwatchTime]);
+
 
     const fetchAndSetupEvent = useCallback(async () => {
         setIsLoading(true);
@@ -112,6 +128,113 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
         };
     }, [isStopwatchRunning]);
 
+    // --- SERIAL / ARDUINO CONNECTION LOGIC ---
+    const disconnectSerial = async () => {
+        if (readerRef.current) {
+            await readerRef.current.cancel();
+            readerRef.current = null;
+        }
+        if (portRef.current) {
+            await portRef.current.close();
+            portRef.current = null;
+        }
+        setIsSerialConnected(false);
+        addNotification("Arduino terputus.", "info");
+    };
+
+    const connectSerial = async () => {
+        if (!("serial" in navigator)) {
+            addNotification("Browser ini tidak mendukung Web Serial API. Gunakan Chrome atau Edge.", "error");
+            return;
+        }
+
+        if (isSerialConnected) {
+            await disconnectSerial();
+            return;
+        }
+
+        try {
+            const port = await (navigator as any).serial.requestPort();
+            await port.open({ baudRate: 9600 });
+            portRef.current = port;
+            setIsSerialConnected(true);
+            addNotification("Arduino terhubung! Menunggu sinyal 'S' (Start) atau '1'-'8' (Lane)...", "success");
+
+            const textDecoder = new TextDecoderStream();
+            const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+            const reader = textDecoder.readable.getReader();
+            readerRef.current = reader;
+
+            let buffer = "";
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) {
+                    reader.releaseLock();
+                    break;
+                }
+                
+                buffer += value;
+                const lines = buffer.split("\n");
+                buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+                for (const line of lines) {
+                    processSerialData(line.trim());
+                }
+            }
+        } catch (error: any) {
+            console.error("Serial connection error:", error);
+            addNotification(`Gagal terhubung ke Arduino: ${error.message}`, "error");
+            setIsSerialConnected(false);
+        }
+    };
+
+    // Process data from Arduino. 
+    // Expected format: "S" for Start, "1"-"8" for Lane finish.
+    const processSerialData = (data: string) => {
+        const trimmedData = data.toUpperCase().trim();
+
+        if (trimmedData === "S") {
+            // Trigger Start from Arduino
+            // If stopwatch is already running, this might be a false trigger or restart. 
+            // For safety, let's assume it forces a restart if we want, but safer to just start if stopped.
+            // To support restart, we would need to handleReset() then Start.
+            // Let's implement: If running -> do nothing (prevent accidental stop). If stopped -> RESET then START.
+            
+            if (!isStopwatchRunningRef.current) {
+                // Perform Reset logic directly
+                setStopwatchTime(0);
+                pausedTimeRef.current = 0;
+                startTimeRef.current = performance.now();
+                
+                // Start
+                setIsStopwatchRunning(true);
+                addNotification("Start Signal diterima dari Arduino!", "success", 2000);
+            }
+            return;
+        }
+
+        const laneNumber = parseInt(trimmedData, 10);
+        if (!isNaN(laneNumber)) {
+            // Find the swimmer in the current heat assigned to this lane
+            const currentHeat = heats[currentHeatIndex];
+            if (currentHeat) {
+                const assignment = currentHeat.assignments.find(a => a.lane === laneNumber);
+                if (assignment) {
+                    handleTapLane(assignment.entry.swimmer.id);
+                }
+            }
+        }
+    };
+
+    // Cleanup serial on unmount
+    useEffect(() => {
+        return () => {
+            disconnectSerial();
+        };
+    }, []);
+
+
     const handleStartStop = () => {
         if (isStopwatchRunning) { // Stopping
             pausedTimeRef.current = stopwatchTime;
@@ -127,11 +250,26 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
     };
     
     const handleTapLane = (swimmerId: string) => {
-        if (!isStopwatchRunning) return;
-        setTimes(prev => ({
-            ...prev,
-            [swimmerId]: parseMsToTimeParts(stopwatchTime)
-        }));
+        // Capture time immediately
+        const captureTime = isStopwatchRunningRef.current 
+            ? (performance.now() - startTimeRef.current + pausedTimeRef.current) 
+            : stopwatchTimeRef.current;
+
+        if (captureTime > 0) {
+             setTimes(prev => {
+                 // Don't overwrite if already has a time (unless 0/empty)
+                 const existing = prev[swimmerId];
+                 const existingMs = (parseInt(existing?.min || '0') * 60000) + (parseInt(existing?.sec || '0') * 1000) + parseInt(existing?.ms || '0');
+                 
+                 if (existingMs > 0) return prev; // Already finished
+
+                 return {
+                    ...prev,
+                    [swimmerId]: parseMsToTimeParts(captureTime)
+                };
+            });
+        }
+        
         setFlashingLane(swimmerId);
         setTimeout(() => setFlashingLane(null), 1500);
     };
@@ -223,7 +361,19 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
         <div>
             <Button onClick={onBack} variant="secondary" className="mb-4">&larr; Kembali</Button>
             <h1 className="text-3xl font-bold">{formatEventName(event)}</h1>
-            <h2 className="text-xl text-text-secondary">Chrono-Mode</h2>
+            <div className="flex items-center justify-between">
+                <h2 className="text-xl text-text-secondary">Chrono-Mode</h2>
+                {/* Arduino Connect Button */}
+                <Button 
+                    onClick={connectSerial} 
+                    variant={isSerialConnected ? "primary" : "secondary"}
+                    className={`flex items-center space-x-2 ${isSerialConnected ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                    title="Hubungkan ke Arduino Uno via USB untuk input otomatis"
+                >
+                    <UsbIcon />
+                    <span>{isSerialConnected ? 'Arduino Terhubung' : 'Hubungkan Arduino'}</span>
+                </Button>
+            </div>
             
             <Card className="my-6">
                 <div className="text-center">
@@ -275,7 +425,6 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
                                 <Button onClick={() => handleToggleDq(entry.swimmer.id)} className={`px-4 py-2 ${isDq ? 'bg-red-600' : 'bg-yellow-600'}`}>DQ</Button>
                                 <button
                                     onClick={() => handleTapLane(entry.swimmer.id)}
-                                    disabled={!isStopwatchRunning}
                                     className="w-12 h-12 rounded-full flex items-center justify-center bg-primary hover:bg-primary-hover text-white disabled:bg-secondary disabled:cursor-not-allowed transition-colors"
                                     aria-label={`Tap to record time for lane ${lane}`}
                                 >

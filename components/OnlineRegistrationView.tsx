@@ -72,6 +72,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     // State for accordion
     const [openAccordion, setOpenAccordion] = useState<SwimStyle | null>(null);
 
+    // Explicitly typed options for rendering
+    const ageGroupOptions: string[] = AGE_GROUP_OPTIONS as string[];
 
     useEffect(() => {
         const fetchEvents = async () => {
@@ -296,13 +298,13 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             });
 
             // Previously registered events (without seed time, as we don't have it easily)
-            // FIX: Explicitly type the 'event' parameter to resolve 'unknown' type error.
-            const previouslyRegisteredEventsList = (result.previouslyRegisteredEvents || []).map((event: FormattableEvent) => {
+            // FIX: Explicitly type the 'event' parameter to resolve 'unknown' type error and handle snake_case property from server response.
+            const previouslyRegisteredEventsList = (result.previouslyRegisteredEvents || []).map((event: any) => {
                 const formattableEvent: FormattableEvent = {
                     distance: event.distance,
                     style: event.style,
                     gender: event.gender,
-                    relayLegs: event.relayLegs,
+                    relayLegs: event.relay_legs, // Use snake_case from server
                     category: event.category,
                 };
                 return `• ${formatEventName(formattableEvent)}`;
@@ -414,7 +416,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 </Select>
                                  <Select label="Kelompok Umur (KU) (Opsional)" id="ageGroup" name="ageGroup" value={formData.ageGroup} onChange={handleFormChange}>
                                     <option value="">-- Tanpa KU --</option>
-                                    {AGE_GROUP_OPTIONS.map(ku => <option key={ku} value={ku}>{ku}</option>)}
+                                    {ageGroupOptions.map(ku => <option key={ku} value={ku}>{ku}</option>)}
                                 </Select>
                             </div>
                         </Card>
