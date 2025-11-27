@@ -828,14 +828,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         return eventsWithGlobalNumbers.filter(e => e.sessionNumber === selectedSession);
     }, [eventsWithGlobalNumbers, selectedSession, selectedEventIds]);
 
-    const eventPrintOptions = useMemo(() => {
-        return eventsWithGlobalNumbers.map(event => (
-            <option key={event.id} value={event.id}>
-                {`No. ${event.globalEventNumber}: ${formatEventName(event)}`}
-            </option>
-        ));
-    }, [eventsWithGlobalNumbers]);
-
 
     if (isLoading) return <div className="flex justify-center mt-8"><Spinner /></div>;
     if (!competitionInfo) return <p className="text-center mt-8">Data kompetisi tidak tersedia.</p>;
@@ -906,25 +898,37 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                             </div>
                         )}
                          {['program', 'results'].includes(activeReport) && (
-                             <div className="flex-grow max-w-md">
+                            <div className="flex-grow max-w-md">
                                 <div className="flex justify-between items-center mb-1">
-                                    <label htmlFor="event-filter" className="text-sm font-medium text-text-secondary">Pilih Nomor Lomba untuk Dicetak (Ctrl/Cmd + Klik)</label>
+                                    <label htmlFor="event-filter-container" className="text-sm font-medium text-text-secondary">Pilih Nomor Lomba untuk Dicetak</label>
                                     {selectedEventIds.length > 0 && (
                                         <button onClick={() => setSelectedEventIds([])} className="text-xs text-blue-500 hover:underline">Reset Pilihan</button>
                                     )}
                                 </div>
-                                <select
-                                    id="event-filter"
-                                    multiple
-                                    value={selectedEventIds}
-                                    onChange={(e) => {
-                                        const selectedOptions = Array.from(e.target.selectedOptions).map(option => option.value);
-                                        setSelectedEventIds(selectedOptions);
-                                    }}
-                                    className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary h-40"
-                                >
-                                    {eventPrintOptions}
-                                </select>
+                                <div id="event-filter-container" className="w-full bg-background border border-border rounded-md p-2 text-sm h-40 overflow-y-auto space-y-1">
+                                    {eventsWithGlobalNumbers.map(event => (
+                                        <div key={event.id} className="flex items-center p-1 rounded hover:bg-surface">
+                                            <input
+                                                type="checkbox"
+                                                id={`event-checkbox-${event.id}`}
+                                                value={event.id}
+                                                checked={selectedEventIds.includes(event.id)}
+                                                onChange={(e) => {
+                                                    const eventId = e.target.value;
+                                                    setSelectedEventIds(prev => 
+                                                        prev.includes(eventId) 
+                                                            ? prev.filter(id => id !== eventId) 
+                                                            : [...prev, eventId]
+                                                    );
+                                                }}
+                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                            />
+                                            <label htmlFor={`event-checkbox-${event.id}`} className="ml-2 text-text-primary select-none cursor-pointer flex-grow">
+                                                {`No. ${event.globalEventNumber}: ${formatEventName(event)}`}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
