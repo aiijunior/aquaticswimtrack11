@@ -574,7 +574,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.gender}
                 onChange={(e) => setNewEvent({ ...newEvent, gender: e.target.value as Gender })}
             >
-                {genderOptions.filter((gender) => newEvent.isRelay || gender !== Gender.MIXED).map((gender) => (
+                {/* FIX: Add explicit type to callback parameter to resolve type inference issue. */}
+                {genderOptions.filter((gender: Gender) => newEvent.isRelay || gender !== Gender.MIXED).map((gender: Gender) => (
                 <option key={gender} value={gender}>
                     {translateGender(gender)}
                 </option>

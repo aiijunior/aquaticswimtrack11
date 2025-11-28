@@ -33,7 +33,7 @@ const romanize = (num: number): string => {
 };
 
 const formatTime = (ms: number) => {
-    if (ms === 0) return '99:99.99';
+    if (ms === 0) return 'NT'; // Use NT instead of 99:99.99 for clarity in reports
     if (ms === -2) return 'NS';
     if (ms < 0) return 'DQ';
     const totalSeconds = ms / 1000;
@@ -68,7 +68,8 @@ const ReportHeader: React.FC<{ info: CompetitionInfo, title: string }> = ({ info
         {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-20 object-contain mx-auto mb-4" />}
         
         <div className="mb-4">
-            {info.eventName.split('\n').map((line, index) => {
+            {/* FIX: Add explicit types to callback parameters to resolve type inference issue. */}
+            {info.eventName.split('\n').map((line: string, index: number) => {
                 if (index === 0) {
                     return <h1 key={index} className="font-bold tracking-tight" style={{ fontSize: '22px' }}>{line}</h1>;
                 } else if (index === 1) {
@@ -116,39 +117,14 @@ const PrintRecordRow: React.FC<{ record: SwimRecord | undefined; type: string; }
 // Define a type for events that have the global numbering attached
 type ScheduledEvent = SwimEvent & { globalEventNumber: number };
 
-const ScheduleOfEvents: React.FC<{ events: ScheduledEvent[] }> = ({ events }) => {
-    const processedData = useMemo(() => {
-        // Use the passed `events` which already have `globalEventNumber` and are sorted.
-        // We just need to group them by date.
-        const eventsToProcess = events as ScheduledEvent[];
-        const groupedByDate = eventsToProcess.reduce((acc, event) => {
-            const dateStr = event.sessionDateTime 
-                ? new Date(event.sessionDateTime).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-                : 'Tanggal Belum Ditentukan';
-            
-            if (!acc[dateStr]) acc[dateStr] = [];
-            acc[dateStr].push(event);
-            return acc;
-        }, {} as Record<string, ScheduledEvent[]>);
-
-        return Object.entries(groupedByDate).map(([date, dateEvents]) => {
-            const groupedBySession = dateEvents.reduce((acc, event) => {
-                const sessionName = `Sesi ${romanize(event.sessionNumber || 0)}`;
-                if (!acc[sessionName]) acc[sessionName] = [];
-                acc[sessionName].push(event);
-                return acc;
-            }, {} as Record<string, ScheduledEvent[]>);
-            return { date, sessions: Object.entries(groupedBySession) };
-        });
-    }, [events]);
-
-    if (processedData.length === 0) {
+const ScheduleOfEvents: React.FC<{ data: { date: string, sessions: [string, ScheduledEvent[]][] }[] }> = ({ data }) => {
+    if (data.length === 0) {
         return <p className="text-center text-text-secondary py-10">Tidak ada data untuk ditampilkan. Jadwalkan nomor lomba ke dalam sesi terlebih dahulu.</p>;
     }
 
     return (
         <main className="space-y-6">
-            {processedData.map(({ date, sessions }) => (
+            {data.map(({ date, sessions }) => (
                 <div key={date}>
                     <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md text-center">{date}</h3>
                     {sessions.map(([sessionName, sessionEvents]) => (
@@ -192,57 +168,7 @@ interface TimedEvent extends ScheduledEvent {
     heatsWithTimes?: TimedHeat[];
 }
 
-const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[] }> = ({ events, swimmers, info, records }) => {
-    const data = useMemo<Record<string, TimedEvent[]>>(() => {
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
-
-        const sessionsData = events.reduce<Record<string, TimedEvent[]>>((acc, event) => {
-            const sessionName = `Sesi ${romanize(event.sessionNumber || 0)}`;
-            if (!acc[sessionName]) {
-                acc[sessionName] = [];
-            }
-            
-            const eventEntries: Entry[] = (event.entries || []).map((entry: EventEntry) => {
-                const swimmer = swimmersMap.get(entry.swimmerId);
-                return swimmer ? { ...entry, swimmer } : null;
-            }).filter((e): e is Entry => e !== null);
-            
-            acc[sessionName].push({ ...event, detailedEntries: eventEntries });
-            return acc;
-        }, {} as Record<string, TimedEvent[]>);
-
-        Object.values(sessionsData).forEach((sessionEvents: TimedEvent[]) => {
-            if (sessionEvents.length === 0) return;
-
-            const firstEvent = sessionEvents[0];
-            const sessionDT = firstEvent?.sessionDateTime ? new Date(firstEvent.sessionDateTime) : null;
-            let runningTime = sessionDT ? sessionDT.getTime() : null;
-
-            sessionEvents.forEach((event: TimedEvent) => {
-                if (runningTime !== null) {
-                    event.estimatedEventStartTime = runningTime;
-                    
-                    const lanes = info.numberOfLanes || 8;
-                    const heats = generateHeats(event.detailedEntries, lanes);
-                    event.heatsWithTimes = [];
-                    
-                    (heats || []).forEach((heat: Heat) => {
-                        (event.heatsWithTimes as TimedHeat[]).push({
-                            ...heat,
-                            estimatedHeatStartTime: runningTime || undefined
-                        });
-                        runningTime = (runningTime || 0) + estimateHeatDuration(event.distance);
-                    });
-                } else {
-                    const lanes = info.numberOfLanes || 8;
-                    event.heatsWithTimes = generateHeats(event.detailedEntries, lanes).map(h => ({ ...h }));
-                }
-            });
-        });
-
-        return sessionsData;
-    }, [events, swimmers, info]);
-
+const ProgramBook: React.FC<{ data: Record<string, TimedEvent[]>, info: CompetitionInfo, records: SwimRecord[] }> = ({ data, info, records }) => {
     if (!data || Object.keys(data).length === 0) return <p className="text-center text-text-secondary py-10">Tidak ada data untuk ditampilkan. Jadwalkan nomor lomba ke dalam sesi terlebih dahulu.</p>;
 
     return (
@@ -337,37 +263,7 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
     );
 };
 
-const EventResults: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[], brokenRecords: BrokenRecord[] }> = ({ events, swimmers, info, records, brokenRecords }) => {
-    const data = useMemo(() => {
-        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-        return events.map(event => {
-            const getPenalty = (time: number) => {
-                if (time > 0) return 0; // Valid time
-                if (time === -1 || (time < 0 && time !== -2)) return 1; // DQ
-                if (time === -2) return 2; // NS
-                return 3; // Not yet recorded (NT) or 0
-            };
-            
-            const validResultsForRanking = (event.results || [])
-                .filter(r => r.time > 0)
-                .sort((a, b) => a.time - b.time);
-
-            const sortedResults = [...(event.results || [])]
-                .sort((a, b) => {
-                    if (a.time > 0 && b.time > 0) return a.time - b.time;
-                    return getPenalty(a.time) - getPenalty(b.time);
-                })
-                .map(r => {
-                    const swimmer = swimmersMap.get(r.swimmerId);
-                    const rank = r.time > 0 ? validResultsForRanking.findIndex(vr => vr.swimmerId === r.swimmerId) + 1 : 0;
-                    const recordsBroken = brokenRecords.filter(br => br.newHolder.id === swimmer?.id && br.newTime === r.time && br.record.style === event.style && br.record.distance === event.distance);
-                    return { ...r, rank, swimmer, recordsBroken };
-                });
-
-            return { ...event, sortedResults };
-        });
-    }, [events, swimmers, brokenRecords]);
-
+const EventResults: React.FC<{ data: any[], records: SwimRecord[] }> = ({ data, records }) => {
     if (data.length === 0) return <p className="text-center text-text-secondary py-10">Tidak ada hasil lomba yang tercatat untuk nomor yang dipilih.</p>;
 
     return (
@@ -398,7 +294,7 @@ const EventResults: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], in
                                 </colgroup>
                                 <thead><tr><th className="text-center">Peringkat</th><th>Nama Atlet</th><th>KU</th><th>Tahun</th><th>Nama Tim</th><th className="text-right">Waktu</th><th className="text-center">Medali</th></tr></thead>
                                 <tbody>
-                                    {event.sortedResults.map(res => {
+                                    {event.sortedResults.map((res: any) => {
                                         let rankClass = '';
                                         if (res.rank === 1) rankClass = 'print-gold-medal';
                                         else if (res.rank === 2) rankClass = 'print-silver-medal';
@@ -413,7 +309,7 @@ const EventResults: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], in
                                                 <td>{res.swimmer?.club || 'N/A'}</td>
                                                 <td className="text-right font-mono">
                                                     {formatTime(res.time)}
-                                                    {res.recordsBroken.map(br => (
+                                                    {res.recordsBroken.map((br: any) => (
                                                         <span key={br.record.id} className={`record-badge ${br.record.type.toLowerCase()}`}>
                                                             {br.record.type}
                                                         </span>
@@ -437,47 +333,8 @@ const EventResults: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], in
     );
 };
 
-const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo }> = ({ events, swimmers, info }) => {
-    const data = useMemo(() => {
-        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-        
-        const getCategoryKey = (event: SwimEvent): string => {
-            const category = event.category?.trim() || 'Umum';
-            return category;
-        };
-
-        const eventsWithWinners = events
-            .filter((e: SwimEvent) => e.results && e.results.length > 0)
-            .map((event: SwimEvent) => ({
-                ...event,
-                winners: [...event.results]
-                    .filter((r: Result) => r.time > 0)
-                    .sort((a: Result,b: Result) => a.time - b.time)
-                    .slice(0, 3)
-                    .map((result: Result, i: number) => ({
-                        rank: i + 1,
-                        time: result.time,
-                        swimmer: swimmersMap.get(result.swimmerId)
-                    })),
-                categoryKey: getCategoryKey(event)
-            }))
-            .filter(e => e.winners.length > 0);
-        
-        const groupedByCategory = eventsWithWinners.reduce((acc: Record<string, typeof eventsWithWinners>, event) => {
-            if (!acc[event.categoryKey]) {
-                acc[event.categoryKey] = [];
-            }
-            acc[event.categoryKey].push(event);
-            return acc;
-        }, {} as Record<string, typeof eventsWithWinners>);
-
-        return Object.entries(groupedByCategory).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
-        
-    }, [events, swimmers]);
-
-    const hasData = data.length > 0;
-
-    if (!hasData) return <p className="text-center text-text-secondary py-10">Tidak ada juara untuk ditampilkan.</p>;
+const RekapJuaraPerKategori: React.FC<{ data: [string, any[]][] }> = ({ data }) => {
+    if (data.length === 0) return <p className="text-center text-text-secondary py-10">Tidak ada juara untuk ditampilkan.</p>;
 
     return (
         <main>
@@ -504,7 +361,7 @@ const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {event.winners.map(winner => (
+                                        {event.winners.map((winner: any) => (
                                             <tr key={winner.swimmer?.id}>
                                                 <td className="font-bold text-center">{winner.rank} <Medal rank={winner.rank} /></td>
                                                 <td>{winner.swimmer?.name || 'N/A'}</td>
@@ -523,45 +380,9 @@ const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[]
     )
 };
 
-const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo }> = ({ events, swimmers, info }) => {
-    const data = useMemo(() => {
-        // Initialize clubMedals with all unique clubs from the swimmers list.
-        const allClubs = [...new Set(swimmers.map(s => s.club))];
-        
-        const clubMedals = allClubs.reduce((acc: Record<string, { gold: number, silver: number, bronze: number }>, club: string) => {
-            acc[club] = { gold: 0, silver: 0, bronze: 0 };
-            return acc;
-        }, {} as Record<string, { gold: number, silver: number, bronze: number }>);
-        
-        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-
-        // Tally medals for clubs that have won.
-        events.forEach((event: SwimEvent) => {
-            if (!event.results) return;
-            [...(event.results as Result[])]
-                .filter((r: Result) => r.time > 0)
-                .sort((a: Result, b: Result) => a.time - b.time)
-                .slice(0, 3)
-                .forEach((result: Result, i: number) => {
-                    const rank = i + 1;
-                    const swimmer = swimmersMap.get(result.swimmerId);
-                    // The club is guaranteed to exist in clubMedals from the initialization step.
-                    if (swimmer && clubMedals[swimmer.club]) {
-                        if (rank === 1) clubMedals[swimmer.club].gold++;
-                        else if (rank === 2) clubMedals[swimmer.club].silver++;
-                        else if (rank === 3) clubMedals[swimmer.club].bronze++;
-                    }
-                });
-        });
-
-        // Sort by medal count, then alphabetically by club name as a tie-breaker.
-        return Object.entries(clubMedals).sort(([clubA, a]: [string, { gold: number, silver: number, bronze: number }], [clubB, b]: [string, { gold: number, silver: number, bronze: number }]) => 
-            b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || clubA.localeCompare(clubB)
-        );
-    }, [events, swimmers]);
-
+const ClubMedalStandings: React.FC<{ data: [string, { gold: number, silver: number, bronze: number }][] }> = ({ data }) => {
     const grandTotal = useMemo(() => {
-        return data.reduce((acc: { gold: number, silver: number, bronze: number }, [, medals]: [string, { gold: number, silver: number, bronze: number }]) => {
+        return data.reduce((acc, [, medals]) => {
             acc.gold += medals.gold;
             acc.silver += medals.silver;
             acc.bronze += medals.bronze;
@@ -608,50 +429,16 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
 };
 
 // --- NEW COMPONENT: IndividualMedalStandings ---
-const IndividualMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[] }> = ({ events, swimmers }) => {
-    const { maleStandings, femaleStandings } = useMemo(() => {
-        const individualMedals: Record<string, { swimmer: Swimmer, gold: number, silver: number, bronze: number }> = {};
-        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-
-        events.forEach(event => {
-            if (event.results && event.results.length > 0 && event.gender !== Gender.MIXED) {
-                [...event.results]
-                    .filter(r => r.time > 0)
-                    .sort((a, b) => a.time - b.time)
-                    .slice(0, 3)
-                    .forEach((result, i) => {
-                        const rank = i + 1;
-                        const swimmer = swimmersMap.get(result.swimmerId);
-                        if (swimmer) {
-                            if (!individualMedals[swimmer.id]) {
-                                individualMedals[swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 };
-                            }
-                            if (rank === 1) individualMedals[swimmer.id].gold++;
-                            else if (rank === 2) individualMedals[swimmer.id].silver++;
-                            else if (rank === 3) individualMedals[swimmer.id].bronze++;
-                        }
-                    });
-            }
-        });
-
-        const sortedStandings = Object.values(individualMedals)
-            .sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || a.swimmer.name.localeCompare(b.swimmer.name));
-        
-        const maleStandings = sortedStandings.filter(s => s.swimmer.gender === 'Male');
-        const femaleStandings = sortedStandings.filter(s => s.swimmer.gender === 'Female');
-
-        return { maleStandings, femaleStandings };
-    }, [events, swimmers]);
-
-    const renderTable = (data: typeof maleStandings, title: string) => (
+const IndividualMedalStandings: React.FC<{ data: { male: any[], female: any[] } }> = ({ data }) => {
+    const renderTable = (standings: any[], title: string) => (
         <div className="print-event-section">
             <h3 className="text-2xl font-bold mb-4 text-center">{title}</h3>
-            {data.length > 0 ? (
+            {standings.length > 0 ? (
                 <table className="w-full text-left">
                     <colgroup><col style={{width: '8%'}} /><col style={{width: '32%'}} /><col style={{width: '30%'}} /><col style={{width: '10%'}} /><col style={{width: '10%'}} /><col style={{width: '10%'}} /></colgroup>
                     <thead><tr><th className="text-center">#</th><th>Nama Atlet</th><th>Nama Tim</th><th className="text-center">🥇</th><th className="text-center">🥈</th><th className="text-center">🥉</th></tr></thead>
                     <tbody>
-                        {data.map((entry, i) => (
+                        {standings.map((entry, i) => (
                             <tr key={entry.swimmer.id}>
                                 <td className="text-center font-bold">{i + 1}</td>
                                 <td className="font-semibold">{entry.swimmer.name}</td>
@@ -669,22 +456,22 @@ const IndividualMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimme
 
     return (
         <main className="space-y-12">
-            {renderTable(maleStandings, "Klasemen Perorangan Putra")}
-            {renderTable(femaleStandings, "Klasemen Perorangan Putri")}
+            {renderTable(data.male, "Klasemen Perorangan Putra")}
+            {renderTable(data.female, "Klasemen Perorangan Putri")}
             <p className="text-center text-xs text-gray-500 pt-4">Klasemen perorangan tidak termasuk medali dari nomor lomba campuran.</p>
         </main>
     );
 };
 
 // --- NEW COMPONENT: BrokenRecordsReport ---
-const BrokenRecordsReport: React.FC<{ brokenRecords: BrokenRecord[] }> = ({ brokenRecords }) => {
-    if (brokenRecords.length === 0) {
+const BrokenRecordsReport: React.FC<{ data: BrokenRecord[] }> = ({ data }) => {
+    if (data.length === 0) {
         return <p className="text-center text-text-secondary py-10">Tidak ada rekor yang terpecahkan dalam kompetisi ini.</p>;
     }
 
     return (
         <main className="space-y-6">
-            {brokenRecords.map(({ record, newEventName, newHolder, newTime }, i) => (
+            {data.map(({ record, newEventName, newHolder, newTime }, i) => (
                 <section key={i} className="print-event-section bg-gray-50 p-4 rounded-lg border">
                     <h3 className="text-lg font-bold text-primary">{newEventName}</h3>
                     <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -711,7 +498,8 @@ const BrokenRecordsReport: React.FC<{ brokenRecords: BrokenRecord[] }> = ({ brok
 export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competitionInfo, isLoading }) => {
     const [activeReport, setActiveReport] = useState<'schedule' | 'program' | 'results' | 'winners' | 'medals' | 'individualMedals' | 'brokenRecords'>('schedule');
     const [records, setRecords] = useState<SwimRecord[]>([]);
-    const [brokenRecords, setBrokenRecords] = useState<BrokenRecord[]>([]);
+    const [isDownloading, setIsDownloading] = useState(false);
+    
     // Session selection state
     const [selectedSession, setSelectedSession] = useState<number>(0); // 0 means "All Sessions"
     // State for the new specific-event filter (now multi-select)
@@ -733,51 +521,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         fetchRecords();
     }, []);
 
-    // Calculate broken records
-    useEffect(() => {
-        const calculateBrokenRecords = () => {
-            const broken: BrokenRecord[] = [];
-            const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-
-            events.forEach(event => {
-                if (!event.results) return;
-                event.results.forEach(result => {
-                    if (result.time > 0) {
-                        const swimmer = swimmersMap.get(result.swimmerId);
-                        if (!swimmer) return;
-
-                        [RecordType.PORPROV, RecordType.NASIONAL].forEach(type => {
-                            const record = records.find(r => 
-                                r.type.toUpperCase() === type.toUpperCase() &&
-                                r.gender === event.gender &&
-                                r.distance === event.distance &&
-                                r.style === event.style &&
-                                (r.relayLegs ?? null) === (event.relayLegs ?? null) &&
-                                (r.category ?? null) === (event.category ?? null)
-                            );
-
-                            if (record && result.time < record.time) {
-                                broken.push({
-                                    record,
-                                    newEventName: formatEventName(event),
-                                    newHolder: swimmer,
-                                    newTime: result.time
-                                });
-                            }
-                        });
-                    }
-                });
-            });
-            // Remove duplicates, in case a record is broken multiple times, only show the best
-            const uniqueBroken = [...new Map(broken.sort((a,b) => a.newTime - b.newTime).map(item => [item.record.id, item])).values()];
-            setBrokenRecords(uniqueBroken);
-        };
-
-        if (events.length > 0 && records.length > 0) {
-            calculateBrokenRecords();
-        }
-    }, [events, swimmers, records]);
-
     const handlePrint = () => {
         window.print();
     };
@@ -793,42 +536,222 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         return Array.from(sessions).sort((a, b) => a - b);
     }, [events]);
 
-    // --- GLOBAL NUMBERING LOGIC ---
-    // This is the single source of truth for "No. Acara" (Global Event Number).
-    // We attach this number to the events HERE, before passing them to children.
+    // --- GLOBAL NUMBERING & DATA PROCESSING ---
     const eventsWithGlobalNumbers = useMemo<ScheduledEvent[]>(() => {
         let globalCounter = 1;
         const allScheduled = [...events]
             .filter(e => e.sessionNumber && e.sessionNumber > 0)
-            .sort((a, b) => {
-                // Primary sort: Session Number
-                const sessionDiff = (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0);
-                if (sessionDiff !== 0) return sessionDiff;
-                // Secondary sort: Heat Order
-                return (a.heatOrder ?? 0) - (b.heatOrder ?? 0);
-            });
+            .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
         
-        return allScheduled.map(e => ({
-            ...e,
-            globalEventNumber: globalCounter++
-        }));
+        return allScheduled.map(e => ({ ...e, globalEventNumber: globalCounter++ }));
     }, [events]);
 
-    // Filter the globally numbered events for display
     const eventsToDisplay = useMemo<ScheduledEvent[]>(() => {
-        // A specific event filter takes highest precedence
-        if (selectedEventIds.length > 0) {
-            const selectedSet = new Set(selectedEventIds);
-            return eventsWithGlobalNumbers.filter(e => selectedSet.has(e.id));
-        }
-        // Otherwise, filter by session as before
-        if (selectedSession === 0) {
-            return eventsWithGlobalNumbers;
-        }
+        if (selectedEventIds.length > 0) return eventsWithGlobalNumbers.filter(e => selectedEventIds.includes(e.id));
+        if (selectedSession === 0) return eventsWithGlobalNumbers;
         return eventsWithGlobalNumbers.filter(e => e.sessionNumber === selectedSession);
     }, [eventsWithGlobalNumbers, selectedSession, selectedEventIds]);
 
+    const swimmersMap = useMemo(() => new Map(swimmers.map(s => [s.id, s])), [swimmers]);
 
+    // --- Report-specific Data Hooks ---
+    const scheduleData = useMemo(() => {
+        const groupedByDate = eventsToDisplay.reduce((acc, event) => {
+            const dateStr = event.sessionDateTime ? new Date(event.sessionDateTime).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Tanggal Belum Ditentukan';
+            if (!acc[dateStr]) acc[dateStr] = [];
+            acc[dateStr].push(event);
+            return acc;
+        }, {} as Record<string, ScheduledEvent[]>);
+
+        return Object.entries(groupedByDate).map(([date, dateEvents]) => {
+            const groupedBySession = dateEvents.reduce((acc, event) => {
+                const sessionName = `Sesi ${romanize(event.sessionNumber || 0)}`;
+                if (!acc[sessionName]) acc[sessionName] = [];
+                acc[sessionName].push(event);
+                return acc;
+            }, {} as Record<string, ScheduledEvent[]>);
+            return { date, sessions: Object.entries(groupedBySession) };
+        });
+    }, [eventsToDisplay]);
+
+    const programBookData = useMemo(() => {
+        if (!competitionInfo) return {};
+        const sessionsData = eventsToDisplay.reduce<Record<string, TimedEvent[]>>((acc, event) => {
+            const sessionName = `Sesi ${romanize(event.sessionNumber || 0)}`;
+            if (!acc[sessionName]) acc[sessionName] = [];
+            
+            const eventEntries: Entry[] = (event.entries || []).map(entry => ({ ...entry, swimmer: swimmersMap.get(entry.swimmerId)! })).filter(e => e.swimmer);
+            acc[sessionName].push({ ...event, detailedEntries: eventEntries });
+            return acc;
+        }, {});
+
+        Object.values(sessionsData).forEach(sessionEvents => {
+            let runningTime = sessionEvents[0]?.sessionDateTime ? new Date(sessionEvents[0].sessionDateTime).getTime() : null;
+            sessionEvents.forEach(event => {
+                if (runningTime) event.estimatedEventStartTime = runningTime;
+                const heats = generateHeats(event.detailedEntries, competitionInfo.numberOfLanes || 8);
+                event.heatsWithTimes = heats.map(heat => {
+                    const timedHeat: TimedHeat = { ...heat, estimatedHeatStartTime: runningTime || undefined };
+                    if (runningTime) runningTime += estimateHeatDuration(event.distance);
+                    return timedHeat;
+                });
+            });
+        });
+        return sessionsData;
+    }, [eventsToDisplay, swimmersMap, competitionInfo]);
+
+    const { brokenRecords, eventResultsData } = useMemo(() => {
+        const broken: BrokenRecord[] = [];
+        const results = eventsToDisplay.map(event => {
+            (event.results || []).forEach(result => {
+                if (result.time > 0) {
+                    const swimmer = swimmersMap.get(result.swimmerId);
+                    if (!swimmer) return;
+                    [RecordType.PORPROV, RecordType.NASIONAL].forEach(type => {
+                        const record = records.find(r => r.type === type && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
+                        if (record && result.time < record.time) {
+                            broken.push({ record, newEventName: formatEventName(event), newHolder: swimmer, newTime: result.time });
+                        }
+                    });
+                }
+            });
+
+            const validResults = (event.results || []).filter(r => r.time > 0).sort((a,b) => a.time - b.time);
+            const getPenalty = (time: number) => time > 0 ? 0 : (time === -1 ? 1 : (time === -2 ? 2 : 3));
+            const sortedResults = [...(event.results || [])].sort((a,b) => (a.time > 0 && b.time > 0) ? a.time - b.time : getPenalty(a.time) - getPenalty(b.time))
+                .map(r => ({ ...r, swimmer: swimmersMap.get(r.swimmerId), rank: r.time > 0 ? validResults.findIndex(vr => vr.swimmerId === r.swimmerId) + 1 : 0, recordsBroken: broken.filter(br => br.newHolder.id === r.swimmerId && br.newTime === r.time && br.record.style === event.style && br.record.distance === event.distance) }));
+            
+            return { ...event, sortedResults };
+        });
+        const uniqueBroken = [...new Map(broken.sort((a,b) => a.newTime - b.newTime).map(item => [item.record.id, item])).values()];
+        return { brokenRecords: uniqueBroken, eventResultsData: results };
+    }, [eventsToDisplay, swimmersMap, records]);
+    
+    const winnersData = useMemo(() => {
+        const eventsWithWinners = events.filter(e => e.results && e.results.length > 0).map(event => ({ ...event, winners: [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time).slice(0, 3).map((r, i) => ({ ...r, rank: i + 1, swimmer: swimmersMap.get(r.swimmerId) })), categoryKey: event.category?.trim() || 'Umum' })).filter(e => e.winners.length > 0);
+        return Object.entries(eventsWithWinners.reduce((acc, event) => {
+            if (!acc[event.categoryKey]) acc[event.categoryKey] = [];
+            acc[event.categoryKey].push(event);
+            return acc;
+        }, {} as Record<string, typeof eventsWithWinners>)).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
+    }, [events, swimmersMap]);
+
+    const clubMedalsData = useMemo(() => {
+        // FIX: Add explicit type to `club` parameter to resolve type inference issue with `reduce`.
+        const clubMedals = [...new Set(swimmers.map(s => s.club))].reduce((acc, club: string) => ({ ...acc, [club]: { gold: 0, silver: 0, bronze: 0 } }), {} as Record<string, { gold: number, silver: number, bronze: number }>);
+        // FIX: Add explicit type to `event` and `r` parameters to resolve type inference issues with `forEach`.
+        events.forEach((event: SwimEvent) => {
+            if (!event.results) return;
+            [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time).slice(0, 3).forEach((r: Result, i: number) => {
+                const swimmer = swimmersMap.get(r.swimmerId);
+                if (swimmer && clubMedals[swimmer.club]) {
+                    if (i === 0) clubMedals[swimmer.club].gold++;
+                    else if (i === 1) clubMedals[swimmer.club].silver++;
+                    else if (i === 2) clubMedals[swimmer.club].bronze++;
+                }
+            });
+        });
+        return Object.entries(clubMedals).sort(([,a], [,b]) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || a[0].localeCompare(b[0]));
+    }, [events, swimmers, swimmersMap]);
+
+    const individualMedalsData = useMemo(() => {
+        const medals: Record<string, { swimmer: Swimmer, gold: number, silver: number, bronze: number }> = {};
+        events.forEach(event => {
+            if (event.results && event.gender !== Gender.MIXED) {
+                [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time).slice(0, 3).forEach((r, i) => {
+                    const swimmer = swimmersMap.get(r.swimmerId);
+                    if (swimmer) {
+                        if (!medals[swimmer.id]) medals[swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 };
+                        if (i === 0) medals[swimmer.id].gold++; else if (i === 1) medals[swimmer.id].silver++; else if (i === 2) medals[swimmer.id].bronze++;
+                    }
+                });
+            }
+        });
+        const sorted = Object.values(medals).sort((a,b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || a.swimmer.name.localeCompare(b.swimmer.name));
+        return { male: sorted.filter(s => s.swimmer.gender === 'Male'), female: sorted.filter(s => s.swimmer.gender === 'Female') };
+    }, [events, swimmersMap]);
+
+    // --- EXCEL DOWNLOAD HANDLER ---
+    const handleDownloadExcel = () => {
+        if (typeof XLSX === 'undefined') return alert('Pustaka Excel belum termuat.');
+        setIsDownloading(true);
+
+        try {
+            const wb = XLSX.utils.book_new();
+            let fileName = `Laporan_${activeReport}.xlsx`;
+
+            switch (activeReport) {
+                case 'schedule': {
+                    const data = scheduleData.flatMap(({ date, sessions }) => sessions.flatMap(([sessionName, sessionEvents]) => sessionEvents.map(event => ({ 'Tanggal': date, 'Sesi': sessionName, 'No. Acara': event.globalEventNumber, 'Nomor Lomba': formatEventName(event) }))));
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    ws['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 50 }];
+                    XLSX.utils.book_append_sheet(wb, ws, 'Susunan Acara');
+                    fileName = 'Susunan_Acara.xlsx';
+                    break;
+                }
+                case 'program': {
+                    // FIX: Add explicit types to callback parameters to resolve numerous property access errors on `unknown` type.
+                    const data = Object.values(programBookData).flat().flatMap((event: TimedEvent) => (event.heatsWithTimes || []).flatMap((heat: TimedHeat) => heat.assignments.map(a => ({ 'Sesi': `Sesi ${romanize(event.sessionNumber!)}`, 'No. Acara': event.globalEventNumber, 'Nomor Lomba': formatEventName(event), 'Seri': heat.heatNumber, 'Lintasan': a.lane, 'Nama': event.relayLegs ? a.entry.swimmer.club : a.entry.swimmer.name, 'KU': event.relayLegs ? '' : a.entry.swimmer.ageGroup || '', 'Tahun': event.relayLegs ? '' : a.entry.swimmer.birthYear, 'Klub': a.entry.swimmer.club, 'Waktu Unggulan': formatTime(a.entry.seedTime) }))));
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    ws['!cols'] = [{ wch: 15 }, { wch: 10 }, { wch: 50 }, { wch: 8 }, { wch: 8 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 30 }, { wch: 15 }];
+                    XLSX.utils.book_append_sheet(wb, ws, 'Buku Acara');
+                    fileName = 'Buku_Acara.xlsx';
+                    break;
+                }
+                case 'results': {
+                    const data = eventResultsData.flatMap(event => event.sortedResults.map(res => ({ 'No. Acara': event.globalEventNumber, 'Nomor Lomba': formatEventName(event), 'Peringkat': res.rank > 0 ? res.rank : formatTime(res.time), 'Nama': res.swimmer?.name, 'Klub': res.swimmer?.club, 'Waktu': formatTime(res.time), 'Rekor': res.recordsBroken.map(br => br.record.type).join(', ') })));
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    ws['!cols'] = [{ wch: 10 }, { wch: 50 }, { wch: 10 }, { wch: 30 }, { wch: 30 }, { wch: 15 }, { wch: 15 }];
+                    XLSX.utils.book_append_sheet(wb, ws, 'Buku Hasil');
+                    fileName = 'Buku_Hasil.xlsx';
+                    break;
+                }
+                case 'winners': {
+                    const data = winnersData.flatMap(([category, events]) => events.flatMap(e => e.winners.map((w: any) => ({ 'Kategori': category, 'Nomor Lomba': formatEventName(e), 'Peringkat': w.rank, 'Nama': w.swimmer?.name, 'Klub': w.swimmer?.club, 'Waktu': formatTime(w.time) }))));
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    ws['!cols'] = [{ wch: 15 }, { wch: 50 }, { wch: 10 }, { wch: 30 }, { wch: 30 }, { wch: 15 }];
+                    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Juara');
+                    fileName = 'Rekap_Juara_Kategori.xlsx';
+                    break;
+                }
+                case 'medals': {
+                    const data = clubMedalsData.map(([club, medals], i) => ({ 'Peringkat': i + 1, 'Nama Tim': club, 'Emas': medals.gold, 'Perak': medals.silver, 'Perunggu': medals.bronze, 'Total': medals.gold + medals.silver + medals.bronze }));
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    ws['!cols'] = [{ wch: 10 }, { wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
+                    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Medali Tim');
+                    fileName = 'Rekap_Medali_Tim.xlsx';
+                    break;
+                }
+                 case 'individualMedals': {
+                    const maleData = individualMedalsData.male.map((d, i) => ({ 'Peringkat': i + 1, 'Nama Atlet': d.swimmer.name, 'Klub': d.swimmer.club, 'Emas': d.gold, 'Perak': d.silver, 'Perunggu': d.bronze }));
+                    const femaleData = individualMedalsData.female.map((d, i) => ({ 'Peringkat': i + 1, 'Nama Atlet': d.swimmer.name, 'Klub': d.swimmer.club, 'Emas': d.gold, 'Perak': d.silver, 'Perunggu': d.bronze }));
+                    const wsMale = XLSX.utils.json_to_sheet(maleData);
+                    const wsFemale = XLSX.utils.json_to_sheet(femaleData);
+                    wsMale['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
+                    wsFemale['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
+                    XLSX.utils.book_append_sheet(wb, wsMale, 'Klasemen Putra');
+                    XLSX.utils.book_append_sheet(wb, wsFemale, 'Klasemen Putri');
+                    fileName = 'Klasemen_Perorangan.xlsx';
+                    break;
+                }
+                case 'brokenRecords': {
+                    const data = brokenRecords.map(br => ({ 'Nomor Lomba': br.newEventName, 'Rekor Baru Atas Nama': br.newHolder.name, 'Klub': br.newHolder.club, 'Waktu Baru': formatTime(br.newTime), 'Tipe Rekor Lama': br.record.type, 'Waktu Lama': formatTime(br.record.time), 'Pemegang Rekor Lama': br.record.holderName, 'Tahun': br.record.yearSet }));
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    ws['!cols'] = [{ wch: 50 }, { wch: 30 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 30 }, { wch: 10 }];
+                    XLSX.utils.book_append_sheet(wb, ws, 'Rekor Terpecahkan');
+                    fileName = 'Rekor_Terpecahkan.xlsx';
+                    break;
+                }
+            }
+            XLSX.writeFile(wb, fileName);
+        } catch (error) {
+            console.error("Failed to generate Excel file:", error);
+            alert("Gagal membuat file Excel. Silakan coba lagi.");
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+    
     if (isLoading) return <div className="flex justify-center mt-8"><Spinner /></div>;
     if (!competitionInfo) return <p className="text-center mt-8">Data kompetisi tidak tersedia.</p>;
 
@@ -870,12 +793,16 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                             <Button variant={activeReport === 'individualMedals' ? 'primary' : 'secondary'} onClick={() => setActiveReport('individualMedals')}>Klasemen Perorangan</Button>
                             <Button variant={activeReport === 'brokenRecords' ? 'primary' : 'secondary'} onClick={() => setActiveReport('brokenRecords')}>Rekor Terpecahkan</Button>
                         </div>
-                        <Button onClick={handlePrint} className="flex items-center space-x-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm7-14a2 2 0 10-4 0v4a2 2 0 104 0V3z" />
-                            </svg>
-                            <span>Cetak / PDF</span>
-                        </Button>
+                        <div className="flex items-center space-x-2">
+                            <Button onClick={handleDownloadExcel} variant="secondary" className="flex items-center space-x-2" disabled={isDownloading}>
+                                {isDownloading ? <Spinner /> : <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>}
+                                <span>Unduh Excel</span>
+                            </Button>
+                            <Button onClick={handlePrint} className="flex items-center space-x-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm7-14a2 2 0 10-4 0v4a2 2 0 104 0V3z" /></svg>
+                                <span>Cetak / PDF</span>
+                            </Button>
+                        </div>
                     </div>
                      {/* Filter Section */}
                     <div className="flex flex-wrap items-end gap-4 pt-4 border-t border-border">
@@ -940,13 +867,13 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 <div className="print-preview-content">
                     <ReportHeader info={competitionInfo} title={getReportTitle()} />
                     
-                    {activeReport === 'schedule' && <ScheduleOfEvents events={eventsToDisplay} />}
-                    {activeReport === 'program' && <ProgramBook events={eventsToDisplay} swimmers={swimmers} info={competitionInfo} records={records} />}
-                    {activeReport === 'results' && <EventResults events={eventsToDisplay} swimmers={swimmers} info={competitionInfo} records={records} brokenRecords={brokenRecords} />}
-                    {activeReport === 'winners' && <RekapJuaraPerKategori events={events} swimmers={swimmers} info={competitionInfo} />}
-                    {activeReport === 'medals' && <ClubMedalStandings events={events} swimmers={swimmers} info={competitionInfo} />}
-                    {activeReport === 'individualMedals' && <IndividualMedalStandings events={events} swimmers={swimmers} />}
-                    {activeReport === 'brokenRecords' && <BrokenRecordsReport brokenRecords={brokenRecords} />}
+                    {activeReport === 'schedule' && <ScheduleOfEvents data={scheduleData} />}
+                    {activeReport === 'program' && <ProgramBook data={programBookData} info={competitionInfo} records={records} />}
+                    {activeReport === 'results' && <EventResults data={eventResultsData} records={records} />}
+                    {activeReport === 'winners' && <RekapJuaraPerKategori data={winnersData} />}
+                    {activeReport === 'medals' && <ClubMedalStandings data={clubMedalsData} />}
+                    {activeReport === 'individualMedals' && <IndividualMedalStandings data={individualMedalsData} />}
+                    {activeReport === 'brokenRecords' && <BrokenRecordsReport data={brokenRecords} />}
 
 
                     <ReportFooter info={competitionInfo} />

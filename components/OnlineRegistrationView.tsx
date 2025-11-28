@@ -415,8 +415,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 </Select>
                                  <Select label="Kelompok Umur (KU) (Opsional)" id="ageGroup" name="ageGroup" value={formData.ageGroup} onChange={handleFormChange}>
                                     <option value="">-- Tanpa KU --</option>
-                                    {ageGroupOptions.map(ku => <option key={ku} value={ku}>{ku}</option>)}
-                                </Select>
+                                    {/* FIX: Add explicit type to callback parameter to resolve type inference issue. */}
+                                    {ageGroupOptions.map((ku: string) => <option key={ku} value={ku}>{ku}</option>)}
+                                 </Select>
                             </div>
                         </Card>
                         
