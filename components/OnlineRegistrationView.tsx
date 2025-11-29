@@ -72,7 +72,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     // State for accordion
     const [openAccordion, setOpenAccordion] = useState<SwimStyle | null>(null);
 
-    // Explicitly typed options for rendering
+    // Explicitly typed options for rendering to prevent type errors
     const ageGroupOptions: string[] = AGE_GROUP_OPTIONS as string[];
 
     useEffect(() => {
@@ -311,7 +311,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             });
 
             // Combine all event strings and sort them for a clean list
-            // Fix for typo from newlyRegisteredEvents to newlyRegisteredEventsList.
             const allRegisteredEventsString = [
                 ...newlyRegisteredEventsList,
                 ...previouslyRegisteredEventsList,

@@ -121,7 +121,7 @@ const ScheduleOfEvents: React.FC<{ events: ScheduledEvent[] }> = ({ events }) =>
         // Use the passed `events` which already have `globalEventNumber` and are sorted.
         // We just need to group them by date.
         const eventsToProcess = events as ScheduledEvent[];
-        const groupedByDate = eventsToProcess.reduce((acc: Record<string, ScheduledEvent[]>, event) => {
+        const groupedByDate = eventsToProcess.reduce((acc, event) => {
             const dateStr = event.sessionDateTime 
                 ? new Date(event.sessionDateTime).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
                 : 'Tanggal Belum Ditentukan';
@@ -132,7 +132,7 @@ const ScheduleOfEvents: React.FC<{ events: ScheduledEvent[] }> = ({ events }) =>
         }, {} as Record<string, ScheduledEvent[]>);
 
         return Object.entries(groupedByDate).map(([date, dateEvents]) => {
-            const groupedBySession = dateEvents.reduce((acc: Record<string, ScheduledEvent[]>, event) => {
+            const groupedBySession = dateEvents.reduce((acc, event) => {
                 const sessionName = `Sesi ${romanize(event.sessionNumber || 0)}`;
                 if (!acc[sessionName]) acc[sessionName] = [];
                 acc[sessionName].push(event);
@@ -193,25 +193,24 @@ interface TimedEvent extends ScheduledEvent {
 }
 
 const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[] }> = ({ events, swimmers, info, records }) => {
-    const data: Record<string, TimedEvent[]> = useMemo(() => {
-        // Group the pre-numbered events by session
-        const sessionsData = (events as ScheduledEvent[]).reduce((acc: Record<string, TimedEvent[]>, event: ScheduledEvent) => {
+    const data = useMemo<Record<string, TimedEvent[]>>(() => {
+        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+
+        const sessionsData = events.reduce<Record<string, TimedEvent[]>>((acc, event) => {
             const sessionName = `Sesi ${romanize(event.sessionNumber || 0)}`;
             if (!acc[sessionName]) {
                 acc[sessionName] = [];
             }
             
-            const eventEntries = (event.entries as EventEntry[]).map((entry: EventEntry) => {
-                const swimmer = swimmers.find(s => s.id === entry.swimmerId);
+            const eventEntries: Entry[] = (event.entries || []).map((entry: EventEntry) => {
+                const swimmer = swimmersMap.get(entry.swimmerId);
                 return swimmer ? { ...entry, swimmer } : null;
             }).filter((e): e is Entry => e !== null);
-
-            // Add the event regardless of entries, preserving globalEventNumber from parent
+            
             acc[sessionName].push({ ...event, detailedEntries: eventEntries });
             return acc;
         }, {} as Record<string, TimedEvent[]>);
 
-        // Process timing estimates
         Object.values(sessionsData).forEach((sessionEvents: TimedEvent[]) => {
             if (sessionEvents.length === 0) return;
 
@@ -219,7 +218,7 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
             const sessionDT = firstEvent?.sessionDateTime ? new Date(firstEvent.sessionDateTime) : null;
             let runningTime = sessionDT ? sessionDT.getTime() : null;
 
-            (sessionEvents as TimedEvent[]).forEach(event => {
+            sessionEvents.forEach((event: TimedEvent) => {
                 if (runningTime !== null) {
                     event.estimatedEventStartTime = runningTime;
                     
@@ -227,8 +226,7 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
                     const heats = generateHeats(event.detailedEntries, lanes);
                     event.heatsWithTimes = [];
                     
-                    // Map heats to TimedHeat
-                    (heats as Heat[]).forEach(heat => {
+                    (heats || []).forEach((heat: Heat) => {
                         (event.heatsWithTimes as TimedHeat[]).push({
                             ...heat,
                             estimatedHeatStartTime: runningTime || undefined
@@ -236,16 +234,13 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
                         runningTime = (runningTime || 0) + estimateHeatDuration(event.distance);
                     });
                 } else {
-                    // Fallback if no time set, still generate heats for display
                     const lanes = info.numberOfLanes || 8;
-                    const heats = generateHeats(event.detailedEntries, lanes);
-                    event.heatsWithTimes = (heats as Heat[]).map(h => ({ ...h }));
+                    event.heatsWithTimes = generateHeats(event.detailedEntries, lanes).map(h => ({ ...h }));
                 }
             });
         });
 
         return sessionsData;
-
     }, [events, swimmers, info]);
 
     if (!data || Object.keys(data).length === 0) return <p className="text-center text-text-secondary py-10">Tidak ada data untuk ditampilkan. Jadwalkan nomor lomba ke dalam sesi terlebih dahulu.</p>;
@@ -345,34 +340,32 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
 const EventResults: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[], brokenRecords: BrokenRecord[] }> = ({ events, swimmers, info, records, brokenRecords }) => {
     const data = useMemo(() => {
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-        return (events as ScheduledEvent[])
-            .map((event: ScheduledEvent) => {
-                const getPenalty = (time: number) => {
-                    if (time > 0) return 0; // Valid time
-                    if (time === -1 || (time < 0 && time !== -2)) return 1; // DQ
-                    if (time === -2) return 2; // NS
-                    return 3; // Not yet recorded (NT) or 0
-                };
-                
-                const validResultsForRanking = [...(event.results as Result[])]
-                    .filter((r: Result) => r.time > 0)
-                    .sort((a: Result, b: Result) => a.time - b.time);
-    
-                const sortedResults = [...(event.results as Result[])]
-                    .sort((a: Result,b: Result) => {
-                        if (a.time > 0 && b.time > 0) return a.time - b.time;
-                        return getPenalty(a.time) - getPenalty(b.time);
-                    })
-                    .map((r: Result) => {
-                        const swimmer = swimmersMap.get(r.swimmerId);
-                        // Correctly find rank among valid finishers
-                        const rank = r.time > 0 ? validResultsForRanking.findIndex(vr => vr.swimmerId === r.swimmerId) + 1 : 0;
-                        const recordsBroken = brokenRecords.filter(br => br.newHolder.id === swimmer?.id && br.newTime === r.time && br.record.style === event.style && br.record.distance === event.distance);
-                        return ({ ...r, rank, swimmer, recordsBroken });
-                    });
-    
-                return { ...event, sortedResults };
-            });
+        return events.map(event => {
+            const getPenalty = (time: number) => {
+                if (time > 0) return 0; // Valid time
+                if (time === -1 || (time < 0 && time !== -2)) return 1; // DQ
+                if (time === -2) return 2; // NS
+                return 3; // Not yet recorded (NT) or 0
+            };
+            
+            const validResultsForRanking = (event.results || [])
+                .filter(r => r.time > 0)
+                .sort((a, b) => a.time - b.time);
+
+            const sortedResults = [...(event.results || [])]
+                .sort((a, b) => {
+                    if (a.time > 0 && b.time > 0) return a.time - b.time;
+                    return getPenalty(a.time) - getPenalty(b.time);
+                })
+                .map(r => {
+                    const swimmer = swimmersMap.get(r.swimmerId);
+                    const rank = r.time > 0 ? validResultsForRanking.findIndex(vr => vr.swimmerId === r.swimmerId) + 1 : 0;
+                    const recordsBroken = brokenRecords.filter(br => br.newHolder.id === swimmer?.id && br.newTime === r.time && br.record.style === event.style && br.record.distance === event.distance);
+                    return { ...r, rank, swimmer, recordsBroken };
+                });
+
+            return { ...event, sortedResults };
+        });
     }, [events, swimmers, brokenRecords]);
 
     if (data.length === 0) return <p className="text-center text-text-secondary py-10">Tidak ada hasil lomba yang tercatat untuk nomor yang dipilih.</p>;
@@ -614,12 +607,123 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
     );
 };
 
+// --- NEW COMPONENT: IndividualMedalStandings ---
+const IndividualMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[] }> = ({ events, swimmers }) => {
+    const { maleStandings, femaleStandings } = useMemo(() => {
+        const individualMedals: Record<string, { swimmer: Swimmer, gold: number, silver: number, bronze: number }> = {};
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
+
+        events.forEach(event => {
+            if (event.results && event.results.length > 0 && event.gender !== Gender.MIXED) {
+                [...event.results]
+                    .filter(r => r.time > 0)
+                    .sort((a, b) => a.time - b.time)
+                    .slice(0, 3)
+                    .forEach((result, i) => {
+                        const rank = i + 1;
+                        const swimmer = swimmersMap.get(result.swimmerId);
+                        if (swimmer) {
+                            if (!individualMedals[swimmer.id]) {
+                                individualMedals[swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 };
+                            }
+                            if (rank === 1) individualMedals[swimmer.id].gold++;
+                            else if (rank === 2) individualMedals[swimmer.id].silver++;
+                            else if (rank === 3) individualMedals[swimmer.id].bronze++;
+                        }
+                    });
+            }
+        });
+
+        const sortedStandings = Object.values(individualMedals)
+            .sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || a.swimmer.name.localeCompare(b.swimmer.name));
+        
+        const maleStandings = sortedStandings.filter(s => s.swimmer.gender === 'Male');
+        const femaleStandings = sortedStandings.filter(s => s.swimmer.gender === 'Female');
+
+        return { maleStandings, femaleStandings };
+    }, [events, swimmers]);
+
+    const renderTable = (data: typeof maleStandings, title: string) => (
+        <div className="print-event-section">
+            <h3 className="text-2xl font-bold mb-4 text-center">{title}</h3>
+            {data.length > 0 ? (
+                <table className="w-full text-left">
+                    <colgroup><col style={{width: '8%'}} /><col style={{width: '32%'}} /><col style={{width: '30%'}} /><col style={{width: '10%'}} /><col style={{width: '10%'}} /><col style={{width: '10%'}} /></colgroup>
+                    <thead><tr><th className="text-center">#</th><th>Nama Atlet</th><th>Nama Tim</th><th className="text-center">🥇</th><th className="text-center">🥈</th><th className="text-center">🥉</th></tr></thead>
+                    <tbody>
+                        {data.map((entry, i) => (
+                            <tr key={entry.swimmer.id}>
+                                <td className="text-center font-bold">{i + 1}</td>
+                                <td className="font-semibold">{entry.swimmer.name}</td>
+                                <td>{entry.swimmer.club}</td>
+                                <td className="text-center">{entry.gold}</td>
+                                <td className="text-center">{entry.silver}</td>
+                                <td className="text-center">{entry.bronze}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            ) : <p className="text-center text-text-secondary py-6">Tidak ada medali yang diraih.</p>}
+        </div>
+    );
+
+    return (
+        <main className="space-y-12">
+            {renderTable(maleStandings, "Klasemen Perorangan Putra")}
+            {renderTable(femaleStandings, "Klasemen Perorangan Putri")}
+            <p className="text-center text-xs text-gray-500 pt-4">Klasemen perorangan tidak termasuk medali dari nomor lomba campuran.</p>
+        </main>
+    );
+};
+
+// --- NEW COMPONENT: BrokenRecordsReport ---
+const BrokenRecordsReport: React.FC<{ brokenRecords: BrokenRecord[] }> = ({ brokenRecords }) => {
+    if (brokenRecords.length === 0) {
+        return <p className="text-center text-text-secondary py-10">Tidak ada rekor yang terpecahkan dalam kompetisi ini.</p>;
+    }
+
+    return (
+        <main className="space-y-6">
+            {brokenRecords.map(({ record, newEventName, newHolder, newTime }, i) => (
+                <section key={i} className="print-event-section bg-gray-50 p-4 rounded-lg border">
+                    <h3 className="text-lg font-bold text-primary">{newEventName}</h3>
+                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-green-100 p-3 rounded">
+                            <h4 className="font-bold text-green-800">REKOR BARU</h4>
+                            <p className="text-2xl font-semibold">{newHolder.name}</p>
+                            <p className="text-md text-gray-700">{newHolder.club}</p>
+                            <p className="text-3xl font-mono mt-2">{formatTime(newTime)}</p>
+                        </div>
+                        <div className="bg-red-100 p-3 rounded">
+                            <h4 className="font-bold text-red-800">REKOR LAMA</h4>
+                            <p className="text-lg font-semibold">{record.holderName}</p>
+                            <p className="text-sm text-gray-600">{record.locationSet ? `${record.yearSet} - ${record.locationSet}` : record.yearSet}</p>
+                            <p className="text-2xl font-mono mt-2 line-through">{formatTime(record.time)}</p>
+                        </div>
+                    </div>
+                </section>
+            ))}
+        </main>
+    );
+};
+
+
 export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competitionInfo, isLoading }) => {
-    const [activeReport, setActiveReport] = useState<'schedule' | 'program' | 'results' | 'winners' | 'medals'>('schedule');
+    const [activeReport, setActiveReport] = useState<'schedule' | 'program' | 'results' | 'winners' | 'medals' | 'individualMedals' | 'brokenRecords'>('schedule');
     const [records, setRecords] = useState<SwimRecord[]>([]);
     const [brokenRecords, setBrokenRecords] = useState<BrokenRecord[]>([]);
     // Session selection state
     const [selectedSession, setSelectedSession] = useState<number>(0); // 0 means "All Sessions"
+    // State for the new specific-event filter (now multi-select)
+    const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
+
+     useEffect(() => {
+        // When the user switches to a report that doesn't support event-specific filtering,
+        // reset the filter to avoid confusion and ensure correct data is shown next time.
+        if (!['program', 'results'].includes(activeReport)) {
+            setSelectedEventIds([]);
+        }
+    }, [activeReport]);
 
     useEffect(() => {
         const fetchRecords = async () => {
@@ -664,7 +768,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     }
                 });
             });
-            setBrokenRecords(broken);
+            // Remove duplicates, in case a record is broken multiple times, only show the best
+            const uniqueBroken = [...new Map(broken.sort((a,b) => a.newTime - b.newTime).map(item => [item.record.id, item])).values()];
+            setBrokenRecords(uniqueBroken);
         };
 
         if (events.length > 0 && records.length > 0) {
@@ -710,22 +816,41 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
     // Filter the globally numbered events for display
     const eventsToDisplay = useMemo<ScheduledEvent[]>(() => {
-        if (selectedSession === 0) return eventsWithGlobalNumbers;
+        // A specific event filter takes highest precedence
+        if (selectedEventIds.length > 0) {
+            const selectedSet = new Set(selectedEventIds);
+            return eventsWithGlobalNumbers.filter(e => selectedSet.has(e.id));
+        }
+        // Otherwise, filter by session as before
+        if (selectedSession === 0) {
+            return eventsWithGlobalNumbers;
+        }
         return eventsWithGlobalNumbers.filter(e => e.sessionNumber === selectedSession);
-    }, [eventsWithGlobalNumbers, selectedSession]);
+    }, [eventsWithGlobalNumbers, selectedSession, selectedEventIds]);
 
 
     if (isLoading) return <div className="flex justify-center mt-8"><Spinner /></div>;
     if (!competitionInfo) return <p className="text-center mt-8">Data kompetisi tidak tersedia.</p>;
 
     const getReportTitle = () => {
-        const sessionSuffix = selectedSession > 0 ? ` - Sesi ${romanize(selectedSession)}` : '';
+        if (selectedEventIds.length > 0) {
+            const reportType = activeReport === 'program' ? 'Buku Acara' : 'Buku Hasil';
+            if (selectedEventIds.length === 1) {
+                const specificEvent = eventsWithGlobalNumbers.find(e => e.id === selectedEventIds[0]);
+                return specificEvent ? `${reportType}: ${formatEventName(specificEvent)}` : reportType;
+            }
+            return `${reportType} (Pilihan Ganda)`;
+        }
+        
+        const sessionSuffix = selectedSession > 0 && ['schedule', 'program', 'results'].includes(activeReport) ? ` - Sesi ${romanize(selectedSession)}` : '';
         switch (activeReport) {
             case 'schedule': return `Susunan Acara${sessionSuffix}`;
             case 'program': return `Buku Acara (Start List)${sessionSuffix}`;
-            case 'results': return `Hasil Perlombaan${sessionSuffix}`;
-            case 'winners': return 'Daftar Juara per Kategori';
-            case 'medals': return 'Klasemen Perolehan Medali';
+            case 'results': return `Buku Hasil${sessionSuffix}`;
+            case 'winners': return 'Rekap Juara per Kategori';
+            case 'medals': return 'Rekap Medali Tim';
+            case 'individualMedals': return 'Klasemen Perorangan';
+            case 'brokenRecords': return 'Rekor Terpecahkan';
             default: return '';
         }
     };
@@ -734,34 +859,78 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         <div className="flex flex-col h-full">
             <div className="no-print space-y-4 mb-6">
                 <h1 className="text-3xl font-bold">Cetak Laporan</h1>
-                <div className="bg-surface p-4 rounded-lg border border-border flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex space-x-2 overflow-x-auto pb-2 md:pb-0">
-                        <Button variant={activeReport === 'schedule' ? 'primary' : 'secondary'} onClick={() => setActiveReport('schedule')}>Susunan Acara</Button>
-                        <Button variant={activeReport === 'program' ? 'primary' : 'secondary'} onClick={() => setActiveReport('program')}>Buku Acara</Button>
-                        <Button variant={activeReport === 'results' ? 'primary' : 'secondary'} onClick={() => setActiveReport('results')}>Hasil Lomba</Button>
-                        <Button variant={activeReport === 'winners' ? 'primary' : 'secondary'} onClick={() => setActiveReport('winners')}>Juara per Kategori</Button>
-                        <Button variant={activeReport === 'medals' ? 'primary' : 'secondary'} onClick={() => setActiveReport('medals')}>Klasemen Medali</Button>
-                    </div>
-                    
-                    <div className="flex items-center space-x-4">
-                        {(activeReport === 'schedule' || activeReport === 'program' || activeReport === 'results') && (
-                            <select 
-                                value={selectedSession} 
-                                onChange={(e) => setSelectedSession(Number(e.target.value))}
-                                className="bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                            >
-                                <option value={0}>Semua Sesi</option>
-                                {sessionOptions.map(s => (
-                                    <option key={s} value={s}>Sesi {romanize(s)}</option>
-                                ))}
-                            </select>
-                        )}
+                <div className="bg-surface p-4 rounded-lg border border-border flex flex-col gap-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex flex-wrap gap-2">
+                            <Button variant={activeReport === 'schedule' ? 'primary' : 'secondary'} onClick={() => setActiveReport('schedule')}>Susunan Acara</Button>
+                            <Button variant={activeReport === 'program' ? 'primary' : 'secondary'} onClick={() => setActiveReport('program')}>Buku Acara</Button>
+                            <Button variant={activeReport === 'results' ? 'primary' : 'secondary'} onClick={() => setActiveReport('results')}>Buku Hasil</Button>
+                            <Button variant={activeReport === 'winners' ? 'primary' : 'secondary'} onClick={() => setActiveReport('winners')}>Rekap Juara (Kategori)</Button>
+                            <Button variant={activeReport === 'medals' ? 'primary' : 'secondary'} onClick={() => setActiveReport('medals')}>Rekap Medali Tim</Button>
+                            <Button variant={activeReport === 'individualMedals' ? 'primary' : 'secondary'} onClick={() => setActiveReport('individualMedals')}>Klasemen Perorangan</Button>
+                            <Button variant={activeReport === 'brokenRecords' ? 'primary' : 'secondary'} onClick={() => setActiveReport('brokenRecords')}>Rekor Terpecahkan</Button>
+                        </div>
                         <Button onClick={handlePrint} className="flex items-center space-x-2">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm7-14a2 2 0 10-4 0v4a2 2 0 104 0V3z" />
                             </svg>
                             <span>Cetak / PDF</span>
                         </Button>
+                    </div>
+                     {/* Filter Section */}
+                    <div className="flex flex-wrap items-end gap-4 pt-4 border-t border-border">
+                        {['schedule', 'program', 'results'].includes(activeReport) && (
+                            <div>
+                                <label htmlFor="session-filter" className="text-sm font-medium text-text-secondary">Filter Sesi</label>
+                                <select 
+                                    id="session-filter"
+                                    value={selectedSession} 
+                                    onChange={(e) => setSelectedSession(Number(e.target.value))}
+                                    className="w-full mt-1 bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={selectedEventIds.length > 0}
+                                    title={selectedEventIds.length > 0 ? 'Filter sesi dinonaktifkan saat nomor lomba spesifik dipilih' : 'Pilih sesi untuk dicetak'}
+                                >
+                                    <option value={0}>Semua Sesi</option>
+                                    {sessionOptions.map(s => (
+                                        <option key={s} value={s}>Sesi {romanize(s)}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                         {['program', 'results'].includes(activeReport) && (
+                            <div className="flex-grow max-w-md">
+                                <div className="flex justify-between items-center mb-1">
+                                    <label htmlFor="event-filter-container" className="text-sm font-medium text-text-secondary">Pilih Nomor Lomba untuk Dicetak</label>
+                                    {selectedEventIds.length > 0 && (
+                                        <button onClick={() => setSelectedEventIds([])} className="text-xs text-blue-500 hover:underline">Reset Pilihan</button>
+                                    )}
+                                </div>
+                                <div id="event-filter-container" className="w-full bg-background border border-border rounded-md p-2 text-sm h-40 overflow-y-auto space-y-1">
+                                    {eventsWithGlobalNumbers.map(event => (
+                                        <div key={event.id} className="flex items-center p-1 rounded hover:bg-surface">
+                                            <input
+                                                type="checkbox"
+                                                id={`event-checkbox-${event.id}`}
+                                                value={event.id}
+                                                checked={selectedEventIds.includes(event.id)}
+                                                onChange={(e) => {
+                                                    const eventId = e.target.value;
+                                                    setSelectedEventIds(prev => 
+                                                        prev.includes(eventId) 
+                                                            ? prev.filter(id => id !== eventId) 
+                                                            : [...prev, eventId]
+                                                    );
+                                                }}
+                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                            />
+                                            <label htmlFor={`event-checkbox-${event.id}`} className="ml-2 text-text-primary select-none cursor-pointer flex-grow">
+                                                {`No. ${event.globalEventNumber}: ${formatEventName(event)}`}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -776,6 +945,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     {activeReport === 'results' && <EventResults events={eventsToDisplay} swimmers={swimmers} info={competitionInfo} records={records} brokenRecords={brokenRecords} />}
                     {activeReport === 'winners' && <RekapJuaraPerKategori events={events} swimmers={swimmers} info={competitionInfo} />}
                     {activeReport === 'medals' && <ClubMedalStandings events={events} swimmers={swimmers} info={competitionInfo} />}
+                    {activeReport === 'individualMedals' && <IndividualMedalStandings events={events} swimmers={swimmers} />}
+                    {activeReport === 'brokenRecords' && <BrokenRecordsReport brokenRecords={brokenRecords} />}
+
 
                     <ReportFooter info={competitionInfo} />
                 </div>
