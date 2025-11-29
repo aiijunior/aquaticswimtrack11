@@ -68,7 +68,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
   const [uploadResult, setUploadResult] = useState<{ success: number; errors: string[] } | null>(null);
 
-  // Explicitly typed options for rendering to prevent type errors
+  // Explicitly typed options for rendering
   const genderOptions: Gender[] = GENDER_OPTIONS as Gender[];
   const styleOptions: SwimStyle[] = SWIM_STYLE_OPTIONS as SwimStyle[];
 
@@ -574,8 +574,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.gender}
                 onChange={(e) => setNewEvent({ ...newEvent, gender: e.target.value as Gender })}
             >
-                {/* FIX: Add explicit type to callback parameter to resolve type inference issue. */}
-                {genderOptions.filter((gender: Gender) => newEvent.isRelay || gender !== Gender.MIXED).map((gender: Gender) => (
+                {genderOptions.filter((gender) => newEvent.isRelay || gender !== Gender.MIXED).map((gender) => (
                 <option key={gender} value={gender}>
                     {translateGender(gender)}
                 </option>
@@ -706,6 +705,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
+                                {/* FIX: Removed explicit type annotation for `err` to allow for correct type inference. */}
                                 {uploadResult.errors.map((err, i: number) => <li key={i}>{err}</li>)}
                             </ul>
                         </div>

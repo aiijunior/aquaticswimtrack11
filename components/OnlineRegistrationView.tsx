@@ -72,7 +72,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     // State for accordion
     const [openAccordion, setOpenAccordion] = useState<SwimStyle | null>(null);
 
-    // Explicitly typed options for rendering to prevent type errors
+    // Explicitly typed options for rendering
     const ageGroupOptions: string[] = AGE_GROUP_OPTIONS as string[];
 
     useEffect(() => {
@@ -311,6 +311,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             });
 
             // Combine all event strings and sort them for a clean list
+            // Fix for typo from newlyRegisteredEvents to newlyRegisteredEventsList.
             const allRegisteredEventsString = [
                 ...newlyRegisteredEventsList,
                 ...previouslyRegisteredEventsList,
@@ -415,9 +416,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 </Select>
                                  <Select label="Kelompok Umur (KU) (Opsional)" id="ageGroup" name="ageGroup" value={formData.ageGroup} onChange={handleFormChange}>
                                     <option value="">-- Tanpa KU --</option>
-                                    {/* FIX: Add explicit type to callback parameter to resolve type inference issue. */}
-                                    {ageGroupOptions.map((ku: string) => <option key={ku} value={ku}>{ku}</option>)}
-                                 </Select>
+                                    {ageGroupOptions.map(ku => <option key={ku} value={ku}>{ku}</option>)}
+                                </Select>
                             </div>
                         </Card>
                         
