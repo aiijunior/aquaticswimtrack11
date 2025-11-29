@@ -382,7 +382,7 @@ const RekapJuaraPerKategori: React.FC<{ data: [string, any[]][] }> = ({ data }) 
 
 const ClubMedalStandings: React.FC<{ data: [string, { gold: number, silver: number, bronze: number }][] }> = ({ data }) => {
     const grandTotal = useMemo(() => {
-        return data.reduce((acc, [, medals]) => {
+        return data.reduce((acc, [, medals]: [string, { gold: number, silver: number, bronze: number }]) => {
             acc.gold += medals.gold;
             acc.silver += medals.silver;
             acc.bronze += medals.bronze;
@@ -607,7 +607,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const sessionOptions = useMemo(() => {
         const sessions = new Set<number>();
         // FIX: Add explicit type to `e` parameter to resolve type inference issue with `forEach`.
-        events.forEach((e: SwimEvent) => {
+        (events || []).forEach((e: SwimEvent) => {
             if (e.sessionNumber && e.sessionNumber > 0) {
                 sessions.add(e.sessionNumber);
             }
@@ -618,8 +618,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     // --- GLOBAL NUMBERING & DATA PROCESSING ---
     const eventsWithGlobalNumbers = useMemo<ScheduledEvent[]>(() => {
         let globalCounter = 1;
-        const allScheduled = [...(events as SwimEvent[])]
-            .filter(e => e.sessionNumber && e.sessionNumber > 0)
+        const allScheduled = [...((events || []) as SwimEvent[])]
+            .filter((e: SwimEvent) => e.sessionNumber && e.sessionNumber > 0)
             .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0) || (a.heatOrder ?? 0) - (b.heatOrder ?? 0));
         
         return allScheduled.map(e => ({ ...e, globalEventNumber: globalCounter++ }));
@@ -631,11 +631,11 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         return eventsWithGlobalNumbers.filter(e => e.sessionNumber === selectedSession);
     }, [eventsWithGlobalNumbers, selectedSession, selectedEventIds]);
 
-    const swimmersMap = useMemo(() => new Map(swimmers.map(s => [s.id, s])), [swimmers]);
+    const swimmersMap = useMemo(() => new Map((swimmers || []).map((s: Swimmer) => [s.id, s])), [swimmers]);
 
     // --- Report-specific Data Hooks ---
     const scheduleData = useMemo(() => {
-        const groupedByDate = eventsToDisplay.reduce((acc, event) => {
+        const groupedByDate = eventsToDisplay.reduce((acc, event: ScheduledEvent) => {
             const dateStr = event.sessionDateTime ? new Date(event.sessionDateTime).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Tanggal Belum Ditentukan';
             if (!acc[dateStr]) acc[dateStr] = [];
             acc[dateStr].push(event);
@@ -643,7 +643,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         }, {} as Record<string, ScheduledEvent[]>);
 
         return Object.entries(groupedByDate).map(([date, dateEvents]) => {
-            const groupedBySession = dateEvents.reduce((acc, event) => {
+            const groupedBySession = dateEvents.reduce((acc, event: ScheduledEvent) => {
                 const sessionName = `Sesi ${romanize(event.sessionNumber || 0)}`;
                 if (!acc[sessionName]) acc[sessionName] = [];
                 acc[sessionName].push(event);
@@ -655,23 +655,20 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
     const programBookData = useMemo(() => {
         if (!competitionInfo) return {};
-        // FIX: Add explicit type to `event` parameter to resolve type inference issue with `reduce`.
         const sessionsData = eventsToDisplay.reduce<Record<string, TimedEvent[]>>((acc, event: ScheduledEvent) => {
             const sessionName = `Sesi ${romanize(event.sessionNumber || 0)}`;
             if (!acc[sessionName]) acc[sessionName] = [];
             
-            const eventEntries: Entry[] = (event.entries || []).map(entry => ({ ...entry, swimmer: swimmersMap.get(entry.swimmerId)! })).filter(e => e.swimmer);
+            const eventEntries: Entry[] = (event.entries || []).map((entry: EventEntry) => ({ ...entry, swimmer: swimmersMap.get(entry.swimmerId)! })).filter(e => e.swimmer);
             acc[sessionName].push({ ...event, detailedEntries: eventEntries });
             return acc;
         }, {});
 
-        // FIX: Add explicit type to `sessionEvents` and `event` parameters to resolve type inference issues with `forEach`.
         Object.values(sessionsData).forEach((sessionEvents: TimedEvent[]) => {
             let runningTime = sessionEvents[0]?.sessionDateTime ? new Date(sessionEvents[0].sessionDateTime).getTime() : null;
             sessionEvents.forEach((event: TimedEvent) => {
                 if (runningTime) event.estimatedEventStartTime = runningTime;
                 const heats = generateHeats(event.detailedEntries, competitionInfo.numberOfLanes || 8);
-                // FIX: Add explicit type to `heat` parameter to resolve type inference issue with `map`.
                 event.heatsWithTimes = heats.map((heat: Heat) => {
                     const timedHeat: TimedHeat = { ...heat, estimatedHeatStartTime: runningTime || undefined };
                     if (runningTime) runningTime += estimateHeatDuration(event.distance);
@@ -684,8 +681,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
     const { brokenRecords, eventResultsData } = useMemo(() => {
         const broken: BrokenRecord[] = [];
-        const results = eventsToDisplay.map(event => {
-            (event.results || []).forEach(result => {
+        const results = eventsToDisplay.map((event: ScheduledEvent) => {
+            (event.results || []).forEach((result: Result) => {
                 if (result.time > 0) {
                     const swimmer = swimmersMap.get(result.swimmerId);
                     if (!swimmer) return;
@@ -701,7 +698,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             const validResults = (event.results || []).filter(r => r.time > 0).sort((a,b) => a.time - b.time);
             const getPenalty = (time: number) => time > 0 ? 0 : (time === -1 ? 1 : (time === -2 ? 2 : 3));
             const sortedResults = [...(event.results || [])].sort((a,b) => (a.time > 0 && b.time > 0) ? a.time - b.time : getPenalty(a.time) - getPenalty(b.time))
-                .map(r => ({ ...r, swimmer: swimmersMap.get(r.swimmerId), rank: r.time > 0 ? validResults.findIndex(vr => vr.swimmerId === r.swimmerId) + 1 : 0, recordsBroken: broken.filter(br => br.newHolder.id === r.swimmerId && br.newTime === r.time && br.record.style === event.style && br.record.distance === event.distance) }));
+                .map((r: Result) => ({ ...r, swimmer: swimmersMap.get(r.swimmerId), rank: r.time > 0 ? validResults.findIndex(vr => vr.swimmerId === r.swimmerId) + 1 : 0, recordsBroken: broken.filter(br => br.newHolder.id === r.swimmerId && br.newTime === r.time && br.record.style === event.style && br.record.distance === event.distance) }));
             
             return { ...event, sortedResults };
         });
@@ -709,9 +706,10 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         return { brokenRecords: uniqueBroken, eventResultsData: results };
     }, [eventsToDisplay, swimmersMap, records]);
     
+    type EventWithWinners = SwimEvent & { winners: any[]; categoryKey: string };
     const winnersData = useMemo(() => {
-        const eventsWithWinners = events.filter(e => e.results && e.results.length > 0).map(event => ({ ...event, winners: [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time).slice(0, 3).map((r, i) => ({ ...r, rank: i + 1, swimmer: swimmersMap.get(r.swimmerId) })), categoryKey: event.category?.trim() || 'Umum' })).filter(e => e.winners.length > 0);
-        return Object.entries(eventsWithWinners.reduce((acc, event) => {
+        const eventsWithWinners = ((events || []) as SwimEvent[]).filter(e => e.results && e.results.length > 0).map((event: SwimEvent) => ({ ...event, winners: [...event.results].filter((r: Result) => r.time > 0).sort((a,b) => a.time - b.time).slice(0, 3).map((r: Result, i: number) => ({ ...r, rank: i + 1, swimmer: swimmersMap.get(r.swimmerId) })), categoryKey: event.category?.trim() || 'Umum' })).filter(e => e.winners.length > 0);
+        return Object.entries(eventsWithWinners.reduce((acc, event: EventWithWinners) => {
             if (!acc[event.categoryKey]) acc[event.categoryKey] = [];
             acc[event.categoryKey].push(event);
             return acc;
@@ -719,10 +717,10 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     }, [events, swimmersMap]);
 
     const clubMedalsData = useMemo(() => {
-        const clubMedals = [...new Set(swimmers.map(s => s.club))].reduce((acc, club: string) => ({ ...acc, [club]: { gold: 0, silver: 0, bronze: 0 } }), {} as Record<string, { gold: number, silver: number, bronze: number }>);
-        events.forEach((event: SwimEvent) => {
+        const clubMedals = [...new Set((swimmers || []).map((s: Swimmer) => s.club))].reduce((acc, club: string) => ({ ...acc, [club]: { gold: 0, silver: 0, bronze: 0 } }), {} as Record<string, { gold: number, silver: number, bronze: number }>);
+        ((events || []) as SwimEvent[]).forEach((event: SwimEvent) => {
             if (!event.results) return;
-            [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time).slice(0, 3).forEach((r: Result, i: number) => {
+            [...event.results].filter((r: Result) => r.time > 0).sort((a,b) => a.time - b.time).slice(0, 3).forEach((r: Result, i: number) => {
                 const swimmer = swimmersMap.get(r.swimmerId);
                 if (swimmer && clubMedals[swimmer.club]) {
                     if (i === 0) clubMedals[swimmer.club].gold++;
@@ -736,9 +734,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
     const detailedClubMedalsData = useMemo(() => {
         const medalsByClub = new Map<string, any[]>();
-        events.forEach(event => {
+        ((events || []) as SwimEvent[]).forEach((event: SwimEvent) => {
             if (!event.results) return;
-            [...event.results].filter(r => r.time > 0).sort((a, b) => a.time - b.time).slice(0, 3).forEach((r, i) => {
+            [...event.results].filter((r: Result) => r.time > 0).sort((a, b) => a.time - b.time).slice(0, 3).forEach((r: Result, i: number) => {
                 const rank = i + 1;
                 const swimmer = swimmersMap.get(r.swimmerId);
                 if (swimmer) {
@@ -754,9 +752,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
     const individualMedalsOverallData = useMemo(() => {
         const medals: Record<string, { swimmer: Swimmer, gold: number, silver: number, bronze: number }> = {};
-        events.forEach(event => {
+        ((events || []) as SwimEvent[]).forEach((event: SwimEvent) => {
             if (event.results && event.gender !== Gender.MIXED) {
-                [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time).slice(0, 3).forEach((r, i) => {
+                [...event.results].filter((r: Result) => r.time > 0).sort((a,b) => a.time - b.time).slice(0, 3).forEach((r: Result, i: number) => {
                     const swimmer = swimmersMap.get(r.swimmerId);
                     if (swimmer) {
                         if (!medals[swimmer.id]) medals[swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 };
@@ -771,9 +769,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     
     const individualCategoryMedalsData = useMemo(() => {
         const medalsByCategory: Record<string, Record<string, { swimmer: Swimmer, gold: number, silver: number, bronze: number }>> = {};
-        events.forEach(event => {
+        ((events || []) as SwimEvent[]).forEach((event: SwimEvent) => {
             if (event.results && event.gender !== Gender.MIXED) {
-                [...event.results].filter(r => r.time > 0).sort((a, b) => a.time - b.time).slice(0, 3).forEach((r, i) => {
+                [...event.results].filter((r: Result) => r.time > 0).sort((a, b) => a.time - b.time).slice(0, 3).forEach((r: Result, i: number) => {
                     const swimmer = swimmersMap.get(r.swimmerId);
                     if (swimmer) {
                         const category = swimmer.ageGroup || 'Umum';
