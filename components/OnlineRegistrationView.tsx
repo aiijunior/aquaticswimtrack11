@@ -126,7 +126,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
     const isFormValid = useMemo(() => {
         const hasPersonalInfo = formData.name.trim() !== '' && formData.club.trim() !== '';
-        // FIX: Explicitly type `e` to resolve 'unknown' type error.
         const hasSelectedEvent = Object.values(selectedEvents).some((e: { selected: boolean; }) => e.selected);
         return hasPersonalInfo && hasSelectedEvent;
     }, [formData, selectedEvents]);
@@ -298,8 +297,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             });
 
             // Previously registered events (without seed time, as we don't have it easily)
-            // FIX: Explicitly type the 'event' parameter to resolve 'unknown' type error and handle snake_case property from server response.
-            const previouslyRegisteredEventsList = (result.previouslyRegisteredEvents || []).map((event: any) => {
+            const previouslyRegisteredEventsList = ((result.previouslyRegisteredEvents || []) as FormattableEvent[]).map((event: any) => {
                 const formattableEvent: FormattableEvent = {
                     distance: event.distance,
                     style: event.style,
@@ -415,9 +413,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 </Select>
                                  <Select label="Kelompok Umur (KU) (Opsional)" id="ageGroup" name="ageGroup" value={formData.ageGroup} onChange={handleFormChange}>
                                     <option value="">-- Tanpa KU --</option>
-                                    {/* FIX: Add explicit type to callback parameter to resolve type inference issue. */}
-{/* @JIRA-TICKET-FIX-CODE-ERROR-006 Add explicit type to `map` callback parameter `ku` to resolve `unknown` type issue. */}
-                                    {ageGroupOptions.map((ku: string) => <option key={ku} value={ku}>{ku}</option>)}
+                                    {/* FIX: Explicitly cast `ageGroupOptions` to `string[]` to fix type inference issue. */}
+                                    {(ageGroupOptions as string[]).map((ku: string) => <option key={ku} value={ku}>{ku}</option>)}
                                  </Select>
                             </div>
                         </Card>

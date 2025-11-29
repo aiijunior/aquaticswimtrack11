@@ -82,7 +82,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
 
   const sessions = useMemo(() => {
     if (!events) return { scheduled: [], unscheduledExists: false };
-    const sessionNumbers = new Set(events.map(e => e.sessionNumber || 0));
+    // FIX: Explicitly cast `events` to `SwimEvent[]` to resolve type inference issue.
+    const sessionNumbers = new Set((events as SwimEvent[]).map(e => e.sessionNumber || 0));
     const scheduled = Array.from(sessionNumbers).filter((s: number) => s > 0).sort((a: number, b: number) => a - b);
     const unscheduledExists = sessionNumbers.has(0);
     return { scheduled, unscheduledExists };
@@ -574,8 +575,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.gender}
                 onChange={(e) => setNewEvent({ ...newEvent, gender: e.target.value as Gender })}
             >
-                {/* FIX: Add explicit type to callback parameter to resolve type inference issue. */}
-{/* @JIRA-TICKET-FIX-CODE-ERROR-001 Add explicit type to `map` callback parameter `gender` to resolve `unknown` type issue. */}
                 {genderOptions.filter((gender: Gender) => newEvent.isRelay || gender !== Gender.MIXED).map((gender: Gender) => (
                 <option key={gender} value={gender}>
                     {translateGender(gender)}

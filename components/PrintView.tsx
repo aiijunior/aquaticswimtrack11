@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { CompetitionInfo, SwimEvent, Swimmer, Entry, Heat, Result, BrokenRecord, SwimRecord, EventEntry } from '../types';
+import type { CompetitionInfo, SwimEvent, Swimmer, Entry, Heat, Result, BrokenRecord, SwimRecord, EventEntry, LaneAssignment } from '../types';
 import { Gender, RecordType } from '../types';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -68,8 +68,6 @@ const ReportHeader: React.FC<{ info: CompetitionInfo, title: string }> = ({ info
         {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-20 object-contain mx-auto mb-4" />}
         
         <div className="mb-4">
-            {/* FIX: Add explicit types to callback parameters to resolve type inference issue. */}
-{/* @JIRA-TICKET-FIX-CODE-ERROR-002 Add explicit types to `map` callback parameters `line` and `index` to resolve `unknown` type issue. */}
             {info.eventName.split('\n').map((line: string, index: number) => {
                 if (index === 0) {
                     return <h1 key={index} className="font-bold tracking-tight" style={{ fontSize: '22px' }}>{line}</h1>;
@@ -189,7 +187,8 @@ const ProgramBook: React.FC<{ data: Record<string, TimedEvent[]>, info: Competit
                                 </span>
                             )}
                         </h3>
-                        {sessionEvents.map((event: TimedEvent) => {
+                        {/* FIX: Explicitly cast sessionEvents to TimedEvent[] to resolve type inference issue. */}
+                        {(sessionEvents as TimedEvent[]).map((event: TimedEvent) => {
                             const porprovRecord = records.find(r => r.type.toUpperCase() === RecordType.PORPROV.toUpperCase() && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
                             const nasionalRecord = records.find(r => r.type.toUpperCase() === RecordType.NASIONAL.toUpperCase() && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
                             const isRelay = event.relayLegs && event.relayLegs > 1;
@@ -383,8 +382,6 @@ const RekapJuaraPerKategori: React.FC<{ data: [string, any[]][] }> = ({ data }) 
 
 const ClubMedalStandings: React.FC<{ data: [string, { gold: number, silver: number, bronze: number }][] }> = ({ data }) => {
     const grandTotal = useMemo(() => {
-        // FIX: Add explicit type to `medals` parameter to resolve type inference issue with `reduce`.
-{/* @JIRA-TICKET-FIX-CODE-ERROR-003 Add explicit types to `reduce` callback parameters to resolve `unknown` type issue. */}
         return data.reduce((acc, [, medals]: [string, { gold: number; silver: number; bronze: number }]) => {
             acc.gold += medals.gold;
             acc.silver += medals.silver;
@@ -631,7 +628,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     }, [eventsToDisplay, swimmersMap, records]);
     
     const winnersData = useMemo(() => {
-        const eventsWithWinners = events.filter(e => e.results && e.results.length > 0).map(event => ({ ...event, winners: [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time).slice(0, 3).map((r, i) => ({ ...r, rank: i + 1, swimmer: swimmersMap.get(r.swimmerId) })), categoryKey: event.category?.trim() || 'Umum' })).filter(e => e.winners.length > 0);
+        // FIX: Cast `events` to `SwimEvent[]` to fix type inference issues with `filter` and `reduce`.
+        const eventsWithWinners = (events as SwimEvent[]).filter(e => e.results && e.results.length > 0).map(event => ({ ...event, winners: [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time).slice(0, 3).map((r, i) => ({ ...r, rank: i + 1, swimmer: swimmersMap.get(r.swimmerId) })), categoryKey: event.category?.trim() || 'Umum' })).filter(e => e.winners.length > 0);
         return Object.entries(eventsWithWinners.reduce((acc, event) => {
             if (!acc[event.categoryKey]) acc[event.categoryKey] = [];
             acc[event.categoryKey].push(event);
@@ -640,12 +638,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     }, [events, swimmersMap]);
 
     const clubMedalsData = useMemo(() => {
-        // FIX: Add explicit type to `club` parameter to resolve type inference issue with `reduce`.
-{/* @JIRA-TICKET-FIX-CODE-ERROR-005 Add explicit type to `reduce` callback parameter `club` to resolve `unknown` type issue. */}
         const clubMedals = [...new Set(swimmers.map((s: Swimmer) => s.club))].reduce((acc, club: string) => ({ ...acc, [club]: { gold: 0, silver: 0, bronze: 0 } }), {} as Record<string, { gold: number, silver: number, bronze: number }>);
-        // FIX: Add explicit type to `event` and `r` parameters to resolve type inference issues with `forEach`.
-{/* @JIRA-TICKET-FIX-CODE-ERROR-004 Add explicit types to `forEach` callback parameters `event` and `r` to resolve `unknown` type issue. */}
-        events.forEach((event: SwimEvent) => {
+        // FIX: Cast `events` to `SwimEvent[]` to fix type inference issue with `forEach`.
+        (events as SwimEvent[]).forEach((event: SwimEvent) => {
             if (!event.results) return;
             [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time).slice(0, 3).forEach((r: Result, i: number) => {
                 const swimmer = swimmersMap.get(r.swimmerId);
@@ -661,9 +656,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
     const individualMedalsData = useMemo(() => {
         const medals: Record<string, { swimmer: Swimmer, gold: number, silver: number, bronze: number }> = {};
-        events.forEach(event => {
+        events.forEach((event: SwimEvent) => {
             if (event.results && event.gender !== Gender.MIXED) {
-                [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time).slice(0, 3).forEach((r, i) => {
+                [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time).slice(0, 3).forEach((r: Result, i: number) => {
                     const swimmer = swimmersMap.get(r.swimmerId);
                     if (swimmer) {
                         if (!medals[swimmer.id]) medals[swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 };
@@ -687,7 +682,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
             switch (activeReport) {
                 case 'schedule': {
-                    const data = scheduleData.flatMap(({ date, sessions }) => sessions.flatMap(([sessionName, sessionEvents]) => sessionEvents.map(event => ({ 'Tanggal': date, 'Sesi': sessionName, 'No. Acara': event.globalEventNumber, 'Nomor Lomba': formatEventName(event) }))));
+                    const data = scheduleData.flatMap(({ date, sessions }: { date: string, sessions: [string, ScheduledEvent[]][] }) => sessions.flatMap(([sessionName, sessionEvents]: [string, ScheduledEvent[]]) => sessionEvents.map((event: ScheduledEvent) => ({ 'Tanggal': date, 'Sesi': sessionName, 'No. Acara': event.globalEventNumber, 'Nomor Lomba': formatEventName(event) }))));
                     const ws = XLSX.utils.json_to_sheet(data);
                     ws['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 50 }];
                     XLSX.utils.book_append_sheet(wb, ws, 'Susunan Acara');
@@ -695,9 +690,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     break;
                 }
                 case 'program': {
-                    // FIX: Add explicit types to callback parameters to resolve numerous property access errors on `unknown` type.
-{/* @JIRA-TICKET-FIX-CODE-ERROR-005 Add explicit types to `flatMap` callback parameters `event` and `heat` to resolve `unknown` type issue. */}
-                    const data = Object.values(programBookData).flat().flatMap((event: TimedEvent) => (event.heatsWithTimes || []).flatMap((heat: TimedHeat) => heat.assignments.map(a => ({ 'Sesi': `Sesi ${romanize(event.sessionNumber!)}`, 'No. Acara': event.globalEventNumber, 'Nomor Lomba': formatEventName(event), 'Seri': heat.heatNumber, 'Lintasan': a.lane, 'Nama': event.relayLegs ? a.entry.swimmer.club : a.entry.swimmer.name, 'KU': event.relayLegs ? '' : a.entry.swimmer.ageGroup || '', 'Tahun': event.relayLegs ? '' : a.entry.swimmer.birthYear, 'Klub': a.entry.swimmer.club, 'Waktu Unggulan': formatTime(a.entry.seedTime) }))));
+                    const data = Object.values(programBookData).flat().flatMap((event: TimedEvent) => (event.heatsWithTimes || []).flatMap((heat: TimedHeat) => heat.assignments.map((a: LaneAssignment) => ({ 'Sesi': `Sesi ${romanize(event.sessionNumber!)}`, 'No. Acara': event.globalEventNumber, 'Nomor Lomba': formatEventName(event), 'Seri': heat.heatNumber, 'Lintasan': a.lane, 'Nama': event.relayLegs ? a.entry.swimmer.club : a.entry.swimmer.name, 'KU': event.relayLegs ? '' : a.entry.swimmer.ageGroup || '', 'Tahun': event.relayLegs ? '' : a.entry.swimmer.birthYear, 'Klub': a.entry.swimmer.club, 'Waktu Unggulan': formatTime(a.entry.seedTime) }))));
                     const ws = XLSX.utils.json_to_sheet(data);
                     ws['!cols'] = [{ wch: 15 }, { wch: 10 }, { wch: 50 }, { wch: 8 }, { wch: 8 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 30 }, { wch: 15 }];
                     XLSX.utils.book_append_sheet(wb, ws, 'Buku Acara');
@@ -705,7 +698,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     break;
                 }
                 case 'results': {
-                    const data = eventResultsData.flatMap(event => event.sortedResults.map(res => ({ 'No. Acara': event.globalEventNumber, 'Nomor Lomba': formatEventName(event), 'Peringkat': res.rank > 0 ? res.rank : formatTime(res.time), 'Nama': res.swimmer?.name, 'Klub': res.swimmer?.club, 'Waktu': formatTime(res.time), 'Rekor': res.recordsBroken.map((br: any) => br.record.type).join(', ') })));
+                    const data = eventResultsData.flatMap((event: any) => event.sortedResults.map((res: any) => ({ 'No. Acara': event.globalEventNumber, 'Nomor Lomba': formatEventName(event), 'Peringkat': res.rank > 0 ? res.rank : formatTime(res.time), 'Nama': res.swimmer?.name, 'Klub': res.swimmer?.club, 'Waktu': formatTime(res.time), 'Rekor': res.recordsBroken.map((br: any) => br.record.type).join(', ') })));
                     const ws = XLSX.utils.json_to_sheet(data);
                     ws['!cols'] = [{ wch: 10 }, { wch: 50 }, { wch: 10 }, { wch: 30 }, { wch: 30 }, { wch: 15 }, { wch: 15 }];
                     XLSX.utils.book_append_sheet(wb, ws, 'Buku Hasil');
@@ -713,7 +706,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     break;
                 }
                 case 'winners': {
-                    const data = winnersData.flatMap(([category, events]) => events.flatMap(e => e.winners.map((w: any) => ({ 'Kategori': category, 'Nomor Lomba': formatEventName(e), 'Peringkat': w.rank, 'Nama': w.swimmer?.name, 'Klub': w.swimmer?.club, 'Waktu': formatTime(w.time) }))));
+                    const data = winnersData.flatMap(([category, events]: [string, any[]]) => events.flatMap(e => e.winners.map((w: any) => ({ 'Kategori': category, 'Nomor Lomba': formatEventName(e), 'Peringkat': w.rank, 'Nama': w.swimmer?.name, 'Klub': w.swimmer?.club, 'Waktu': formatTime(w.time) }))));
                     const ws = XLSX.utils.json_to_sheet(data);
                     ws['!cols'] = [{ wch: 15 }, { wch: 50 }, { wch: 10 }, { wch: 30 }, { wch: 30 }, { wch: 15 }];
                     XLSX.utils.book_append_sheet(wb, ws, 'Rekap Juara');
@@ -721,7 +714,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     break;
                 }
                 case 'medals': {
-                    const data = clubMedalsData.map(([club, medals], i) => ({ 'Peringkat': i + 1, 'Nama Tim': club, 'Emas': medals.gold, 'Perak': medals.silver, 'Perunggu': medals.bronze, 'Total': medals.gold + medals.silver + medals.bronze }));
+                    const data = clubMedalsData.map(([club, medals]: [string, { gold: number, silver: number, bronze: number }], i: number) => ({ 'Peringkat': i + 1, 'Nama Tim': club, 'Emas': medals.gold, 'Perak': medals.silver, 'Perunggu': medals.bronze, 'Total': medals.gold + medals.silver + medals.bronze }));
                     const ws = XLSX.utils.json_to_sheet(data);
                     ws['!cols'] = [{ wch: 10 }, { wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
                     XLSX.utils.book_append_sheet(wb, ws, 'Rekap Medali Tim');
@@ -729,8 +722,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     break;
                 }
                  case 'individualMedals': {
-                    const maleData = individualMedalsData.male.map((d, i) => ({ 'Peringkat': i + 1, 'Nama Atlet': d.swimmer.name, 'Klub': d.swimmer.club, 'Emas': d.gold, 'Perak': d.silver, 'Perunggu': d.bronze }));
-                    const femaleData = individualMedalsData.female.map((d, i) => ({ 'Peringkat': i + 1, 'Nama Atlet': d.swimmer.name, 'Klub': d.swimmer.club, 'Emas': d.gold, 'Perak': d.silver, 'Perunggu': d.bronze }));
+                    const maleData = individualMedalsData.male.map((d: any, i: number) => ({ 'Peringkat': i + 1, 'Nama Atlet': d.swimmer.name, 'Klub': d.swimmer.club, 'Emas': d.gold, 'Perak': d.silver, 'Perunggu': d.bronze }));
+                    const femaleData = individualMedalsData.female.map((d: any, i: number) => ({ 'Peringkat': i + 1, 'Nama Atlet': d.swimmer.name, 'Klub': d.swimmer.club, 'Emas': d.gold, 'Perak': d.silver, 'Perunggu': d.bronze }));
                     const wsMale = XLSX.utils.json_to_sheet(maleData);
                     const wsFemale = XLSX.utils.json_to_sheet(femaleData);
                     wsMale['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
@@ -741,7 +734,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     break;
                 }
                 case 'brokenRecords': {
-                    const data = brokenRecords.map(br => ({ 'Nomor Lomba': br.newEventName, 'Rekor Baru Atas Nama': br.newHolder.name, 'Klub': br.newHolder.club, 'Waktu Baru': formatTime(br.newTime), 'Tipe Rekor Lama': br.record.type, 'Waktu Lama': formatTime(br.record.time), 'Pemegang Rekor Lama': br.record.holderName, 'Tahun': br.record.yearSet }));
+                    const data = brokenRecords.map((br: BrokenRecord) => ({ 'Nomor Lomba': br.newEventName, 'Rekor Baru Atas Nama': br.newHolder.name, 'Klub': br.newHolder.club, 'Waktu Baru': formatTime(br.newTime), 'Tipe Rekor Lama': br.record.type, 'Waktu Lama': formatTime(br.record.time), 'Pemegang Rekor Lama': br.record.holderName, 'Tahun': br.record.yearSet }));
                     const ws = XLSX.utils.json_to_sheet(data);
                     ws['!cols'] = [{ wch: 50 }, { wch: 30 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 30 }, { wch: 10 }];
                     XLSX.utils.book_append_sheet(wb, ws, 'Rekor Terpecahkan');
