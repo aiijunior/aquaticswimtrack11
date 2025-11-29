@@ -82,8 +82,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
 
   const sessions = useMemo(() => {
     if (!events) return { scheduled: [], unscheduledExists: false };
-    // FIX: Explicitly cast `events` to `SwimEvent[]` to resolve type inference issue.
-    const sessionNumbers = new Set((events as SwimEvent[]).map(e => e.sessionNumber || 0));
+    const sessionNumbers = new Set(events.map(e => e.sessionNumber || 0));
     const scheduled = Array.from(sessionNumbers).filter((s: number) => s > 0).sort((a: number, b: number) => a - b);
     const unscheduledExists = sessionNumbers.has(0);
     return { scheduled, unscheduledExists };
@@ -575,6 +574,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 value={newEvent.gender}
                 onChange={(e) => setNewEvent({ ...newEvent, gender: e.target.value as Gender })}
             >
+                {/* FIX: Add explicit type to callback parameter to resolve type inference issue. */}
                 {genderOptions.filter((gender: Gender) => newEvent.isRelay || gender !== Gender.MIXED).map((gender: Gender) => (
                 <option key={gender} value={gender}>
                     {translateGender(gender)}
@@ -706,7 +706,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {uploadResult.errors.map((err: string, i: number) => <li key={i}>{err}</li>)}
+                                {uploadResult.errors.map((err, i: number) => <li key={i}>{err}</li>)}
                             </ul>
                         </div>
                     )}
