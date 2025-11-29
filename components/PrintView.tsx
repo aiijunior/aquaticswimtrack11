@@ -115,6 +115,16 @@ const PrintRecordRow: React.FC<{ record: SwimRecord | undefined; type: string; }
     );
 };
 
+// --- Interfaces for ProgramBook with timing ---
+interface TimedHeat extends Heat {
+    estimatedHeatStartTime?: number;
+}
+interface TimedEvent extends ScheduledEvent {
+    detailedEntries: Entry[];
+    estimatedEventStartTime?: number;
+    heatsWithTimes?: TimedHeat[];
+}
+
 // Define a type for events that have the global numbering attached
 type ScheduledEvent = SwimEvent & { globalEventNumber: number };
 
@@ -183,16 +193,6 @@ const ScheduleOfEvents: React.FC<{ events: ScheduledEvent[] }> = ({ events }) =>
         </main>
     );
 };
-
-// --- Interfaces for ProgramBook with timing ---
-interface TimedHeat extends Heat {
-    estimatedHeatStartTime?: number;
-}
-interface TimedEvent extends ScheduledEvent {
-    detailedEntries: Entry[];
-    estimatedEventStartTime?: number;
-    heatsWithTimes?: TimedHeat[];
-}
 
 const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[] }> = ({ events, swimmers, info, records }) => {
     const data = useMemo<Record<string, TimedEvent[]>>(() => {
@@ -444,92 +444,6 @@ const EventResults: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], in
             })}
         </main>
     );
-};
-
-const RekapJuaraPerKategori: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo }> = ({ events, swimmers, info }) => {
-    const data = useMemo(() => {
-        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-        
-        const getCategoryKey = (event: SwimEvent): string => {
-            const category = event.category?.trim() || 'Umum';
-            return category;
-        };
-
-        const eventsWithWinners = (events as SwimEvent[])
-            .filter((e: SwimEvent) => e.results && e.results.length > 0)
-            .map((event: SwimEvent) => ({
-                ...event,
-                winners: [...event.results]
-                    .filter((r: Result) => r.time > 0)
-                    .sort((a: Result,b: Result) => a.time - b.time)
-                    .slice(0, 3)
-                    .map((result: Result, i: number) => ({
-                        rank: i + 1,
-                        time: result.time,
-                        swimmer: swimmersMap.get(result.swimmerId)
-                    })),
-                categoryKey: getCategoryKey(event)
-            }))
-            .filter(e => e.winners.length > 0);
-        
-        const groupedByCategory = eventsWithWinners.reduce((acc: Record<string, typeof eventsWithWinners>, event) => {
-            if (!acc[event.categoryKey]) {
-                acc[event.categoryKey] = [];
-            }
-            acc[event.categoryKey].push(event);
-            return acc;
-        }, {} as Record<string, typeof eventsWithWinners>);
-
-        return Object.entries(groupedByCategory).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
-        
-    }, [events, swimmers]);
-
-    const hasData = data.length > 0;
-
-    if (!hasData) return <p className="text-center text-text-secondary py-10">Tidak ada juara untuk ditampilkan.</p>;
-
-    return (
-        <main>
-            {data.map(([categoryKey, categoryEvents]) => (
-                <section key={categoryKey} className="mb-6">
-                    <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md text-center">{categoryKey}</h3>
-                    <div className="space-y-4">
-                        {categoryEvents.sort((a,b) => formatEventName(a).localeCompare(formatEventName(b))).map(event => (
-                            <div key={event.id}>
-                                <h4 className="text-lg font-semibold">{formatEventName(event)}</h4>
-                                <table className="w-full text-left text-sm mt-1">
-                                    <colgroup>
-                                        <col style={{ width: '15%' }} />
-                                        <col style={{ width: '35%' }} />
-                                        <col style={{ width: '35%' }} />
-                                        <col style={{ width: '15%' }} />
-                                    </colgroup>
-                                    <thead>
-                                        <tr>
-                                            <th className="w-16">Peringkat</th>
-                                            <th>Nama Atlet</th>
-                                            <th>Nama Tim</th>
-                                            <th className="text-right">Waktu</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {event.winners.map(winner => (
-                                            <tr key={winner.swimmer?.id}>
-                                                <td className="font-bold text-center">{winner.rank} <Medal rank={winner.rank} /></td>
-                                                <td>{winner.swimmer?.name || 'N/A'}</td>
-                                                <td>{winner.swimmer?.club || 'N/A'}</td>
-                                                <td className="text-right font-mono">{formatTime(winner.time)}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-            ))}
-        </main>
-    )
 };
 
 const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], info: CompetitionInfo }> = ({ events, swimmers, info }) => {
@@ -889,7 +803,7 @@ const BrokenRecordsReport: React.FC<{ brokenRecords: BrokenRecord[] }> = ({ brok
 
 
 export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competitionInfo, isLoading }) => {
-    const [activeReport, setActiveReport] = useState<'schedule' | 'program' | 'results' | 'winners' | 'medals' | 'medalsWithAthletes' | 'individualMedals' | 'individualMedalsByCategory' | 'brokenRecords'>('schedule');
+    const [activeReport, setActiveReport] = useState<'schedule' | 'program' | 'results' | 'medals' | 'medalsWithAthletes' | 'individualMedals' | 'individualMedalsByCategory' | 'brokenRecords'>('schedule');
     const [records, setRecords] = useState<SwimRecord[]>([]);
     const [brokenRecords, setBrokenRecords] = useState<BrokenRecord[]>([]);
     const [selectedSession, setSelectedSession] = useState<number>(0); // 0 means "All Sessions"
@@ -899,7 +813,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const { addNotification } = useNotification();
 
      useEffect(() => {
-        if (!['program', 'results'].includes(activeReport)) {
+        if (!['program', 'results', 'individualMedalsByCategory'].includes(activeReport)) {
             setSelectedEventIds([]);
         }
     }, [activeReport]);
@@ -1015,7 +929,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             case 'schedule': return `Susunan Acara${sessionSuffix}`;
             case 'program': return `Buku Acara (Start List)${sessionSuffix}`;
             case 'results': return `Buku Hasil${sessionSuffix}`;
-            case 'winners': return 'Rekap Juara per Kategori';
             case 'medals': return 'Rekap Medali Klub';
             case 'medalsWithAthletes': return 'Rekap Medali Klub & Atlet';
             case 'individualMedals': return 'Rekap Medali Atlet (Total)';
@@ -1245,7 +1158,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                             <Button variant={activeReport === 'schedule' ? 'primary' : 'secondary'} onClick={() => setActiveReport('schedule')}>Susunan Acara</Button>
                             <Button variant={activeReport === 'program' ? 'primary' : 'secondary'} onClick={() => setActiveReport('program')}>Buku Acara</Button>
                             <Button variant={activeReport === 'results' ? 'primary' : 'secondary'} onClick={() => setActiveReport('results')}>Buku Hasil</Button>
-                            <Button variant={activeReport === 'winners' ? 'primary' : 'secondary'} onClick={() => setActiveReport('winners')}>Rekap Juara (Kategori)</Button>
                             <Button variant={activeReport === 'medals' ? 'primary' : 'secondary'} onClick={() => setActiveReport('medals')}>Rekap Medali Klub</Button>
                             <Button variant={activeReport === 'medalsWithAthletes' ? 'primary' : 'secondary'} onClick={() => setActiveReport('medalsWithAthletes')}>Rekap Medali Klub & Atlet</Button>
                             <Button variant={activeReport === 'individualMedals' ? 'primary' : 'secondary'} onClick={() => setActiveReport('individualMedals')}>Rekap Medali Atlet (Total)</Button>
@@ -1327,7 +1239,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     {activeReport === 'schedule' && <ScheduleOfEvents events={eventsToDisplay} />}
                     {activeReport === 'program' && <ProgramBook events={eventsToDisplay} swimmers={swimmers} info={competitionInfo} records={records} />}
                     {activeReport === 'results' && <EventResults events={eventsToDisplay} swimmers={swimmers} info={competitionInfo} records={records} brokenRecords={brokenRecords} />}
-                    {activeReport === 'winners' && <RekapJuaraPerKategori events={events} swimmers={swimmers} info={competitionInfo} />}
                     {activeReport === 'medals' && <ClubMedalStandings events={events} swimmers={swimmers} info={competitionInfo} />}
                     {activeReport === 'medalsWithAthletes' && <ClubMedalStandingsWithAthletes events={events} swimmers={swimmers} />}
                     {activeReport === 'individualMedals' && <IndividualMedalStandings events={events} swimmers={swimmers} />}
