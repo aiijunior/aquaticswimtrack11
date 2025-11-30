@@ -56,17 +56,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
   const [sortConfig, setSortConfig] = useState<{ key: SortableKey; direction: 'asc' | 'desc' }>({ key: 'total', direction: 'desc' });
 
   const stats = useMemo(() => {
-    const swimmerCount = swimmers.length;
+    const individualSwimmers = swimmers.filter(s => s.birthYear !== 0);
+    const swimmerCount = individualSwimmers.length;
     const eventCount = events.length;
-    const clubCount = new Set(swimmers.map(s => s.club.trim())).size;
+    const clubCount = new Set(individualSwimmers.map(s => s.club.trim())).size;
     const totalRegistrations = events.reduce((acc, event) => acc + event.entries.length, 0);
     return { swimmerCount, eventCount, clubCount, totalRegistrations };
   }, [swimmers, events]);
 
+  const relayStats = useMemo(() => {
+    const maleTeams = new Set<string>();
+    const femaleTeams = new Set<string>();
+    const mixedTeams = new Set<string>();
+
+    events.forEach(event => {
+        if (event.relayLegs && event.relayLegs > 1) {
+            const targetSet = 
+                event.gender === "Men's" ? maleTeams :
+                event.gender === "Women's" ? femaleTeams :
+                event.gender === 'Mixed' ? mixedTeams :
+                null;
+            
+            if (targetSet) {
+                event.entries.forEach(entry => {
+                    targetSet.add(entry.swimmerId);
+                });
+            }
+        }
+    });
+
+    return {
+        male: maleTeams.size,
+        female: femaleTeams.size,
+        mixed: mixedTeams.size,
+    };
+  }, [events]);
 
   const clubAnalysisData = useMemo(() => {
+    const individualSwimmers = swimmers.filter(s => s.birthYear !== 0);
     const clubData: Record<string, { male: number; female: number }> = {};
-    swimmers.forEach(swimmer => {
+    individualSwimmers.forEach(swimmer => {
         if (!clubData[swimmer.club]) {
             clubData[swimmer.club] = { male: 0, female: 0 };
         }
@@ -77,7 +106,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
         }
     });
 
-    const totalSwimmers = swimmers.length;
+    const totalSwimmers = individualSwimmers.length;
     return Object.entries(clubData).map(([clubName, counts]) => ({
         clubName,
         maleCount: counts.male,
@@ -215,6 +244,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
             <StatCard icon={<ShieldIcon />} label="Total Tim" value={stats.clubCount} />
             <StatCard icon={<DocumentTextIcon />} label="Total Pendaftaran" value={stats.totalRegistrations} />
           </div>
+
+          <Card className="mt-6">
+            <h2 className="text-xl font-bold mb-4">Rekap Tim Estafet (Unik)</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:divide-x divide-border">
+                <div className="px-2">
+                    <p className="text-sm font-semibold text-text-secondary">TIM PUTRA</p>
+                    <p className="text-4xl font-bold text-blue-500">{relayStats.male}</p>
+                </div>
+                <div className="px-2 pt-4 sm:pt-0 sm:border-t-0 border-t border-border">
+                    <p className="text-sm font-semibold text-text-secondary">TIM PUTRI</p>
+                    <p className="text-4xl font-bold text-pink-500">{relayStats.female}</p>
+                </div>
+                <div className="px-2 pt-4 sm:pt-0 sm:border-t-0 border-t border-border">
+                    <p className="text-sm font-semibold text-text-secondary">TIM MIX</p>
+                    <p className="text-4xl font-bold text-purple-500">{relayStats.mixed}</p>
+                </div>
+            </div>
+          </Card>
 
           <Card className="mt-6">
             <h2 className="text-xl font-bold mb-4">Analisis Tim</h2>

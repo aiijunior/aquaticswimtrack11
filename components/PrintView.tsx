@@ -962,7 +962,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
             switch(activeReport) {
                  case 'schedule': {
-                    let aoa = createHeaderAoa(reportTitle);
+                    // FIX: Explicitly type `aoa` to allow mixed content types (string, number).
+                    let aoa: (string | number | null | undefined)[][] = createHeaderAoa(reportTitle);
                     aoa.push(['No. Acara', 'Nomor Lomba', 'Sesi', 'Perkiraan Waktu Mulai']);
                     eventsToDisplay.forEach(e => {
                         const startTime = e.sessionDateTime ? new Date(e.sessionDateTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : 'TBD';
@@ -976,7 +977,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 
                 case 'program':
                 case 'results': {
-                    let aoa = createHeaderAoa(reportTitle);
+                    // FIX: Explicitly type `aoa` to allow mixed content types (string, number).
+                    let aoa: (string | number | null | undefined)[][] = createHeaderAoa(reportTitle);
                     const eventsBySession = eventsToDisplay.reduce((acc, event) => {
                         const sessionName = `Sesi ${romanize(event.sessionNumber || 0)}`;
                         if (!acc[sessionName]) acc[sessionName] = [];
@@ -1043,7 +1045,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                      (events as SwimEvent[]).forEach((event: SwimEvent) => { if (!event.results) return; [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => { const rank = i + 1; const swimmer = swimmersMap.get(result.swimmerId); if (swimmer && clubMedals[swimmer.club]) { if (rank === 1) clubMedals[swimmer.club].gold++; else if (rank === 2) clubMedals[swimmer.club].silver++; else if (rank === 3) clubMedals[swimmer.club].bronze++; } }); });
                      const sortedData = Object.entries(clubMedals).sort(([, a], [, b]) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
 
-                     const aoa = createHeaderAoa(reportTitle);
+                    // FIX: Explicitly type `aoa` to allow mixed content types (string, number).
+                     const aoa: (string | number | null | undefined)[][] = createHeaderAoa(reportTitle);
                      aoa.push(['#', 'Nama Tim', '🥇', '🥈', '🥉', 'Total']);
                      sortedData.forEach(([club, medals], i) => {
                         aoa.push([i+1, club, medals.gold, medals.silver, medals.bronze, medals.gold + medals.silver + medals.bronze]);
@@ -1060,7 +1063,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     (events as SwimEvent[]).forEach((event: SwimEvent) => { if (!event.results) return; [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => { const rank = i + 1; const swimmer = swimmersMap.get(result.swimmerId); if (swimmer) { const club = clubDataRecalc[swimmer.club]; if (rank === 1) club.medals.gold++; else if (rank === 2) club.medals.silver++; else if (rank === 3) club.medals.bronze++; if (!club.athletes[swimmer.id]) { club.athletes[swimmer.id] = { swimmer, wins: [] }; } club.athletes[swimmer.id].wins.push({ eventName: formatEventName(event), rank, time: result.time }); } }); });
                     const sortedData = Object.entries(clubDataRecalc).sort(([cA, a], [cB, b]) => b.medals.gold - a.medals.gold || b.medals.silver - a.medals.silver || b.medals.bronze - a.medals.bronze || cA.localeCompare(cB));
 
-                    let aoa = createHeaderAoa(reportTitle);
+                    // FIX: Explicitly type `aoa` to allow mixed content types (string, number).
+                    let aoa: (string | number | null | undefined)[][] = createHeaderAoa(reportTitle);
                     sortedData.forEach(([clubName, clubData]) => {
                          const athletesWithWins = Object.values(clubData.athletes).filter((a: AthleteWins) => a.wins.length > 0);
                          if (athletesWithWins.length === 0) return;
