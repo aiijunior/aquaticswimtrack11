@@ -60,6 +60,7 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.LOGIN);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [navigationState, setNavigationState] = useState<any>(null);
 
   // Centralized state
   const [swimmers, setSwimmers] = useState<Swimmer[]>([]);
@@ -196,9 +197,10 @@ const App: React.FC = () => {
     setCurrentView(View.LOGIN);
   };
 
-  const navigateTo = (view: View) => {
+  const navigateTo = (view: View, state: any = null) => {
     setCurrentView(view);
     setSelectedEventId(null);
+    setNavigationState(state);
     setIsMenuOpen(false);
   }
 
@@ -274,7 +276,7 @@ const App: React.FC = () => {
     }
     switch (currentView) {
       case View.ADMIN_DASHBOARD:
-        return <AdminDashboard swimmers={swimmers} events={events} competitionInfo={competitionInfo} isLoading={isLoading} />;
+        return <AdminDashboard swimmers={swimmers} events={events} competitionInfo={competitionInfo} isLoading={isLoading} navigateTo={navigateTo} />;
       case View.EVENT_SETTINGS:
         return <EventSettingsView 
             competitionInfo={competitionInfo} 
@@ -286,7 +288,7 @@ const App: React.FC = () => {
       case View.PARTICIPANTS:
           return <ParticipantsView swimmers={swimmers} events={events} onUploadSuccess={refreshData} />;
       case View.SWIMMERS_LIST:
-          return <SwimmersView swimmers={swimmers} events={events} isLoading={isLoading} onDataUpdate={refreshData} />;
+          return <SwimmersView swimmers={swimmers} events={events} isLoading={isLoading} onDataUpdate={refreshData} initialState={navigationState} />;
       case View.RESULTS:
           return <ResultsView events={events} swimmers={swimmers} isLoading={isLoading} />;
       case View.PRINT_MENU:
@@ -294,7 +296,7 @@ const App: React.FC = () => {
       case View.USER_MANAGEMENT:
           return <UserManagementView onDataUpdate={refreshData} />;
       default:
-        return <AdminDashboard swimmers={swimmers} events={events} competitionInfo={competitionInfo} isLoading={isLoading}/>;
+        return <AdminDashboard swimmers={swimmers} events={events} competitionInfo={competitionInfo} isLoading={isLoading} navigateTo={navigateTo}/>;
     }
   };
   

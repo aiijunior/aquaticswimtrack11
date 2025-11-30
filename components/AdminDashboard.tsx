@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import type { Swimmer, SwimEvent, CompetitionInfo } from '../types';
+import { View } from '../types';
 import { Card } from './ui/Card';
 import { Spinner } from './ui/Spinner';
 import { useTheme } from '../contexts/ThemeContext';
@@ -42,6 +43,7 @@ interface AdminDashboardProps {
   events: SwimEvent[];
   competitionInfo: CompetitionInfo | null;
   isLoading: boolean;
+  navigateTo: (view: View, state?: any) => void;
 }
 type ClubAnalysisData = { clubName: string; maleCount: number; femaleCount: number; total: number; percentage: number; };
 type SortableKey = keyof ClubAnalysisData;
@@ -49,7 +51,7 @@ type SortableKey = keyof ClubAnalysisData;
 // Since chart.js is loaded via a script tag, we declare it as a global variable for TypeScript.
 declare var Chart: any;
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events, competitionInfo, isLoading }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events, competitionInfo, isLoading, navigateTo }) => {
   const { theme } = useTheme();
   const chartRef = useRef<HTMLCanvasElement | null>(null);
   const chartInstance = useRef<any>(null); // To hold the chart instance
@@ -206,14 +208,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
     };
   }, [chartData, isLoading, theme]);
 
-  const StatCard: React.FC<{ icon: React.ReactNode, label: string, value: number }> = ({ icon, label, value }) => (
-    <Card>
-        <div className="flex items-center space-x-4">
-            {icon}
-            <div>
-            <p className="text-text-secondary">{label}</p>
-            <p className="text-2xl font-bold">{value}</p>
-            </div>
+  const StatCard: React.FC<{ icon: React.ReactNode, label: string, value: number, onClick?: () => void }> = ({ icon, label, value, onClick }) => (
+    <Card 
+        onClick={onClick} 
+        className={`flex items-center space-x-4 transition-all duration-200 ${onClick ? 'cursor-pointer hover:shadow-xl hover:border-primary' : ''}`}
+    >
+        {icon}
+        <div>
+        <p className="text-text-secondary">{label}</p>
+        <p className="text-2xl font-bold">{value}</p>
         </div>
     </Card>
   );
@@ -239,24 +242,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard icon={<UsersIcon />} label="Total Atlet" value={stats.swimmerCount} />
-            <StatCard icon={<ClipboardListIcon />} label="Total Nomor Lomba" value={stats.eventCount} />
-            <StatCard icon={<ShieldIcon />} label="Total Tim" value={stats.clubCount} />
-            <StatCard icon={<DocumentTextIcon />} label="Total Pendaftaran" value={stats.totalRegistrations} />
+            <StatCard icon={<UsersIcon />} label="Total Atlet" value={stats.swimmerCount} onClick={() => navigateTo(View.SWIMMERS_LIST, { genderFilter: 'All', viewMode: 'swimmerList' })} />
+            <StatCard icon={<ClipboardListIcon />} label="Total Nomor Lomba" value={stats.eventCount} onClick={() => navigateTo(View.RACES)} />
+            <StatCard icon={<ShieldIcon />} label="Total Tim" value={stats.clubCount} onClick={() => navigateTo(View.SWIMMERS_LIST, { viewMode: 'clubRecap' })} />
+            <StatCard icon={<DocumentTextIcon />} label="Total Pendaftaran" value={stats.totalRegistrations} onClick={() => navigateTo(View.PARTICIPANTS)} />
           </div>
 
           <Card className="mt-6">
             <h2 className="text-xl font-bold mb-4">Rekap Tim Estafet (Unik)</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:divide-x divide-border">
-                <div className="px-2">
+                <div className="px-2 cursor-pointer hover:bg-background rounded-lg p-2 transition-colors" onClick={() => navigateTo(View.SWIMMERS_LIST, { relayFilter: "Men's" })}>
                     <p className="text-sm font-semibold text-text-secondary">TIM PUTRA</p>
                     <p className="text-4xl font-bold text-blue-500">{relayStats.male}</p>
                 </div>
-                <div className="px-2 pt-4 sm:pt-0 sm:border-t-0 border-t border-border">
+                <div className="px-2 pt-4 sm:pt-0 sm:border-t-0 border-t border-border cursor-pointer hover:bg-background rounded-lg p-2 transition-colors" onClick={() => navigateTo(View.SWIMMERS_LIST, { relayFilter: "Women's" })}>
                     <p className="text-sm font-semibold text-text-secondary">TIM PUTRI</p>
                     <p className="text-4xl font-bold text-pink-500">{relayStats.female}</p>
                 </div>
-                <div className="px-2 pt-4 sm:pt-0 sm:border-t-0 border-t border-border">
+                <div className="px-2 pt-4 sm:pt-0 sm:border-t-0 border-t border-border cursor-pointer hover:bg-background rounded-lg p-2 transition-colors" onClick={() => navigateTo(View.SWIMMERS_LIST, { relayFilter: "Mixed" })}>
                     <p className="text-sm font-semibold text-text-secondary">TIM MIX</p>
                     <p className="text-4xl font-bold text-purple-500">{relayStats.mixed}</p>
                 </div>

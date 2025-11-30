@@ -52,6 +52,7 @@ interface SwimmersViewProps {
   events: SwimEvent[];
   isLoading: boolean;
   onDataUpdate: () => void;
+  initialState?: any;
 }
 
 const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: number | string; onClick?: () => void; isActive?: boolean; }> = ({ icon, label, value, onClick, isActive }) => (
@@ -68,8 +69,8 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: number |
 );
 
 
-export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, isLoading, onDataUpdate }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, isLoading, onDataUpdate, initialState }) => {
+  const [searchQuery, setSearchQuery] = useState(initialState?.searchQuery || '');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
@@ -103,8 +104,8 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
   const [registrationData, setRegistrationData] = useState({ eventId: '', min: '99', sec: '99', ms: '99' });
   
   // State for filtering and view mode
-  const [genderFilter, setGenderFilter] = useState<'Male' | 'Female' | 'All'>('All');
-  const [viewMode, setViewMode] = useState<'swimmerList' | 'clubRecap'>('swimmerList');
+  const [genderFilter, setGenderFilter] = useState<'Male' | 'Female' | 'All'>(initialState?.genderFilter || 'All');
+  const [viewMode, setViewMode] = useState<'swimmerList' | 'clubRecap'>(initialState?.viewMode || 'swimmerList');
 
 
   const stats = useMemo(() => {
@@ -116,8 +117,29 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
     return { totalSwimmers, maleSwimmers, femaleSwimmers, totalClubs };
   }, [swimmers]);
 
+  const relayTeamSwimmerIds = useMemo(() => {
+      if (!initialState?.relayFilter) return null;
+
+      const swimmerIdsInRelayEvents = new Set<string>();
+      events.forEach(event => {
+          if (event.relayLegs && event.relayLegs > 1 && event.gender === initialState.relayFilter) {
+              event.entries.forEach(entry => {
+                  swimmerIdsInRelayEvents.add(entry.swimmerId);
+              });
+          }
+      });
+      return swimmerIdsInRelayEvents;
+  }, [events, initialState?.relayFilter]);
+
   const filteredSwimmers = useMemo(() => {
     return swimmers.filter(swimmer => {
+        // Special filter for relay teams from dashboard
+        if (relayTeamSwimmerIds) {
+            // Only show entries that are relay teams (birthYear === 0) AND are in the filtered set
+            return swimmer.birthYear === 0 && relayTeamSwimmerIds.has(swimmer.id);
+        }
+
+        // Standard filtering logic
         const searchMatch = !searchQuery ||
             swimmer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             swimmer.club.toLowerCase().includes(searchQuery.toLowerCase());
@@ -126,7 +148,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
 
         return searchMatch && genderMatch;
     });
-  }, [swimmers, searchQuery, genderFilter]);
+  }, [swimmers, searchQuery, genderFilter, relayTeamSwimmerIds]);
 
   const clubRecap = useMemo(() => {
     if (viewMode !== 'clubRecap') return [];
@@ -454,7 +476,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                     filteredSwimmers.map((swimmer) => (
                       <tr key={swimmer.id} className="border-b border-border last:border-b-0 hover:bg-background">
                         <td className="p-3">{swimmer.name}</td>
-                        <td className="p-3">{swimmer.birthYear}</td>
+                        <td className="p-3">{swimmer.birthYear === 0 ? 'N/A' : swimmer.birthYear}</td>
                         <td className="p-3">{swimmer.gender}</td>
                         <td className="p-3">{swimmer.ageGroup || '-'}</td>
                         <td className="p-3">{swimmer.club}</td>
