@@ -4,7 +4,7 @@ import type { SwimEvent, SwimRecord, FormattableEvent, Entry, Heat, LaneAssignme
 // FIX: Add explicit types for better type inference across the app.
 export const SWIM_STYLE_OPTIONS: SwimStyle[] = Object.values(SwimStyle);
 export const GENDER_OPTIONS: Gender[] = Object.values(Gender);
-export const AGE_GROUP_OPTIONS = ['KU Senior', 'KU 1', 'KU 2', 'KU 3', 'KU 4', 'KU 5'];
+export const AGE_GROUP_OPTIONS: string[] = ['KU Senior', 'KU 1', 'KU 2', 'KU 3', 'KU 4', 'KU 5'];
 
 // --- Translations ---
 

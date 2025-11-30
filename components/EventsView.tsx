@@ -324,6 +324,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     // Add Data Validation to Sheet 1
     const maxRows = 1000;
     if (!ws['!dataValidation']) ws['!dataValidation'] = [];
+// FIX: Corrected a typo from `styles.map.length` to `styles.length` to resolve 'map' does not exist on type 'string[]' error.
     ws['!dataValidation'].push({ sqref: `B2:B${maxRows}`, opts: { type: 'list', formula1: `'Petunjuk & Pilihan'!$A$11:$A$${10 + styles.length}` } });
     ws['!dataValidation'].push({ sqref: `C2:C${maxRows}`, opts: { type: 'list', formula1: `'Petunjuk & Pilihan'!$B$11:$B$${10 + genders.length}` } });
     

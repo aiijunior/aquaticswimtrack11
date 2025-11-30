@@ -73,7 +73,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     const [openAccordion, setOpenAccordion] = useState<SwimStyle | null>(null);
 
     // Explicitly typed options for rendering to prevent type errors
-    const ageGroupOptions: string[] = AGE_GROUP_OPTIONS as string[];
+    const ageGroupOptions: string[] = AGE_GROUP_OPTIONS;
 
     useEffect(() => {
         const fetchEvents = async () => {
@@ -298,8 +298,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             });
 
             // Previously registered events (without seed time, as we don't have it easily)
-            // FIX: Cast to any[] to allow mapping over the server response which may have snake_case properties and be inferred as unknown.
-            const previouslyRegisteredEventsList = ((result.previouslyRegisteredEvents || []) as any[]).map((event: any) => {
+            // FIX: Correctly handle server response by casting to any[] to map over snake_case properties, resolving `map does not exist on type unknown` error.
+            const eventsFromServer: any[] = result.previouslyRegisteredEvents || [];
+            const previouslyRegisteredEventsList = eventsFromServer.map((event: any) => {
                 const formattableEvent: FormattableEvent = {
                     distance: event.distance,
                     style: event.style,
@@ -415,7 +416,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 </Select>
                                  <Select label="Kelompok Umur (KU) (Opsional)" id="ageGroup" name="ageGroup" value={formData.ageGroup} onChange={handleFormChange}>
                                     <option value="">-- Tanpa KU --</option>
-                                    {ageGroupOptions.map(ku => <option key={ku} value={ku}>{ku}</option>)}
+                                    {ageGroupOptions.map((ku: string) => <option key={ku} value={ku}>{ku}</option>)}
                                 </Select>
                             </div>
                         </Card>
