@@ -7,7 +7,6 @@ import { Spinner } from './ui/Spinner';
 import { Input } from './ui/Input';
 import { formatEventName, generateHeats, translateGender } from '../constants';
 import { getRecords } from '../services/databaseService';
-// FIX: Import useNotification hook
 import { useNotification } from './ui/NotificationManager';
 
 declare var XLSX: any;
@@ -35,7 +34,7 @@ const romanize = (num: number): string => {
 };
 
 const formatTime = (ms: number) => {
-    if (ms === 0) return '99:99.99';
+    if (ms === 0) return 'NT';
     if (ms === -2) return 'NS';
     if (ms < 0) return 'DQ';
     const totalSeconds = ms / 1000;
@@ -415,7 +414,7 @@ const EventResults: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], in
 
                                         return (
                                             <tr key={res.swimmerId} className={rankClass}>
-                                                <td className="text-center font-bold">{res.rank > 0 ? res.rank : '-'}</td>
+                                                <td className="text-center font-bold">{res.rank > 0 ? res.rank : formatTime(res.time)}</td>
                                                 <td>{res.swimmer?.name || 'N/A'}</td>
                                                 <td>{event.relayLegs ? '-' : res.swimmer?.ageGroup || '-'}</td>
                                                 <td>{event.relayLegs ? '-' : res.swimmer?.birthYear || ''}</td>
@@ -809,7 +808,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const [selectedSession, setSelectedSession] = useState<number>(0); // 0 means "All Sessions"
     const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
     const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
-    // FIX: Initialize useNotification hook
     const { addNotification } = useNotification();
 
      useEffect(() => {
@@ -940,209 +938,178 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     
     // --- EXCEL DOWNLOAD HANDLER ---
     const handleDownloadExcel = () => {
-        if (typeof XLSX === 'undefined') {
-            alert('Pustaka Excel belum termuat.');
+        if (typeof XLSX === 'undefined' || !competitionInfo) {
+            addNotification('Pustaka Excel belum termuat atau data kompetisi tidak ada.', 'error');
             return;
         }
         setIsDownloadingExcel(true);
         try {
             const wb = XLSX.utils.book_new();
-            let data: any[] = [];
-            let ws;
-            const title = getReportTitle();
+            const reportTitle = getReportTitle();
+            const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+
+            const createHeaderAoa = (title: string) => [
+                [competitionInfo.eventName.split('\n')[0] || ''],
+                [competitionInfo.eventName.split('\n')[1] || ''],
+                [competitionInfo.eventName.split('\n')[2] || ''],
+                [competitionInfo.eventDate ? new Date(competitionInfo.eventDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''],
+                [],
+                [title],
+                []
+            ];
 
             switch(activeReport) {
-                 case 'schedule':
-                    data = eventsToDisplay.map(e => ({ 'No. Acara': e.globalEventNumber, 'Nomor Lomba': formatEventName(e), 'Sesi': e.sessionNumber }));
-                    ws = XLSX.utils.json_to_sheet(data);
-                    ws['!cols'] = [{wch: 10}, {wch: 60}, {wch: 10}];
+                 case 'schedule': {
+                    let aoa = createHeaderAoa(reportTitle);
+                    aoa.push(['No. Acara', 'Nomor Lomba', 'Sesi', 'Perkiraan Waktu Mulai']);
+                    eventsToDisplay.forEach(e => {
+                        const startTime = e.sessionDateTime ? new Date(e.sessionDateTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : 'TBD';
+                        aoa.push([e.globalEventNumber, formatEventName(e), e.sessionNumber, startTime]);
+                    });
+                    const ws = XLSX.utils.aoa_to_sheet(aoa);
+                    ws['!cols'] = [{wch: 10}, {wch: 60}, {wch: 10}, {wch: 20}];
                     XLSX.utils.book_append_sheet(wb, ws, 'Susunan Acara');
                     break;
+                }
                 
                 case 'program':
-                    eventsToDisplay.forEach(event => {
-                        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
-                        const entries: Entry[] = (event.entries || []).map((entry: EventEntry) => ({...entry, swimmer: swimmersMap.get(entry.swimmerId)!})).filter(e => e.swimmer);
-                        const heats = generateHeats(entries, competitionInfo.numberOfLanes || 8);
-                        const eventData: any[] = [];
-                        heats.forEach(heat => {
-                            eventData.push([`Seri ${heat.heatNumber}`]);
-                            eventData.push(['Lintasan', 'Nama Atlet', 'Tahun', 'Klub', 'Waktu Unggulan']);
-                            Array.from({length: competitionInfo.numberOfLanes || 8}, (_,i)=>i+1).forEach(lane => {
-                                const assignment = heat.assignments.find(a => a.lane === lane);
-                                eventData.push([
-                                    lane,
-                                    assignment ? assignment.entry.swimmer.name : '-',
-                                    assignment ? assignment.entry.swimmer.birthYear : '-',
-                                    assignment ? assignment.entry.swimmer.club : '-',
-                                    assignment ? formatTime(assignment.entry.seedTime) : '-'
-                                ]);
-                            });
-                            eventData.push([]); // Spacer
-                        });
-                        const ws_event = XLSX.utils.aoa_to_sheet(eventData);
-                        ws_event['!cols'] = [{wch:10},{wch:30},{wch:10},{wch:30},{wch:20}];
-                        XLSX.utils.book_append_sheet(wb, ws_event, `No.${event.globalEventNumber}`);
-                    });
-                    break;
+                case 'results': {
+                    let aoa = createHeaderAoa(reportTitle);
+                    const eventsBySession = eventsToDisplay.reduce((acc, event) => {
+                        const sessionName = `Sesi ${romanize(event.sessionNumber || 0)}`;
+                        if (!acc[sessionName]) acc[sessionName] = [];
+                        acc[sessionName].push(event);
+                        return acc;
+                    }, {} as Record<string, ScheduledEvent[]>);
 
-                case 'results':
-                     const res_swimmersMap = new Map<string, Swimmer>(swimmers.map((s: Swimmer) => [s.id, s]));
-                    eventsToDisplay.forEach(event => {
-                        const validResultsForRanking = (event.results || []).filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time);
-                        const sortedResults = [...(event.results || [])]
-                            .sort((a: Result, b: Result) => (a.time > 0 && b.time > 0) ? a.time - b.time : (a.time < 0 ? 1 : -1))
-                            .map((r: Result) => ({...r, rank: r.time > 0 ? validResultsForRanking.findIndex((vr: Result) => vr.swimmerId === r.swimmerId) + 1 : 0 }));
-                        
-                        const eventData = sortedResults.map((res: Result & {rank: number}) => {
-                            const swimmer = res_swimmersMap.get(res.swimmerId);
-                            return {
-                                'Peringkat': res.rank > 0 ? res.rank : formatTime(res.time),
-                                'Nama Atlet': swimmer?.name,
-                                'Klub': swimmer?.club,
-                                'Waktu': formatTime(res.time)
-                            }
-                        });
-                        const ws_res = XLSX.utils.json_to_sheet(eventData);
-                        ws_res['!cols'] = [{wch:10},{wch:30},{wch:30},{wch:20}];
-                        XLSX.utils.book_append_sheet(wb, ws_res, `Hasil No.${event.globalEventNumber}`);
-                    });
-                    break;
-                
-                case 'individualMedalsByCategory':
-                    const medalsByAgeGroup: Record<string, Record<string, { swimmer: Swimmer; gold: number; silver: number; bronze: number; }>> = {};
-                     (events as SwimEvent[]).forEach((event: SwimEvent) => {
-                        if (event.results && event.results.length > 0 && event.gender !== Gender.MIXED) {
-                            [...event.results].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => {
-                                const swimmer = swimmers.find((s: Swimmer) => s.id === result.swimmerId);
-                                if (swimmer) {
-                                    const ageGroup = swimmer.ageGroup || 'Umum';
-                                    if (!medalsByAgeGroup[ageGroup]) medalsByAgeGroup[ageGroup] = {};
-                                    if (!medalsByAgeGroup[ageGroup][swimmer.id]) medalsByAgeGroup[ageGroup][swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 };
-                                    if (i === 0) medalsByAgeGroup[ageGroup][swimmer.id].gold++;
-                                    else if (i === 1) medalsByAgeGroup[ageGroup][swimmer.id].silver++;
-                                    else if (i === 2) medalsByAgeGroup[ageGroup][swimmer.id].bronze++;
-                                }
-                            });
-                        }
-                    });
+                    Object.entries(eventsBySession).forEach(([sessionName, sessionEvents]) => {
+                        aoa.push([sessionName.toUpperCase()]);
+                        aoa.push([]);
 
-                     Object.entries(medalsByAgeGroup).sort(([a], [b]) => a.localeCompare(b)).forEach(([ageGroup, medals]) => {
-                        const standings = Object.values(medals).sort((a,b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
-                        const maleData = standings.filter(s => s.swimmer.gender === 'Male').map((s,i) => ({'#':i+1, 'Nama':s.swimmer.name, 'Klub':s.swimmer.club, '🥇':s.gold, '🥈':s.silver, '🥉':s.bronze}));
-                        const femaleData = standings.filter(s => s.swimmer.gender === 'Female').map((s,i) => ({'#':i+1, 'Nama':s.swimmer.name, 'Klub':s.swimmer.club, '🥇':s.gold, '🥈':s.silver, '🥉':s.bronze}));
-                        
-                        const ws_cat = XLSX.utils.aoa_to_sheet([['Klasemen Perorangan Putra']]);
-                        XLSX.utils.sheet_add_json(ws_cat, maleData, {origin: -1, skipHeader: false});
-                        XLSX.utils.sheet_add_aoa(ws_cat, [['Klasemen Perorangan Putri']], {origin: -1});
-                        XLSX.utils.sheet_add_json(ws_cat, femaleData, {origin: -1, skipHeader: false});
-                        ws_cat['!cols'] = [{wch:5},{wch:30},{wch:30},{wch:5},{wch:5},{wch:5}];
-                        XLSX.utils.book_append_sheet(wb, ws_cat, ageGroup);
-                    });
-                    break;
-                
-                default:
-                    // Simple reports
-                    if (activeReport === 'medals') {
-                        // FIX: Recalculate medal data instead of trying to parse component props.
-                        const allClubs = [...new Set(swimmers.map(s => s.club))];
-                        const clubMedals = allClubs.reduce((acc: Record<string, { gold: number, silver: number, bronze: number }>, club: string) => {
-                            acc[club] = { gold: 0, silver: 0, bronze: 0 };
-                            return acc;
-                        }, {} as Record<string, { gold: number, silver: number, bronze: number }>);
-                        
-                        const swimmersMap_medals = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
+                        sessionEvents.forEach(event => {
+                            aoa.push([`Nomor Acara ${event.globalEventNumber}: ${formatEventName(event)}`]);
+                            const porprov = records.find(r => r.type === RecordType.PORPROV && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
+                            const nasional = records.find(r => r.type === RecordType.NASIONAL && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
+                            if (porprov) aoa.push([`Rekor PORPROV: ${formatTime(porprov.time)} - ${porprov.holderName} (${porprov.yearSet})`]);
+                            if (nasional) aoa.push([`Rekor Nasional: ${formatTime(nasional.time)} - ${nasional.holderName} (${nasional.yearSet})`]);
+                            aoa.push([]);
 
-                        (events as SwimEvent[]).forEach((event: SwimEvent) => {
-                            if (!event.results) return;
-                            [...(event.results as Result[])]
-                                .filter((r: Result) => r.time > 0)
-                                .sort((a: Result, b: Result) => a.time - b.time)
-                                .slice(0, 3)
-                                .forEach((result: Result, i: number) => {
-                                    const rank = i + 1;
-                                    const swimmer = swimmersMap_medals.get(result.swimmerId);
-                                    if (swimmer && clubMedals[swimmer.club]) {
-                                        if (rank === 1) clubMedals[swimmer.club].gold++;
-                                        else if (rank === 2) clubMedals[swimmer.club].silver++;
-                                        else if (rank === 3) clubMedals[swimmer.club].bronze++;
-                                    }
-                                });
-                        });
-
-                        const sortedClubData = Object.entries(clubMedals).sort(([clubA, a], [clubB, b]) => 
-                            b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || clubA.localeCompare(clubB)
-                        );
-
-                        const clubData = sortedClubData.map(([club, medals], i) => ({
-                            '#': i + 1,
-                            'Nama Tim': club,
-                            '🥇': medals.gold,
-                            '🥈': medals.silver,
-                            '🥉': medals.bronze,
-                            'Total': medals.gold + medals.silver + medals.bronze,
-                        }));
-                        ws = XLSX.utils.json_to_sheet(clubData);
-                        ws['!cols'] = [{wch:5},{wch:40},{wch:5},{wch:5},{wch:5},{wch:10}];
-                        XLSX.utils.book_append_sheet(wb, ws, title);
-                    } else if (activeReport === 'individualMedals') {
-                        // FIX: Recalculate individual medal data instead of trying to parse component props.
-                        const individualMedals: Record<string, { swimmer: Swimmer, gold: number, silver: number, bronze: number }> = {};
-                        const swimmersMap_im = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-
-                        (events as SwimEvent[]).forEach((event: SwimEvent) => {
-                            if (event.results && event.results.length > 0 && event.gender !== Gender.MIXED) {
-                                [...event.results]
-                                    .filter((r: Result) => r.time > 0)
-                                    .sort((a: Result, b: Result) => a.time - b.time)
-                                    .slice(0, 3)
-                                    .forEach((result: Result, i: number) => {
-                                        const rank = i + 1;
-                                        const swimmer = swimmersMap_im.get(result.swimmerId);
-                                        if (swimmer) {
-                                            if (!individualMedals[swimmer.id]) {
-                                                individualMedals[swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 };
-                                            }
-                                            if (rank === 1) individualMedals[swimmer.id].gold++;
-                                            else if (rank === 2) individualMedals[swimmer.id].silver++;
-                                            else if (rank === 3) individualMedals[swimmer.id].bronze++;
-                                        }
+                            if (activeReport === 'program') {
+                                const entries: Entry[] = (event.entries || []).map(entry => ({...entry, swimmer: swimmersMap.get(entry.swimmerId)!})).filter(e => e.swimmer);
+                                const heats = generateHeats(entries, competitionInfo.numberOfLanes || 8);
+                                if (heats.length === 0) { aoa.push(['(Belum ada peserta terdaftar)']); } 
+                                else {
+                                    heats.forEach(heat => {
+                                        aoa.push([`Seri ${heat.heatNumber} dari ${heats.length}`]);
+                                        aoa.push(['Lintasan', 'Nama Atlet', 'KU', 'Tahun', 'Nama Tim', 'Waktu Unggulan']);
+                                        Array.from({length: competitionInfo.numberOfLanes || 8}, (_,i)=>i+1).forEach(lane => {
+                                            const assignment = heat.assignments.find(a => a.lane === lane);
+                                            aoa.push([lane, assignment ? assignment.entry.swimmer.name : '-', assignment ? (assignment.entry.swimmer.ageGroup || '-') : '-', assignment ? assignment.entry.swimmer.birthYear : '-', assignment ? assignment.entry.swimmer.club : '-', assignment ? formatTime(assignment.entry.seedTime) : '-']);
+                                        });
+                                        aoa.push([]);
                                     });
+                                }
+                            } else { // results
+                                if (!event.results || event.results.length === 0) { aoa.push(['(Belum ada hasil tercatat)']); } 
+                                else {
+                                    const validResults = event.results.filter(r => r.time > 0).sort((a,b) => a.time - b.time);
+                                    const sorted = [...event.results].sort((a,b) => (a.time > 0 && b.time > 0) ? a.time - b.time : (a.time < 0 ? 1 : -1)).map(r => ({...r, rank: r.time > 0 ? validResults.findIndex(vr => vr.swimmerId === r.swimmerId) + 1 : 0}));
+                                    aoa.push(['Peringkat', 'Nama Atlet', 'KU', 'Tahun', 'Nama Tim', 'Waktu', 'Rekor']);
+                                    sorted.forEach(res => {
+                                        const swimmer = swimmersMap.get(res.swimmerId);
+                                        const recordsBrokenText = brokenRecords.filter(br => br.newHolder.id === swimmer?.id && br.newTime === res.time && br.record.style === event.style && br.record.distance === event.distance).map(br => br.record.type).join(', ');
+                                        aoa.push([res.rank > 0 ? res.rank : formatTime(res.time), swimmer?.name || 'N/A', event.relayLegs ? '-' : (swimmer?.ageGroup || '-'), event.relayLegs ? '-' : (swimmer?.birthYear || ''), swimmer?.club || 'N/A', formatTime(res.time), recordsBrokenText]);
+                                    });
+                                }
                             }
+                            aoa.push([]);
                         });
+                    });
+                    const ws = XLSX.utils.aoa_to_sheet(aoa);
+                    ws['!cols'] = [{wch:10},{wch:30},{wch:10},{wch:10},{wch:30},{wch:15},{wch:10}];
+                    XLSX.utils.book_append_sheet(wb, ws, reportTitle);
+                    break;
+                }
+                
+                case 'medals': {
+                    const data = (React.createElement(ClubMedalStandings, { events, swimmers, info: competitionInfo }).props as any).data; // Recalculate
+                     const aoa = createHeaderAoa(reportTitle);
+                     aoa.push(['#', 'Nama Tim', '🥇', '🥈', '🥉', 'Total']);
+                     data.forEach(([club, medals]: [string, {gold: number, silver: number, bronze: number}], i: number) => {
+                        aoa.push([i+1, club, medals.gold, medals.silver, medals.bronze, medals.gold + medals.silver + medals.bronze]);
+                     });
+                     const ws = XLSX.utils.aoa_to_sheet(aoa);
+                     ws['!cols'] = [{wch:5},{wch:40},{wch:5},{wch:5},{wch:5},{wch:10}];
+                     XLSX.utils.book_append_sheet(wb, ws, reportTitle);
+                     break;
+                }
+                case 'medalsWithAthletes': {
+                     type MedalCounts = { gold: number, silver: number, bronze: number }; type Win = { eventName: string, rank: number, time: number }; type AthleteWins = { swimmer: Swimmer, wins: Win[] }; type ClubData = { medals: MedalCounts, athletes: Record<string, AthleteWins> };
+                    const clubDataRecalc: Record<string, ClubData> = {}; swimmers.forEach(s => { if (!clubDataRecalc[s.club]) { clubDataRecalc[s.club] = { medals: { gold: 0, silver: 0, bronze: 0 }, athletes: {} }; }});
+                    events.forEach(event => { if (!event.results) return; [...event.results].filter(r => r.time > 0).sort((a, b) => a.time - b.time).slice(0, 3).forEach((result, i) => { const rank = i + 1; const swimmer = swimmersMap.get(result.swimmerId); if (swimmer) { const club = clubDataRecalc[swimmer.club]; if (rank === 1) club.medals.gold++; else if (rank === 2) club.medals.silver++; else if (rank === 3) club.medals.bronze++; if (!club.athletes[swimmer.id]) { club.athletes[swimmer.id] = { swimmer, wins: [] }; } club.athletes[swimmer.id].wins.push({ eventName: formatEventName(event), rank, time: result.time }); } }); });
+                    const sortedData = Object.entries(clubDataRecalc).sort(([cA, a], [cB, b]) => b.medals.gold - a.medals.gold || b.medals.silver - a.medals.silver || b.medals.bronze - a.medals.bronze || cA.localeCompare(cB));
 
-                        const sortedStandings = Object.values(individualMedals)
-                            .sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || a.swimmer.name.localeCompare(b.swimmer.name));
-                        
-                        const maleStandings = sortedStandings.filter(s => s.swimmer.gender === 'Male');
-                        const femaleStandings = sortedStandings.filter(s => s.swimmer.gender === 'Female');
-                        
-                        const maleData = maleStandings.map((s, i) => ({ '#': i + 1, 'Nama': s.swimmer.name, 'Klub': s.swimmer.club, '🥇': s.gold, '🥈': s.silver, '🥉': s.bronze }));
-                        const femaleData = femaleStandings.map((s, i) => ({ '#': i + 1, 'Nama': s.swimmer.name, 'Klub': s.swimmer.club, '🥇': s.gold, '🥈': s.silver, '🥉': s.bronze }));
-
-                        const ws_male = XLSX.utils.json_to_sheet(maleData);
-                        const ws_female = XLSX.utils.json_to_sheet(femaleData);
-                        ws_male['!cols'] = ws_female['!cols'] = [{wch:5},{wch:30},{wch:30},{wch:5},{wch:5},{wch:5}];
-                        XLSX.utils.book_append_sheet(wb, ws_male, 'Putra');
-                        XLSX.utils.book_append_sheet(wb, ws_female, 'Putri');
-                    } else if (activeReport === 'brokenRecords' && brokenRecords.length > 0) {
-                        data = brokenRecords.map(br => ({ 'Nomor Lomba': br.newEventName, 'Rekor Baru': formatTime(br.newTime), 'Pemegang Rekor Baru': br.newHolder.name, 'Klub': br.newHolder.club, 'Rekor Lama': formatTime(br.record.time), 'Pemegang Rekor Lama': br.record.holderName }));
-                        ws = XLSX.utils.json_to_sheet(data);
-                        ws['!cols'] = [{wch:40},{wch:15},{wch:30},{wch:30},{wch:15},{wch:30}];
-                        XLSX.utils.book_append_sheet(wb, ws, title);
+                    let aoa = createHeaderAoa(reportTitle);
+                    sortedData.forEach(([clubName, clubData]) => {
+                         const athletesWithWins = Object.values(clubData.athletes).filter(a => a.wins.length > 0);
+                         if (athletesWithWins.length === 0) return;
+                         aoa.push([]);
+                         aoa.push([clubName, `🥇${clubData.medals.gold}`, `🥈${clubData.medals.silver}`, `🥉${clubData.medals.bronze}`]);
+                         aoa.push(['Nama Atlet', 'Nomor Lomba yang Dimenangkan']);
+                         athletesWithWins.forEach(({ swimmer, wins }) => {
+                            aoa.push([swimmer.name]);
+                            wins.sort((a,b)=>a.rank-b.rank).forEach(win => {
+                                aoa.push(['', `${win.rank === 1 ? '🥇' : win.rank === 2 ? '🥈' : '🥉'} ${win.eventName} - ${formatTime(win.time)}`]);
+                            });
+                         });
+                    });
+                    const ws = XLSX.utils.aoa_to_sheet(aoa);
+                    ws['!cols'] = [{wch:30},{wch:60}];
+                    XLSX.utils.book_append_sheet(wb, ws, reportTitle);
+                    break;
+                }
+                case 'individualMedals': {
+                     const { maleStandings, femaleStandings } = (React.createElement(IndividualMedalStandings, { events, swimmers }).props as any);
+                     const maleData = maleStandings.map((s: any, i: number) => ({'#':i+1, 'Nama':s.swimmer.name, 'Klub':s.swimmer.club, '🥇':s.gold, '🥈':s.silver, '🥉':s.bronze}));
+                     const femaleData = femaleStandings.map((s: any, i: number) => ({'#':i+1, 'Nama':s.swimmer.name, 'Klub':s.swimmer.club, '🥇':s.gold, '🥈':s.silver, '🥉':s.bronze}));
+                     const ws_male = XLSX.utils.json_to_sheet(maleData); ws_male['!cols'] = [{wch:5},{wch:30},{wch:30},{wch:5},{wch:5},{wch:5}];
+                     const ws_female = XLSX.utils.json_to_sheet(femaleData); ws_female['!cols'] = [{wch:5},{wch:30},{wch:30},{wch:5},{wch:5},{wch:5}];
+                     XLSX.utils.book_append_sheet(wb, ws_male, 'Putra');
+                     XLSX.utils.book_append_sheet(wb, ws_female, 'Putri');
+                     break;
+                }
+                case 'individualMedalsByCategory': {
+                     const { dataByCategory } = (React.createElement(IndividualMedalStandingsByCategory, { events, swimmers }).props as any);
+                     dataByCategory.forEach((cat: any) => {
+                        const maleData = cat.maleStandings.map((s: any,i: number) => ({'#':i+1, 'Nama':s.swimmer.name, 'Klub':s.swimmer.club, '🥇':s.gold, '🥈':s.silver, '🥉':s.bronze}));
+                        const femaleData = cat.femaleStandings.map((s: any,i: number) => ({'#':i+1, 'Nama':s.swimmer.name, 'Klub':s.swimmer.club, '🥇':s.gold, '🥈':s.silver, '🥉':s.bronze}));
+                        const ws_cat = XLSX.utils.aoa_to_sheet([['Klasemen Putra']]); XLSX.utils.sheet_add_json(ws_cat, maleData, {origin: -1});
+                        XLSX.utils.sheet_add_aoa(ws_cat, [['']], {origin: -1});
+                        XLSX.utils.sheet_add_aoa(ws_cat, [['Klasemen Putri']], {origin: -1}); XLSX.utils.sheet_add_json(ws_cat, femaleData, {origin: -1});
+                        ws_cat['!cols'] = [{wch:5},{wch:30},{wch:30},{wch:5},{wch:5},{wch:5}];
+                        XLSX.utils.book_append_sheet(wb, ws_cat, cat.ageGroup);
+                     });
+                     break;
+                }
+                case 'brokenRecords': {
+                    if (brokenRecords.length > 0) {
+                        const data = brokenRecords.map(br => ({ 'Nomor Lomba': br.newEventName, 'Rekor Baru': formatTime(br.newTime), 'Pemegang Rekor Baru': br.newHolder.name, 'Klub': br.newHolder.club, 'Rekor Lama': formatTime(br.record.time), 'Pemegang Rekor Lama': br.record.holderName, 'Tipe Rekor': br.record.type }));
+                        const ws = XLSX.utils.json_to_sheet(data);
+                        ws['!cols'] = [{wch:40},{wch:15},{wch:30},{wch:30},{wch:15},{wch:30},{wch:15}];
+                        XLSX.utils.book_append_sheet(wb, ws, reportTitle);
                     }
                     break;
+                }
             }
 
             if (wb.SheetNames.length > 0) {
-                XLSX.writeFile(wb, `${title.replace(/ /g, '_')}.xlsx`);
+                XLSX.writeFile(wb, `${reportTitle.replace(/[\/\\?%*:|"<>]/g, '-')}.xlsx`);
             } else {
                  addNotification('Tidak ada data untuk diunduh untuk laporan ini.', 'info');
             }
-
-        } catch (error) {
+        } catch (error: any) {
             console.error("Gagal membuat file Excel:", error);
-            addNotification('Gagal membuat file Excel.', 'error');
+            addNotification(`Gagal membuat file Excel: ${error.message || 'Unknown error'}`, 'error');
         } finally {
             setIsDownloadingExcel(false);
         }

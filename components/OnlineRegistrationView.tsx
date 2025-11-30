@@ -298,8 +298,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             });
 
             // Previously registered events (without seed time, as we don't have it easily)
-            // FIX: Explicitly type the 'event' parameter to resolve 'unknown' type error and handle snake_case property from server response.
-            const previouslyRegisteredEventsList = (result.previouslyRegisteredEvents || []).map((event: any) => {
+            // FIX: Cast to any[] to allow mapping over the server response which may have snake_case properties and be inferred as unknown.
+            const previouslyRegisteredEventsList = ((result.previouslyRegisteredEvents || []) as any[]).map((event: any) => {
                 const formattableEvent: FormattableEvent = {
                     distance: event.distance,
                     style: event.style,

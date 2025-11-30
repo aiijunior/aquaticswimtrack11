@@ -69,8 +69,9 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
   const [uploadResult, setUploadResult] = useState<{ success: number; errors: string[] } | null>(null);
 
   // Explicitly typed options for rendering to prevent type errors
-  const genderOptions: Gender[] = GENDER_OPTIONS as Gender[];
-  const styleOptions: SwimStyle[] = SWIM_STYLE_OPTIONS as SwimStyle[];
+  // FIX: Removed redundant cast as types are now explicit in constants.ts
+  const genderOptions: Gender[] = GENDER_OPTIONS;
+  const styleOptions: SwimStyle[] = SWIM_STYLE_OPTIONS;
 
   const hasSchemaError = useMemo(() => {
     if (!uploadResult || !uploadResult.errors) return false;
