@@ -45,6 +45,11 @@ const ClipboardCheckIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
     </svg>
 );
+const MixedTeamIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.124-1.283-.356-1.857M7 20v-2c0-.653.124-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+);
 
 // --- Component Props & Local Components ---
 interface SwimmersViewProps {
@@ -106,6 +111,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
   // State for filtering and view mode
   const [genderFilter, setGenderFilter] = useState<'Male' | 'Female' | 'All'>(initialState?.genderFilter || 'All');
   const [viewMode, setViewMode] = useState<'swimmerList' | 'clubRecap'>(initialState?.viewMode || 'swimmerList');
+  const [relayFilter, setRelayFilter] = useState<'Men\'s' | 'Women\'s' | 'Mixed' | 'All' | null>(initialState?.relayFilter || null);
 
 
   const stats = useMemo(() => {
@@ -117,29 +123,71 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
     return { totalSwimmers, maleSwimmers, femaleSwimmers, totalClubs };
   }, [swimmers]);
 
-  const relayTeamSwimmerIds = useMemo(() => {
-      if (!initialState?.relayFilter) return null;
+  const relayStats = useMemo(() => {
+    const maleTeams = new Set<string>();
+    const femaleTeams = new Set<string>();
+    const mixedTeams = new Set<string>();
 
-      const swimmerIdsInRelayEvents = new Set<string>();
-      events.forEach(event => {
-          if (event.relayLegs && event.relayLegs > 1 && event.gender === initialState.relayFilter) {
-              event.entries.forEach(entry => {
-                  swimmerIdsInRelayEvents.add(entry.swimmerId);
-              });
-          }
-      });
-      return swimmerIdsInRelayEvents;
-  }, [events, initialState?.relayFilter]);
+    events.forEach(event => {
+        if (event.relayLegs && event.relayLegs > 1) {
+            const targetSet = 
+                event.gender === "Men's" ? maleTeams :
+                event.gender === "Women's" ? femaleTeams :
+                event.gender === 'Mixed' ? mixedTeams :
+                null;
+            
+            if (targetSet) {
+                event.entries.forEach(entry => {
+                    targetSet.add(entry.swimmerId);
+                });
+            }
+        }
+    });
+
+    return {
+        male: maleTeams.size,
+        female: femaleTeams.size,
+        mixed: mixedTeams.size,
+        total: maleTeams.size + femaleTeams.size + mixedTeams.size,
+    };
+  }, [events]);
 
   const filteredSwimmers = useMemo(() => {
+    // Determine which swimmers are relay teams and in which categories
+    const relayTeams = new Map<string, Set<'Men\'s' | 'Women\'s' | 'Mixed'>>();
+    events.forEach(event => {
+        if (event.relayLegs) {
+            event.entries.forEach(entry => {
+                if (!relayTeams.has(entry.swimmerId)) {
+                    relayTeams.set(entry.swimmerId, new Set());
+                }
+                relayTeams.get(entry.swimmerId)!.add(event.gender);
+            });
+        }
+    });
+
     return swimmers.filter(swimmer => {
-        // Special filter for relay teams from dashboard
-        if (relayTeamSwimmerIds) {
-            // Only show entries that are relay teams (birthYear === 0) AND are in the filtered set
-            return swimmer.birthYear === 0 && relayTeamSwimmerIds.has(swimmer.id);
+        // Relay filtering takes precedence
+        if (relayFilter) {
+            const teamGenders = relayTeams.get(swimmer.id);
+            if (!teamGenders) return false; // Not a relay team
+            
+            if (relayFilter === 'All') { // Show all relay teams that match search
+                 return !searchQuery ||
+                    swimmer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    swimmer.club.toLowerCase().includes(searchQuery.toLowerCase());
+            }
+
+            // Show teams in the specific category that match search
+            const genderMatch = teamGenders.has(relayFilter);
+            const searchMatch = !searchQuery ||
+                swimmer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                swimmer.club.toLowerCase().includes(searchQuery.toLowerCase());
+                
+            return genderMatch && searchMatch;
         }
 
-        // Standard filtering logic
+        // Standard filtering if no relay filter is active
         const searchMatch = !searchQuery ||
             swimmer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             swimmer.club.toLowerCase().includes(searchQuery.toLowerCase());
@@ -148,7 +196,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
 
         return searchMatch && genderMatch;
     });
-  }, [swimmers, searchQuery, genderFilter, relayTeamSwimmerIds]);
+  }, [swimmers, events, searchQuery, genderFilter, relayFilter]);
 
   const clubRecap = useMemo(() => {
     if (viewMode !== 'clubRecap') return [];
@@ -189,6 +237,22 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
          (selectedSwimmer.gender === 'Female' && event.gender === "Women's"))
     );
   }, [selectedSwimmer, events, registeredEvents]);
+
+
+  // Filter Click Handlers
+  const handleIndividualFilterClick = (filter: 'All' | 'Male' | 'Female') => {
+    setViewMode('swimmerList');
+    setGenderFilter(filter);
+    setRelayFilter(null);
+  };
+  const handleClubRecapClick = () => {
+    setViewMode('clubRecap');
+    setRelayFilter(null);
+  };
+  const handleRelayFilterClick = (filter: 'All' | "Men's" | "Women's" | "Mixed") => {
+    setViewMode('swimmerList');
+    setRelayFilter(filter);
+  };
 
 
   // Modal Handlers
@@ -422,11 +486,16 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
     <div>
       <h1 className="text-3xl font-bold mb-6">Daftar Atlet</h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <StatCard icon={<UsersGroupIcon />} label="Total Atlet" value={stats.totalSwimmers} onClick={() => { setViewMode('swimmerList'); setGenderFilter('All'); }} isActive={viewMode === 'swimmerList' && genderFilter === 'All'} />
-          <StatCard icon={<MaleIcon />} label="Total Putra" value={stats.maleSwimmers} onClick={() => { setViewMode('swimmerList'); setGenderFilter('Male'); }} isActive={viewMode === 'swimmerList' && genderFilter === 'Male'} />
-          <StatCard icon={<FemaleIcon />} label="Total Putri" value={stats.femaleSwimmers} onClick={() => { setViewMode('swimmerList'); setGenderFilter('Female'); }} isActive={viewMode === 'swimmerList' && genderFilter === 'Female'} />
-          <StatCard icon={<ShieldIcon />} label="Total Tim" value={stats.totalClubs} onClick={() => setViewMode('clubRecap')} isActive={viewMode === 'clubRecap'} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <StatCard icon={<UsersGroupIcon />} label="Total Atlet" value={stats.totalSwimmers} onClick={() => handleIndividualFilterClick('All')} isActive={!relayFilter && viewMode === 'swimmerList' && genderFilter === 'All'} />
+          <StatCard icon={<MaleIcon />} label="Total Putra" value={stats.maleSwimmers} onClick={() => handleIndividualFilterClick('Male')} isActive={!relayFilter && viewMode === 'swimmerList' && genderFilter === 'Male'} />
+          <StatCard icon={<FemaleIcon />} label="Total Putri" value={stats.femaleSwimmers} onClick={() => handleIndividualFilterClick('Female')} isActive={!relayFilter && viewMode === 'swimmerList' && genderFilter === 'Female'} />
+          <StatCard icon={<ShieldIcon />} label="Total Tim" value={stats.totalClubs} onClick={handleClubRecapClick} isActive={!relayFilter && viewMode === 'clubRecap'} />
+          
+          <StatCard icon={<UsersGroupIcon />} label="Total Tim Estafet" value={relayStats.total} onClick={() => handleRelayFilterClick('All')} isActive={relayFilter === 'All'} />
+          <StatCard icon={<MaleIcon />} label="Tim Estafet Putra" value={relayStats.male} onClick={() => handleRelayFilterClick("Men's")} isActive={relayFilter === "Men's"} />
+          <StatCard icon={<FemaleIcon />} label="Tim Estafet Putri" value={relayStats.female} onClick={() => handleRelayFilterClick("Women's")} isActive={relayFilter === "Women's"} />
+          <StatCard icon={<MixedTeamIcon />} label="Tim Estafet Mix" value={relayStats.mixed} onClick={() => handleRelayFilterClick("Mixed")} isActive={relayFilter === "Mixed"} />
       </div>
 
       <Card>
@@ -437,7 +506,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
             <div className="flex justify-between items-end mb-4 gap-4 flex-wrap">
                 <div className="flex-grow">
                     <Input 
-                        label="Cari berdasarkan Nama Atlet atau Nama Tim"
+                        label={relayFilter ? "Cari Tim Estafet" : "Cari berdasarkan Nama Atlet atau Nama Tim"}
                         id="swimmer-search"
                         type="text"
                         placeholder="Ketik untuk mencari..."
@@ -447,7 +516,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                 </div>
                  <div className="flex space-x-2 flex-shrink-0">
                     <Button onClick={handleOpenAddModal}>
-                        Tambah Atlet
+                        Tambah Atlet/Tim
                     </Button>
                     <Button 
                         variant="danger" 
@@ -455,7 +524,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                         disabled={swimmers.length === 0}
                         title={swimmers.length === 0 ? "Tidak ada atlet untuk dihapus" : "Hapus semua data atlet"}
                     >
-                        Hapus Semua Atlet
+                        Hapus Semua
                     </Button>
                 </div>
             </div>
@@ -463,7 +532,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="p-3">Nama Atlet</th>
+                    <th className="p-3">{relayFilter ? 'Nama Tim Estafet' : 'Nama Atlet'}</th>
                     <th className="p-3">Tahun Lahir</th>
                     <th className="p-3">Jenis Kelamin</th>
                     <th className="p-3">KU</th>
@@ -492,7 +561,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                   ) : (
                     <tr>
                       <td colSpan={6} className="text-center p-6 text-text-secondary">
-                        {searchQuery ? "Tidak ada atlet yang cocok dengan pencarian Anda." : "Tidak ada atlet yang cocok dengan filter yang dipilih."}
+                        {searchQuery ? "Tidak ada data yang cocok dengan pencarian Anda." : "Tidak ada data yang cocok dengan filter yang dipilih."}
                       </td>
                     </tr>
                   )}
@@ -508,7 +577,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                     <thead>
                         <tr className="border-b border-border">
                             <th className="p-3">Nama Tim</th>
-                            <th className="p-3 text-center">Jumlah Atlet</th>
+                            <th className="p-3 text-center">Jumlah Atlet/Tim</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -526,10 +595,10 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
       </Card>
       
       {/* Add Modal */}
-      <Modal isOpen={isAddModalOpen} onClose={closeModal} title="Tambah Atlet Baru">
+      <Modal isOpen={isAddModalOpen} onClose={closeModal} title="Tambah Atlet/Tim Baru">
         <form onSubmit={handleAddSwimmer} className="space-y-4">
-            <Input label="Nama Atlet" id="add-name" name="name" value={addFormData.name} onChange={handleAddFormChange} required />
-            <Input label="Tahun Lahir" id="add-birthYear" name="birthYear" type="number" value={addFormData.birthYear} onChange={handleAddFormChange} required />
+            <Input label="Nama Atlet atau Nama Tim Estafet" id="add-name" name="name" value={addFormData.name} onChange={handleAddFormChange} required />
+            <Input label="Tahun Lahir (Isi '0' untuk Tim Estafet)" id="add-birthYear" name="birthYear" type="number" value={addFormData.birthYear} onChange={handleAddFormChange} required />
             <Select label="Jenis Kelamin" id="add-gender" name="gender" value={addFormData.gender} onChange={handleAddFormChange}>
                 <option value="Male">Laki-laki (Male)</option>
                 <option value="Female">Perempuan (Female)</option>
@@ -538,7 +607,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                 <option value="">-- Tanpa KU --</option>
                 {AGE_GROUP_OPTIONS.map(ku => <option key={ku} value={ku}>{ku}</option>)}
             </Select>
-            <Input label="Nama Tim" id="add-club" name="club" value={addFormData.club} onChange={handleAddFormChange} required />
+            <Input label="Nama Tim (Klub/Daerah)" id="add-club" name="club" value={addFormData.club} onChange={handleAddFormChange} required />
             <div className="flex justify-end pt-4 space-x-2">
                 <Button type="button" variant="secondary" onClick={closeModal}>Batal</Button>
                 <Button type="submit">Tambah</Button>
@@ -547,10 +616,10 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
       </Modal>
 
       {/* Edit Modal */}
-      <Modal isOpen={isEditModalOpen} onClose={closeModal} title="Edit Data Atlet">
+      <Modal isOpen={isEditModalOpen} onClose={closeModal} title="Edit Data Atlet/Tim">
         <form onSubmit={handleUpdate} className="space-y-4">
-            <Input label="Nama Atlet" id="name" name="name" value={editFormData.name} onChange={handleEditFormChange} required />
-            <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={editFormData.birthYear} onChange={handleEditFormChange} required />
+            <Input label="Nama Atlet atau Nama Tim Estafet" id="name" name="name" value={editFormData.name} onChange={handleEditFormChange} required />
+            <Input label="Tahun Lahir (Isi '0' untuk Tim Estafet)" id="birthYear" name="birthYear" type="number" value={editFormData.birthYear} onChange={handleEditFormChange} required />
             <Select label="Jenis Kelamin" id="gender" name="gender" value={editFormData.gender} onChange={handleEditFormChange}>
                 <option value="Male">Laki-laki (Male)</option>
                 <option value="Female">Perempuan (Female)</option>
@@ -559,7 +628,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                 <option value="">-- Tanpa KU --</option>
                 {AGE_GROUP_OPTIONS.map(ku => <option key={ku} value={ku}>{ku}</option>)}
             </Select>
-            <Input label="Nama Tim" id="club" name="club" value={editFormData.club} onChange={handleEditFormChange} required />
+            <Input label="Nama Tim (Klub/Daerah)" id="club" name="club" value={editFormData.club} onChange={handleEditFormChange} required />
             <div className="flex justify-end pt-4 space-x-2">
                 <Button type="button" variant="secondary" onClick={closeModal}>Batal</Button>
                 <Button type="submit">Simpan Perubahan</Button>
@@ -568,11 +637,11 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
       </Modal>
 
       {/* Delete Modal */}
-      <Modal isOpen={isDeleteModalOpen} onClose={closeModal} title="Konfirmasi Hapus Atlet">
+      <Modal isOpen={isDeleteModalOpen} onClose={closeModal} title="Konfirmasi Hapus">
         {selectedSwimmer && (
             <div className="space-y-6">
                 <p className="text-text-secondary">
-                    Anda yakin ingin menghapus atlet <strong className="text-text-primary">{selectedSwimmer.name}</strong> dari tim <strong className="text-text-primary">{selectedSwimmer.club}</strong>?
+                    Anda yakin ingin menghapus <strong className="text-text-primary">{selectedSwimmer.name}</strong> dari tim <strong className="text-text-primary">{selectedSwimmer.club}</strong>?
                     <br/>
                     Semua data pendaftaran dan hasil lomba yang terkait juga akan dihapus. Tindakan ini tidak dapat dibatalkan.
                 </p>
@@ -585,14 +654,14 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
       </Modal>
 
       {/* Delete All Modal */}
-        <Modal isOpen={isDeleteAllModalOpen} onClose={() => setIsDeleteAllModalOpen(false)} title="Konfirmasi Hapus Semua Atlet">
+        <Modal isOpen={isDeleteAllModalOpen} onClose={() => setIsDeleteAllModalOpen(false)} title="Konfirmasi Hapus Semua Atlet & Tim">
             <div className="space-y-6">
                 <p className="text-text-secondary">
-                    Anda benar-benar yakin ingin menghapus <strong className="text-text-primary">SEMUA</strong> data atlet?
+                    Anda benar-benar yakin ingin menghapus <strong className="text-text-primary">SEMUA</strong> data atlet dan tim estafet?
                     <br/><br/>
                     Tindakan ini akan <strong className="text-red-500">menghapus permanen</strong>:
                     <ul className="list-disc list-inside mt-2 text-red-400">
-                        <li>Semua profil atlet</li>
+                        <li>Semua profil atlet & tim estafet</li>
                         <li>Semua pendaftaran mereka di setiap nomor lomba</li>
                         <li>Semua hasil lomba yang tercatat</li>
                     </ul>
@@ -627,7 +696,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
                     </ul>
                 ) : (
                     <p className="text-text-secondary text-center py-4">
-                    Atlet ini belum terdaftar di nomor lomba manapun.
+                    Atlet/Tim ini belum terdaftar di nomor lomba manapun.
                     </p>
                 )}
                 <div className="flex justify-between pt-2 border-t border-border">
@@ -672,7 +741,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
           {selectedSwimmer && actionTarget && (
               <div className="space-y-6">
                   <p className="text-text-secondary">
-                      Anda yakin ingin menghapus pendaftaran atlet <strong className="text-text-primary">{selectedSwimmer.name}</strong> dari nomor lomba <strong className="text-text-primary">{formatEventName(actionTarget.event)}</strong>?
+                      Anda yakin ingin menghapus pendaftaran <strong className="text-text-primary">{selectedSwimmer.name}</strong> dari nomor lomba <strong className="text-text-primary">{formatEventName(actionTarget.event)}</strong>?
                   </p>
                   <div className="flex justify-end space-x-4">
                       <Button variant="secondary" onClick={closeModal}>Batal</Button>

@@ -1,6 +1,6 @@
 # R.E.A.C.T (Real-time Evaluation for Aquatic Competition & Timing)
 
-R.E.A.C.T adalah aplikasi modern, *offline-first*, dan *real-time* yang dirancang untuk mengelola kompetisi renang secara komprehensif. Mulai dari pendaftaran atlet, penjadwalan nomor lomba, hingga pencatatan waktu langsung (*live timing*), dan publikasi hasil, aplikasi ini menyediakan semua yang dibutuhkan oleh panitia penyelenggara.
+R.E.A.C.T adalah platform modern, real-time, dan komprehensif untuk manajemen kompetisi renang. Dirancang untuk skalabilitas, aplikasi ini tidak hanya mengelola satu event secara efisien tetapi juga siap dikembangkan menjadi database karir atlet terpusat. Mulai dari pendaftaran online, penjadwalan nomor lomba, pencatatan waktu langsung (live timing), hingga publikasi hasil, R.E.A.C.T menyediakan semua yang dibutuhkan oleh panitia penyelenggara.
 
 ## Fitur Unggulan
 
@@ -23,17 +23,21 @@ R.E.A.C.T adalah aplikasi modern, *offline-first*, dan *real-time* yang dirancan
 Catatan ini melacak semua perubahan signifikan yang diterapkan pada aplikasi R.E.A.C.T.
 
 ---
-### **Pembaruan Terkini: Penambahan Kelompok Umur (KU)**
+### **Versi 1.1.6 (Pembaruan Terkini): Dasbor Interaktif & Akurasi Data Statistik**
 *Tanggal Rilis: Sesuai pembaruan terakhir*
 
-Pembaruan ini memperkenalkan fungsionalitas Kelompok Umur (KU) untuk setiap atlet, meningkatkan kemampuan aplikasi dalam mengelola kompetisi berbasis usia.
+Pembaruan ini secara signifikan meningkatkan fungsionalitas dasbor admin dan akurasi data statistik di seluruh aplikasi.
 
-- **Fitur Baru: Data Kelompok Umur (KU)**
-  - **Data Atlet**: Setiap atlet kini memiliki kolom "KU" opsional (`KU Senior`, `KU 1` - `KU 5`).
-  - **Manajemen Admin**: Kolom KU ditambahkan pada tabel, formulir tambah, dan edit atlet di halaman "Daftar Atlet".
-  - **Pendaftaran Online**: Formulir pendaftaran online sekarang menyertakan input dropdown untuk KU, dengan fungsionalitas pengisian otomatis untuk atlet yang sudah ada.
-  - **Unggah Massal**: Template Excel untuk pendaftaran massal diperbarui dengan kolom "KU" baru.
-  - **Skema Database**: Skema SQL diperbarui untuk menyertakan kolom `age_group` pada tabel `swimmers`.
+- **Fitur Baru: Dasbor Interaktif**
+  - Semua kartu statistik di dasbor admin (Total Atlet, Total Tim, Tim Estafet, dll.) kini dapat diklik. Mengklik sebuah kartu akan membawa Anda ke halaman yang relevan dengan filter yang sudah diterapkan secara otomatis, mempercepat navigasi dan analisis data.
+
+- **Peningkatan Statistik**:
+  - **Rekap Tim Estafet**: Dasbor kini menampilkan kartu statistik baru untuk jumlah total tim estafet unik (Putra, Putri, dan Campuran).
+  - **Akurasi Jumlah Atlet**: Perhitungan statistik di Dasbor dan halaman "Daftar Atlet" telah diperbaiki untuk **hanya menghitung atlet perorangan**, dengan mengabaikan entri *placeholder* untuk tim estafet.
+  - **Akurasi Medali Perorangan**: Logika perhitungan klasemen medali perorangan telah disempurnakan untuk **mengecualikan semua jenis nomor estafet**, memastikan laporan ini murni mencerminkan prestasi individu.
+
+- **Perbaikan Stabilitas**:
+  - Melakukan serangkaian perbaikan tipe data di seluruh aplikasi, mengatasi berbagai masalah yang menyebabkan halaman "Unduh Laporan" menjadi kosong atau unduhan Excel gagal.
 
 ---
 ### **Versi 1.1.5: Fitur SQL Editor & Perbaikan Tipe Data**
@@ -51,7 +55,7 @@ Pembaruan ini memperkenalkan fitur baru untuk administrator tingkat lanjut dan m
   - Skrip SQL di README.md telah diperbarui untuk menyertakan "Papan Luncur" sebagai tipe `swim_style` yang valid. Pengguna baru atau yang mengatur ulang database harus menjalankan skrip terbaru.
 
 ---
-### **Versi 1.1.4 (Pembaruan Terkini): Dasbor Analitik & Peningkatan UI**
+### **Versi 1.1.4: Dasbor Analitik & Peningkatan UI**
 *Tanggal Rilis: Sesuai pembaruan terakhir*
 
 Pembaruan ini berfokus pada perombakan dasbor admin untuk memberikan wawasan data yang lebih kaya dan meningkatkan pengalaman pengguna secara keseluruhan.
@@ -355,4 +359,76 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
     *   Dari menu kiri, klik ikon pengguna untuk membuka **Authentication**.
     *   Di bawah **Configuration**, pilih **Providers**.
     *   Di dalam **Email** provider, **matikan** (toggle **OFF**) opsi **Confirm email**. Ini krusial karena aplikasi tidak memiliki alur konfirmasi email bawaan.
-    *   Selanjutnya, di bawah **Configuration**, pilih---
+    *   Selanjutnya, di bawah **Configuration**, pilih **URL Configuration**.
+    *   Di sini, Anda perlu mengatur **Site URL**. Untuk tahap pengembangan, isinya adalah `http://localhost:8888`.
+    *   Klik "**Save**".
+    *   (Anda akan kembali ke sini nanti di Langkah 4 untuk memperbarui URL ini dengan URL Netlify Anda).
+
+### Langkah 2: Konfigurasi Kode Aplikasi
+
+Sekarang Anda akan menghubungkan aplikasi R.E.A.C.T dengan backend Supabase Anda.
+
+1.  **Buka File `config.ts`**:
+    *   Di editor kode Anda, temukan file `config.ts.txt`.
+    *   **Ubah nama** file ini menjadi `config.ts`.
+
+2.  **Masukkan Kredensial Supabase**:
+    *   Buka file `config.ts` yang baru saja Anda ubah namanya.
+    *   Tempel **URL Proyek** Supabase Anda ke dalam nilai `url`.
+    *   Tempel kunci **anon public** Supabase Anda ke dalam nilai `anonKey`.
+
+3.  **Atur Kredensial Super Admin**:
+    *   Di file `config.ts` yang sama, ubah `email` dan `password` di bawah bagian `superAdmin`. Akun ini memiliki akses penuh ke aplikasi dan tidak memerlukan akun Supabase. **Gunakan kata sandi yang kuat dan unik!**
+
+### Langkah 3: Menjalankan Aplikasi Secara Lokal (Development)
+
+Sekarang aplikasi Anda siap untuk dijalankan di komputer Anda.
+
+1.  **Buka Terminal**:
+    *   Buka terminal atau command prompt di direktori utama proyek Anda (folder di mana `package.json` berada).
+
+2.  **Instal Dependensi**:
+    *   Jika ini pertama kalinya Anda menjalankan proyek, jalankan perintah ini untuk menginstal semua pustaka yang diperlukan:
+        ```bash
+        npm install
+        ```
+
+3.  **Jalankan Server Development**:
+    *   Setelah instalasi selesai, jalankan perintah ini untuk memulai server development Netlify:
+        ```bash
+        npm run dev
+        ```
+    *   Terminal akan menampilkan output yang mengatakan server berjalan. Biasanya, aplikasi Anda akan dapat diakses di `http://localhost:8888`.
+    *   Buka URL tersebut di browser Anda. Anda seharusnya melihat halaman login R.E.A.C.T!
+
+### Langkah 4: Deployment ke Netlify (Publikasi Online)
+
+Langkah terakhir adalah mempublikasikan aplikasi Anda agar dapat diakses dari mana saja di internet.
+
+1.  **Dorong Kode ke GitHub**:
+    *   Buat repositori baru di akun GitHub Anda (misalnya, `react-swim-app`).
+    *   Ikuti petunjuk di GitHub untuk menghubungkan folder proyek lokal Anda ke repositori baru dan mendorong (push) kode Anda.
+
+2.  **Buat Akun & Situs Netlify**:
+    *   Buka [netlify.com](https://app.netlify.com/) dan daftar.
+    *   Klik "**Add new site**" -> "**Import an existing project**".
+    *   Pilih **GitHub** sebagai provider Git Anda dan otorisasi Netlify.
+    *   Pilih repositori GitHub yang baru saja Anda buat.
+
+3.  **Konfigurasi Pengaturan Build**:
+    *   Netlify biasanya akan mendeteksi pengaturan build Anda secara otomatis. Pastikan pengaturannya adalah:
+        *   **Build command**: `npm run build` atau `esbuild index.tsx --bundle --outfile=dist/main.js --jsx=automatic && cp index.html dist/index.html && cp metadata.json dist/metadata.json`
+        *   **Publish directory**: `dist`
+    *   Klik "**Show advanced**", lalu "**New variable**". Di sinilah Anda akan menyimpan kunci rahasia Supabase Anda.
+    *   Tambahkan dua **Environment variables** (variabel lingkungan):
+        *   **Key**: `SUPABASE_URL`, **Value**: Tempel **URL Proyek** Supabase Anda.
+        *   **Key**: `SUPABASE_SERVICE_KEY`, **Value**: Tempel kunci **service_role secret** Supabase Anda yang telah Anda salin sebelumnya.
+    *   Klik "**Deploy site**". Netlify akan mulai membangun dan mempublikasikan aplikasi Anda.
+
+4.  **Perbarui URL Supabase (Langkah Terakhir!)**:
+    *   Setelah Netlify selesai melakukan deployment, Anda akan mendapatkan URL publik untuk situs Anda (misalnya, `https://nama-unik-anda.netlify.app`). Salin URL ini.
+    *   Kembali ke dasbor Supabase Anda. Buka **Authentication** -> **URL Configuration**.
+    *   Ganti **Site URL** dari `http://localhost:8888` menjadi URL Netlify Anda yang baru.
+    *   Klik "**Save**".
+
+**Selesai!** Aplikasi manajemen kompetisi renang Anda sekarang sudah aktif dan dapat diakses secara global. Anda dapat login menggunakan akun Super Admin yang Anda buat di `config.ts`, atau membuat akun Admin baru langsung dari Supabase.
