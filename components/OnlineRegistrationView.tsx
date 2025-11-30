@@ -299,7 +299,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
             // Previously registered events (without seed time, as we don't have it easily)
             // FIX: Correctly handle server response by casting to any[] to map over snake_case properties, resolving `map does not exist on type unknown` error.
-            const eventsFromServer: any[] = result.previouslyRegisteredEvents || [];
+            const eventsFromServer: any[] = (result.previouslyRegisteredEvents as any[]) || [];
             const previouslyRegisteredEventsList = eventsFromServer.map((event: any) => {
                 const formattableEvent: FormattableEvent = {
                     distance: event.distance,

@@ -56,17 +56,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
   const [sortConfig, setSortConfig] = useState<{ key: SortableKey; direction: 'asc' | 'desc' }>({ key: 'total', direction: 'desc' });
 
   const stats = useMemo(() => {
-    const swimmerCount = swimmers.length;
+    const individualSwimmers = swimmers.filter(s => s.birthYear !== 0);
+    const swimmerCount = individualSwimmers.length;
     const eventCount = events.length;
-    const clubCount = new Set(swimmers.map(s => s.club.trim())).size;
+    const clubCount = new Set(individualSwimmers.map(s => s.club.trim())).size;
     const totalRegistrations = events.reduce((acc, event) => acc + event.entries.length, 0);
     return { swimmerCount, eventCount, clubCount, totalRegistrations };
   }, [swimmers, events]);
 
 
   const clubAnalysisData = useMemo(() => {
+    const individualSwimmers = swimmers.filter(s => s.birthYear !== 0);
     const clubData: Record<string, { male: number; female: number }> = {};
-    swimmers.forEach(swimmer => {
+    individualSwimmers.forEach(swimmer => {
         if (!clubData[swimmer.club]) {
             clubData[swimmer.club] = { male: 0, female: 0 };
         }
@@ -77,7 +79,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
         }
     });
 
-    const totalSwimmers = swimmers.length;
+    const totalSwimmers = individualSwimmers.length;
     return Object.entries(clubData).map(([clubName, counts]) => ({
         clubName,
         maleCount: counts.male,

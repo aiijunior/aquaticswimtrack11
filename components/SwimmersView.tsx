@@ -108,10 +108,11 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
 
 
   const stats = useMemo(() => {
-    const totalSwimmers = swimmers.length;
-    const maleSwimmers = swimmers.filter(s => s.gender === 'Male').length;
-    const femaleSwimmers = swimmers.filter(s => s.gender === 'Female').length;
-    const totalClubs = new Set(swimmers.map(s => s.club.trim())).size;
+    const individualSwimmers = swimmers.filter(s => s.birthYear !== 0);
+    const totalSwimmers = individualSwimmers.length;
+    const maleSwimmers = individualSwimmers.filter(s => s.gender === 'Male').length;
+    const femaleSwimmers = individualSwimmers.filter(s => s.gender === 'Female').length;
+    const totalClubs = new Set(individualSwimmers.map(s => s.club.trim())).size;
     return { totalSwimmers, maleSwimmers, femaleSwimmers, totalClubs };
   }, [swimmers]);
 
