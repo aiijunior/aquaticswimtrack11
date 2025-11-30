@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { SwimEvent, Swimmer, Result, Heat, Entry, CompetitionInfo } from '../types';
 import { getEventById, addOrUpdateEventResults } from '../services/databaseService';
@@ -9,12 +8,15 @@ import { Input } from './ui/Input';
 import { formatEventName, generateHeats, formatTime, parseMsToTimeParts } from '../constants';
 import { useNotification } from './ui/NotificationManager';
 
+type ArduinoStatus = 'connected' | 'disconnected' | 'error' | 'unavailable';
+
 interface LiveTimingViewProps {
   eventId: string;
   onBack: () => void;
   onDataUpdate: () => void;
   swimmers: Swimmer[];
   competitionInfo: CompetitionInfo | null;
+  onStatusChange: (status: ArduinoStatus) => void;
 }
 
 const PlayIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
@@ -23,7 +25,7 @@ const StopIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-
 const ResetIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5M20 20v-5h-5" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 9a9 9 0 0114.24-4.76L20 5M20 15a9 9 0 01-14.24 4.76L4 19" /></svg>;
 const UsbIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>;
 
-export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack, onDataUpdate, swimmers, competitionInfo }) => {
+export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack, onDataUpdate, swimmers, competitionInfo, onStatusChange }) => {
     const [event, setEvent] = useState<SwimEvent | null>(null);
     const [heats, setHeats] = useState<Heat[]>([]);
     const [currentHeatIndex, setCurrentHeatIndex] = useState(0);
@@ -57,6 +59,13 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
         stopwatchTimeRef.current = stopwatchTime;
     }, [isStopwatchRunning, stopwatchTime]);
 
+    useEffect(() => {
+        if ("serial" in navigator) {
+            onStatusChange('disconnected');
+        } else {
+            onStatusChange('unavailable');
+        }
+    }, [onStatusChange]);
 
     const fetchAndSetupEvent = useCallback(async () => {
         setIsLoading(true);
@@ -129,22 +138,36 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
     }, [isStopwatchRunning]);
 
     // --- SERIAL / ARDUINO CONNECTION LOGIC ---
-    const disconnectSerial = async () => {
+    const disconnectSerial = useCallback(async () => {
         if (readerRef.current) {
-            await readerRef.current.cancel();
-            readerRef.current = null;
+            try {
+                await readerRef.current.cancel();
+            } catch (error) {
+                console.warn("Error cancelling reader:", error);
+            } finally {
+                readerRef.current = null;
+            }
         }
         if (portRef.current) {
-            await portRef.current.close();
-            portRef.current = null;
+            try {
+                await portRef.current.close();
+            } catch (error) {
+                console.warn("Error closing port:", error);
+            } finally {
+                portRef.current = null;
+            }
         }
-        setIsSerialConnected(false);
-        addNotification("Arduino terputus.", "info");
-    };
+        if (isSerialConnected) {
+            setIsSerialConnected(false);
+            addNotification("Arduino terputus.", "info");
+            onStatusChange('disconnected');
+        }
+    }, [isSerialConnected, addNotification, onStatusChange]);
 
     const connectSerial = async () => {
         if (!("serial" in navigator)) {
             addNotification("Browser ini tidak mendukung Web Serial API. Gunakan Chrome atau Edge.", "error");
+            onStatusChange('unavailable');
             return;
         }
 
@@ -159,9 +182,10 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
             portRef.current = port;
             setIsSerialConnected(true);
             addNotification("Arduino terhubung! Menunggu sinyal 'S' (Start) atau '1'-'8' (Lane)...", "success");
+            onStatusChange('connected');
 
             const textDecoder = new TextDecoderStream();
-            const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+            port.readable.pipeTo(textDecoder.writable);
             const reader = textDecoder.readable.getReader();
             readerRef.current = reader;
 
@@ -184,7 +208,10 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
             }
         } catch (error: any) {
             console.error("Serial connection error:", error);
-            addNotification(`Gagal terhubung ke Arduino: ${error.message}`, "error");
+            if (error.name !== 'NotFoundError') { // Ignore if user cancels port selection
+                addNotification(`Gagal terhubung ke Arduino: ${error.message}`, "error");
+                onStatusChange('error');
+            }
             setIsSerialConnected(false);
         }
     };
@@ -194,29 +221,24 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
     const processSerialData = (data: string) => {
         const trimmedData = data.toUpperCase().trim();
 
-        if (trimmedData === "S") {
-            // Trigger Start from Arduino
-            // If stopwatch is already running, this might be a false trigger or restart. 
-            // For safety, let's assume it forces a restart if we want, but safer to just start if stopped.
-            // To support restart, we would need to handleReset() then Start.
-            // Let's implement: If running -> do nothing (prevent accidental stop). If stopped -> RESET then START.
-            
+        if (trimmedData === "S" || trimmedData === "START") {
             if (!isStopwatchRunningRef.current) {
-                // Perform Reset logic directly
                 setStopwatchTime(0);
                 pausedTimeRef.current = 0;
                 startTimeRef.current = performance.now();
-                
-                // Start
                 setIsStopwatchRunning(true);
                 addNotification("Start Signal diterima dari Arduino!", "success", 2000);
             }
             return;
         }
+         if (trimmedData === "R" || trimmedData === "RESET") {
+            handleReset();
+            addNotification("Reset Signal diterima dari Arduino!", "info", 2000);
+            return;
+        }
 
         const laneNumber = parseInt(trimmedData, 10);
-        if (!isNaN(laneNumber)) {
-            // Find the swimmer in the current heat assigned to this lane
+        if (!isNaN(laneNumber) && laneNumber > 0 && laneNumber <= 10) {
             const currentHeat = heats[currentHeatIndex];
             if (currentHeat) {
                 const assignment = currentHeat.assignments.find(a => a.lane === laneNumber);
@@ -232,7 +254,7 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
         return () => {
             disconnectSerial();
         };
-    }, []);
+    }, [disconnectSerial]);
 
 
     const handleStartStop = () => {

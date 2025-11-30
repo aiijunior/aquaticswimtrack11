@@ -23,6 +23,8 @@ import { Spinner } from './components/ui/Spinner';
 import { ConnectionStatusIndicator } from './components/ui/ConnectionStatusIndicator';
 import { NotificationContainer } from './components/ui/NotificationManager';
 
+type ArduinoStatus = 'connected' | 'disconnected' | 'error' | 'unavailable';
+
 const NavLink: React.FC<{
   label: string;
   isActive: boolean;
@@ -71,6 +73,7 @@ const App: React.FC = () => {
   // State for connection status
   const [internetStatus, setInternetStatus] = useState<'online' | 'offline'>('online');
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error' | 'offline' | 'reconnecting'>('checking');
+  const [arduinoStatus, setArduinoStatus] = useState<ArduinoStatus>('unavailable');
 
   // Centralized data fetching function
   const refreshData = useCallback(async () => {
@@ -182,6 +185,10 @@ const App: React.FC = () => {
       };
   }, []);
 
+  const handleArduinoStatusChange = useCallback((status: ArduinoStatus) => {
+    setArduinoStatus(status);
+  }, []);
+
   const handleLogin = () => {
     const user = getCurrentUser();
     setCurrentUser(user);
@@ -269,7 +276,7 @@ const App: React.FC = () => {
 
     // Logged-in admin views
     if (currentView === View.LIVE_TIMING && selectedEventId) {
-       return <LiveTimingView eventId={selectedEventId} onBack={handleBackToEvents} onDataUpdate={refreshData} swimmers={swimmers} competitionInfo={competitionInfo} />;
+       return <LiveTimingView eventId={selectedEventId} onBack={handleBackToEvents} onDataUpdate={refreshData} swimmers={swimmers} competitionInfo={competitionInfo} onStatusChange={handleArduinoStatusChange} />;
     }
     if (currentView === View.RACES && selectedEventId) {
       return <EventDetailView eventId={selectedEventId} onBack={handleBackToEvents} onDataUpdate={refreshData} />;
@@ -358,7 +365,7 @@ const App: React.FC = () => {
             </nav>
         </div>
         <div className="space-y-2">
-            <ConnectionStatusIndicator internetStatus={internetStatus} dbStatus={dbStatus} />
+            <ConnectionStatusIndicator internetStatus={internetStatus} dbStatus={dbStatus} arduinoStatus={arduinoStatus} />
             <ThemeToggle />
             <Button onClick={handleLogout} variant="secondary" className="w-full flex items-center justify-center space-x-2">
                 <LogoutIcon />
