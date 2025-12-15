@@ -345,7 +345,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         return;
     }
 
-    const sortedEvents = [...events].sort((a, b) => {
+    const sortedEvents: SwimEvent[] = [...events].sort((a, b) => {
          const sessionDiff = (a.sessionNumber ?? 999) - (b.sessionNumber ?? 999);
          if (sessionDiff !== 0) return sessionDiff;
          const orderDiff = (a.heatOrder ?? 999) - (b.heatOrder ?? 999);

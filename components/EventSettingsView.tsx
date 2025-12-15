@@ -108,6 +108,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     const [activeTab, setActiveTab] = useState<'settings' | 'schedule' | 'records' | 'data'>('settings');
     const [info, setInfo] = useState<CompetitionInfo | null>(null);
     const [eventNameLines, setEventNameLines] = useState<string[]>(['', '', '']);
+    const [ageGroupsInput, setAgeGroupsInput] = useState('');
     const [schedule, setSchedule] = useState<{ [key: string]: SwimEvent[] }>({});
     const [sessionNames, setSessionNames] = useState<{ [key: string]: string }>({});
     const [sessionDetails, setSessionDetails] = useState<{ [key: string]: { date: string; time: string } }>({});
@@ -157,6 +158,11 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             ]);
         } else {
             setEventNameLines(['', '', '']);
+        }
+        if (competitionInfo?.ageGroups) {
+            setAgeGroupsInput(competitionInfo.ageGroups);
+        } else {
+            setAgeGroupsInput('');
         }
     }, [competitionInfo]);
 
@@ -234,7 +240,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         if (!info) return;
         try {
             const combinedEventName = eventNameLines.map(line => line.trim()).filter(Boolean).join('\n');
-            const infoToSave = { ...info, eventName: combinedEventName };
+            const infoToSave = { ...info, eventName: combinedEventName, ageGroups: ageGroupsInput };
 
             await updateCompetitionInfo(infoToSave);
             onDataUpdate();
@@ -861,6 +867,26 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                             <option value="8">8 Lintasan</option>
                             <option value="10">10 Lintasan</option>
                         </Select>
+                        
+                        {/* AGE GROUP MANAGER */}
+                        <div>
+                            <label htmlFor="age-groups" className="block text-sm font-medium text-text-secondary mb-1">
+                                Atur Kategori Umur (KU)
+                            </label>
+                            <p className="text-xs text-text-secondary mb-2">
+                                Tuliskan daftar Kelompok Umur atau Kategori yang tersedia, dipisahkan dengan baris baru (Enter). 
+                                Daftar ini akan muncul di menu tambah atlet dan formulir pendaftaran.
+                            </p>
+                            <textarea
+                                id="age-groups"
+                                rows={6}
+                                className="w-full bg-background border border-border rounded-md px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+                                placeholder={"Contoh:\nKU Senior\nKU 1\nKU 2\nKU 3\nTK\nMaster"}
+                                value={ageGroupsInput}
+                                onChange={(e) => setAgeGroupsInput(e.target.value)}
+                            />
+                        </div>
+
                         <ImageUpload label="Logo Event" image={info.eventLogo} onImageSelect={(file) => handleImageSelect('eventLogo', file)} onImageClear={() => handleImageClear('eventLogo')}/>
                         <ImageUpload label="Logo Sponsor" image={info.sponsorLogo} onImageSelect={(file) => handleImageSelect('sponsorLogo', file)} onImageClear={() => handleImageClear('sponsorLogo')}/>
                         <div className="flex justify-end pt-4 border-t border-border"><Button onClick={handleSaveInfo}>Simpan Pengaturan</Button></div>

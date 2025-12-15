@@ -15,7 +15,8 @@ const toCompetitionInfo = (data: any): CompetitionInfo => ({
     sponsorLogo: data.sponsor_logo,
     isRegistrationOpen: data.is_registration_open,
     numberOfLanes: data.number_of_lanes,
-    registrationDeadline: data.registration_deadline
+    registrationDeadline: data.registration_deadline,
+    ageGroups: data.age_groups
 });
 
 const toSwimmer = (data: any): Swimmer => ({
@@ -120,6 +121,7 @@ export const getPublicData = async (): Promise<{ competitionInfo: CompetitionInf
                 isRegistrationOpen: false, 
                 numberOfLanes: config.competition.defaultLanes,
                 registrationDeadline: null,
+                ageGroups: null
             },
             swimmers: [],
             events: [],
@@ -146,6 +148,7 @@ export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
             isRegistrationOpen: false, 
             numberOfLanes: config.competition.defaultLanes,
             registrationDeadline: null,
+            ageGroups: null
         };
     }
 
@@ -165,6 +168,7 @@ export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
             isRegistrationOpen: false, 
             numberOfLanes: config.competition.defaultLanes,
             registrationDeadline: null,
+            ageGroups: null
         };
     }
 
@@ -181,7 +185,8 @@ export const updateCompetitionInfo = async (info: CompetitionInfo): Promise<Comp
         sponsor_logo: info.sponsorLogo,
         is_registration_open: info.isRegistrationOpen,
         number_of_lanes: info.numberOfLanes,
-        registration_deadline: info.registrationDeadline
+        registration_deadline: info.registrationDeadline,
+        age_groups: info.ageGroups
     };
     const { data, error } = await supabase
         .from('competition_info')
@@ -651,7 +656,7 @@ export const processParticipantUpload = async (data: any[]): Promise<{ newSwimme
             
             let seedTimeMs = 0;
             if (seedTimeStr && seedTimeStr.toUpperCase() !== 'NT') {
-                const timeParts = seedTimeStr.match(/^(\d{1,2}):(\d{2})\.(\d{2})$/);
+                const timeParts = seedTimeStr.match(/^(\d{1,2})\:(\d{2})\.(\d{2})$/);
                 if (!timeParts) {
                     throw new Error("Format 'Waktu Unggulan' harus mm:ss.SS (contoh: 01:23.45), 99:99.99 untuk NT, atau NT.");
                 }

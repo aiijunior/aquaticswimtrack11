@@ -72,8 +72,13 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     // State for accordion
     const [openAccordion, setOpenAccordion] = useState<SwimStyle | null>(null);
 
-    // Explicitly typed options for rendering to prevent type errors
-    const ageGroupOptions: string[] = AGE_GROUP_OPTIONS;
+    // Dynamic Age Groups Logic
+    const ageOptions = useMemo(() => {
+        if (competitionInfo?.ageGroups) {
+            return competitionInfo.ageGroups.split('\n').map(s => s.trim()).filter(Boolean);
+        }
+        return AGE_GROUP_OPTIONS;
+    }, [competitionInfo]);
 
     useEffect(() => {
         const fetchEvents = async () => {
@@ -298,7 +303,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             });
 
             // Previously registered events (without seed time, as we don't have it easily)
-            const eventsFromServer = (result.previouslyRegisteredEvents as any[]) || [];
+            const eventsFromServer = ((result.previouslyRegisteredEvents || []) as any[]);
             const previouslyRegisteredEventsList = eventsFromServer.map((event: any) => {
                 const formattableEvent: FormattableEvent = {
                     distance: event.distance,
@@ -415,7 +420,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 </Select>
                                  <Select label="Kelompok Umur (KU) (Opsional)" id="ageGroup" name="ageGroup" value={formData.ageGroup} onChange={handleFormChange}>
                                     <option value="">-- Tanpa KU --</option>
-                                    {ageGroupOptions.map((ku: string) => <option key={ku} value={ku}>{ku}</option>)}
+                                    {ageOptions.map((ku: string) => <option key={ku} value={ku}>{ku}</option>)}
                                 </Select>
                             </div>
                         </Card>

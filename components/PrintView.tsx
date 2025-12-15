@@ -203,8 +203,8 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
                 acc[sessionName] = [];
             }
             
-// FIX: Added explicit type cast to `event.entries` to resolve 'map' does not exist on type 'unknown' error.
-            const eventEntries: Entry[] = ((event.entries as EventEntry[]) || []).map((entry: EventEntry) => {
+            const entriesRaw = event.entries as EventEntry[] | undefined;
+            const eventEntries: Entry[] = (entriesRaw || []).map((entry: EventEntry) => {
                 const swimmer = swimmersMap.get(entry.swimmerId);
                 return swimmer ? { ...entry, swimmer } : null;
             }).filter((e): e is Entry => e !== null);
@@ -577,7 +577,6 @@ const ClubMedalStandingsWithAthletes: React.FC<{ events: SwimEvent[], swimmers: 
     return (
         <main className="space-y-8">
             {data.map(([clubName, clubData]) => {
-// FIX: Added explicit type annotation for 'a' to resolve 'wins' does not exist on type 'unknown' error.
                 const athletesWithWins = Object.values(clubData.athletes).filter((a: AthleteWins) => a.wins.length > 0);
                 if (athletesWithWins.length === 0) return null;
 
@@ -717,11 +716,8 @@ const IndividualMedalStandingsByCategory: React.FC<{ events: SwimEvent[], swimme
         });
 
         const finalData = Object.entries(medalsByAgeGroup).map(([ageGroup, swimmersMedals]) => {
-            const sortedStandings = Object.values(swimmersMedals)
-                .sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || a.swimmer.name.localeCompare(b.swimmer.name));
-            const maleStandings = sortedStandings.filter(s => s.swimmer.gender === 'Male');
-            const femaleStandings = sortedStandings.filter(s => s.swimmer.gender === 'Female');
-            return { ageGroup, maleStandings, femaleStandings };
+            const sorted = Object.values(swimmersMedals).sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || a.swimmer.name.localeCompare(b.swimmer.name));
+            return { ageGroup, maleStandings: sorted.filter(s => s.swimmer.gender === 'Male'), femaleStandings: sorted.filter(s => s.swimmer.gender === 'Female') };
         });
 
         return finalData.sort((a, b) => a.ageGroup.localeCompare(b.ageGroup));
@@ -1071,7 +1067,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                          aoa.push([]);
                          aoa.push([clubName, `🥇${clubData.medals.gold}`, `🥈${clubData.medals.silver}`, `🥉${clubData.medals.bronze}`]);
                          aoa.push(['Nama Atlet', 'Nomor Lomba yang Dimenangkan']);
-                         athletesWithWins.forEach(({ swimmer, wins }) => {
+                         athletesWithWins.forEach(({ swimmer, wins }: { swimmer: Swimmer; wins: Win[] }) => {
                             aoa.push([swimmer.name]);
                             wins.sort((a,b)=>a.rank-b.rank).forEach(win => {
                                 aoa.push(['', `${win.rank === 1 ? '🥇' : win.rank === 2 ? '🥈' : '🥉'} ${win.eventName} - ${formatTime(win.time)}`]);
@@ -1111,9 +1107,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                         return { ageGroup, maleStandings: sorted.filter(s => s.swimmer.gender === 'Male'), femaleStandings: sorted.filter(s => s.swimmer.gender === 'Female') };
                     }).sort((a, b) => a.ageGroup.localeCompare(b.ageGroup));
 
-                    finalData.forEach(cat => {
-                       const maleData = cat.maleStandings.map((s,i) => ({'#':i+1, 'Nama':s.swimmer.name, 'Klub':s.swimmer.club, '🥇':s.gold, '🥈':s.silver, '🥉':s.bronze}));
-                       const femaleData = cat.femaleStandings.map((s,i) => ({'#':i+1, 'Nama':s.swimmer.name, 'Klub':s.swimmer.club, '🥇':s.gold, '🥈':s.silver, '🥉':s.bronze}));
+                    finalData.forEach((cat: { ageGroup: string; maleStandings: Standing[]; femaleStandings: Standing[] }) => {
+                       const maleData = cat.maleStandings.map((s: Standing, i: number) => ({'#':i+1, 'Nama':s.swimmer.name, 'Klub':s.swimmer.club, '🥇':s.gold, '🥈':s.silver, '🥉':s.bronze}));
+                       const femaleData = cat.femaleStandings.map((s: Standing, i: number) => ({'#':i+1, 'Nama':s.swimmer.name, 'Klub':s.swimmer.club, '🥇':s.gold, '🥈':s.silver, '🥉':s.bronze}));
                        const aoa = [
                            ['Klasemen Putra'],
                            ['#', 'Nama Atlet', 'Nama Tim', '🥇', '🥈', '🥉'],

@@ -34,6 +34,7 @@ export interface CompetitionInfo {
     // FIX: Corrected typo from numberOfLlanes to numberOfLanes
     numberOfLanes?: number;
     registrationDeadline?: string | null;
+    ageGroups?: string | null; // New field for storing flexible categories
 }
 
 export interface Swimmer {

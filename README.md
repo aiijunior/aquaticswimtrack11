@@ -23,87 +23,52 @@ R.E.A.C.T adalah platform modern, real-time, dan komprehensif untuk manajemen ko
 Catatan ini melacak semua perubahan signifikan yang diterapkan pada aplikasi R.E.A.C.T.
 
 ---
-### **Versi 1.1.6 (Pembaruan Terkini): Dasbor Interaktif & Akurasi Data Statistik**
+### **Versi 1.1.7 (Pembaruan Terkini): Kategori Fleksibel & Logika Seeding Cerdas**
 *Tanggal Rilis: Sesuai pembaruan terakhir*
+
+Pembaruan ini memberikan fleksibilitas penuh kepada penyelenggara dalam penamaan kategori umur dan menyempurnakan integritas penyusunan seri lomba.
+
+- **Fitur Baru: Kategori Umur (KU) Fleksibel**
+  - **Penamaan Bebas**: Admin kini dapat menentukan sendiri daftar Kelompok Umur (misal: "TK", "SD A", "Elite", "Master", "KU 1") melalui menu Pengaturan Acara. Aplikasi tidak lagi membatasi pada format baku.
+  - **Integrasi Penuh**: Daftar KU kustom ini otomatis muncul di *dropdown* menu tambah atlet dan formulir pendaftaran online.
+  - **Perhatian Admin**: Untuk pengguna lama, fitur ini memerlukan penambahan kolom baru di database. Silakan buka menu **SQL Editor** di aplikasi untuk mendapatkan perintah pembaruan otomatis.
+
+- **Peningkatan Logika Seeding (Penyusunan Seri)**
+  - **Isolasi Atlet NT**: Algoritma `generateHeats` telah diperbarui. Atlet tambahan yang tidak memiliki catatan waktu (NT) kini dikelompokkan dan ditempatkan di seri-seri awal (*early heats*).
+  - **Stabilitas Posisi**: Penambahan atlet NT tidak akan lagi menggeser atau mengubah komposisi seri atlet unggulan (yang memiliki catatan waktu), menjaga integritas kompetisi.
+
+---
+### **Versi 1.1.6: Dasbor Interaktif & Akurasi Data Statistik**
 
 Pembaruan ini secara signifikan meningkatkan fungsionalitas dasbor admin dan akurasi data statistik di seluruh aplikasi.
 
 - **Fitur Baru: Dasbor Interaktif**
-  - Semua kartu statistik di dasbor admin (Total Atlet, Total Tim, Tim Estafet, dll.) kini dapat diklik. Mengklik sebuah kartu akan membawa Anda ke halaman yang relevan dengan filter yang sudah diterapkan secara otomatis, mempercepat navigasi dan analisis data.
+  - Semua kartu statistik di dasbor admin (Total Atlet, Total Tim, Tim Estafet, dll.) kini dapat diklik untuk navigasi cepat.
 
 - **Peningkatan Statistik**:
-  - **Rekap Tim Estafet**: Dasbor kini menampilkan kartu statistik baru untuk jumlah total tim estafet unik (Putra, Putri, dan Campuran).
-  - **Akurasi Jumlah Atlet**: Perhitungan statistik di Dasbor dan halaman "Daftar Atlet" telah diperbaiki untuk **hanya menghitung atlet perorangan**, dengan mengabaikan entri *placeholder* untuk tim estafet.
-  - **Akurasi Medali Perorangan**: Logika perhitungan klasemen medali perorangan telah disempurnakan untuk **mengecualikan semua jenis nomor estafet**, memastikan laporan ini murni mencerminkan prestasi individu.
-
-- **Perbaikan Stabilitas**:
-  - Melakukan serangkaian perbaikan tipe data di seluruh aplikasi, mengatasi berbagai masalah yang menyebabkan halaman "Unduh Laporan" menjadi kosong atau unduhan Excel gagal.
+  - **Rekap Tim Estafet**: Menampilkan statistik unik untuk tim estafet.
+  - **Akurasi Jumlah Atlet**: Perhitungan kini hanya menghitung atlet perorangan asli, mengabaikan placeholder tim estafet.
 
 ---
 ### **Versi 1.1.5: Fitur SQL Editor & Perbaikan Tipe Data**
-*Tanggal Rilis: Sesuai pembaruan terakhir*
 
 Pembaruan ini memperkenalkan fitur baru untuk administrator tingkat lanjut dan memperbaiki masalah terkait penyimpanan data.
 
 - **Fitur Baru: SQL Editor (Khusus Super Admin)**
-  - Menambahkan tautan "SQL Editor" baru di menu samping untuk pengguna dengan peran Super Admin.
-  - Untuk menjaga keamanan, fitur ini tidak menjalankan kueri dari dalam aplikasi. Sebaliknya, fitur ini memberikan tautan aman langsung ke editor SQL di dasbor Supabase proyek Anda.
-  - Halaman ini menyertakan peringatan keamanan dan contoh kueri untuk memandu administrator.
+  - Menambahkan menu "SQL Editor" untuk memfasilitasi pembaruan struktur database yang aman melalui dasbor Supabase.
 
 - **Perbaikan: Tipe Data 'Papan Luncur'**
-  - Memperbaiki bug kritis di mana nomor lomba dengan gaya "Papan Luncur" tidak dapat disimpan ke database.
-  - Skrip SQL di README.md telah diperbarui untuk menyertakan "Papan Luncur" sebagai tipe `swim_style` yang valid. Pengguna baru atau yang mengatur ulang database harus menjalankan skrip terbaru.
-
----
-### **Versi 1.1.4: Dasbor Analitik & Peningkatan UI**
-*Tanggal Rilis: Sesuai pembaruan terakhir*
-
-Pembaruan ini berfokus pada perombakan dasbor admin untuk memberikan wawasan data yang lebih kaya dan meningkatkan pengalaman pengguna secara keseluruhan.
-
-- **Fitur Baru: Dasbor Analitik**
-  - **Statistik Kunci**: Dasbor kini menampilkan empat statistik utama: Total Atlet, Total Nomor Lomba, Total Tim, dan Total Pendaftaran, memberikan gambaran cepat mengenai skala kompetisi.
-  - **Bagan Distribusi Tim**: Menambahkan bagan (chart) visual baru yang menampilkan distribusi jumlah atlet per tim. Bagan ini menyorot 7 tim teratas untuk analisis yang mudah dan mengelompokkan sisanya.
-
-- **Penyempurnaan UI/UX**:
-  - **Tata Letak Dasbor Baru**: Mengatur ulang tata letak dasbor untuk tampilan yang lebih modern, bersih, dan fokus pada data.
-  - **Integrasi Grafik**: Menambahkan pustaka `Chart.js` untuk memastikan visualisasi data yang andal dan responsif, serta mendukung mode terang dan gelap.
-
----
-### **Versi 1.1.3: Perbaikan Stabilitas & Notifikasi**
-
-Versi ini mengatasi beberapa masalah mendasar terkait interaksi pengguna dan memperkaya alur kerja pendaftaran.
-
-- **Perbaikan: Stabilitas Tombol Aplikasi**
-  - Memperbaiki masalah kritis di mana tombol di dalam formulir (seperti 'Hapus', 'Tambah', atau 'Buka Modal') secara tidak sengaja bertindak sebagai tombol 'submit', yang menyebabkan perilaku aplikasi yang tidak diharapkan. Semua tombol sekarang secara default diatur ke `type="button"`, kecuali jika secara eksplisit ditujukan untuk mengirimkan formulir.
-
-- **Perbaikan: Notifikasi Pendaftaran yang Lebih Informatif**
-  - Notifikasi keberhasilan pendaftaran online sekarang telah disempurnakan. Selain menampilkan nomor lomba yang baru didaftarkan, notifikasi kini juga mencantumkan riwayat nomor lomba yang sudah pernah didaftarkan oleh atlet tersebut sebelumnya, memberikan konfirmasi yang lebih lengkap kepada pengguna.
-
----
-### **Versi 1.1.2: Optimasi Kinerja & Keamanan**
-
-Pembaruan ini berfokus pada peningkatan kecepatan dan perbaikan keamanan di level database.
-
-- **Peningkatan: Kinerja Halaman Pendaftaran Online**
-  - Mengatasi kelambatan pada menu pendaftaran online dengan mengoptimalkan kueri data. Halaman sekarang hanya memuat informasi yang relevan untuk pendaftaran (info acara dan entri) tanpa mengambil data hasil lomba yang besar, sehingga waktu muat menjadi jauh lebih cepat.
-
-- **Perbaikan: Kebijakan Keamanan Database (RLS)**
-  - Menambahkan kebijakan Row Level Security (RLS) yang hilang untuk operasi `INSERT` pada tabel `competition_info`. Hal ini memperbaiki error `new row violates row-level security policy` yang terjadi saat aplikasi mencoba membuat data kompetisi untuk pertama kalinya (misalnya, setelah menghapus semua data).
+  - Memperbaiki dukungan database untuk gaya renang "Papan Luncur".
 
 ---
 ## Tindakan yang Diperlukan
 
-- **Untuk Pengguna Umum**: Tidak ada tindakan yang diperlukan. Cukup muat ulang aplikasi untuk melihat perubahan terbaru pada dasbor dan fungsionalitas lainnya.
-- **Untuk Administrator Database**: Jika Anda baru meng-install aplikasi ini atau telah mengatur ulang database Anda, pastikan Anda telah menjalankan skrip SQL terbaru dari bagian **"Langkah 1: Pengaturan Supabase"** di bawah ini. Skrip tersebut telah diperbarui untuk menyertakan kebijakan keamanan (RLS) yang memperbaiki masalah `INSERT` (lihat changelog Versi 1.1.2).
-
----
-## Troubleshooting Umum
-
-### Error: `new row violates row-level security policy for table "competition_info"`
-
-**Penyebab:** Kesalahan ini terjadi karena kebijakan keamanan (Row Level Security) di database Supabase Anda belum dikonfigurasi dengan benar untuk mengizinkan penambahan data baru (`INSERT`) pada tabel yang kosong. Ini biasanya terjadi pada instalasi baru atau setelah data dihapus.
-
-**Solusi:** Skrip SQL di bawah pada **Langkah 1: Pengaturan Supabase** telah diperbarui untuk mengatasi masalah ini. Cukup salin seluruh skrip SQL terbaru dari panduan ini dan jalankan di **SQL Editor** Supabase Anda. Tindakan ini aman untuk dijalankan kembali dan akan memperbaiki kebijakan keamanan yang ada.
+- **Untuk Pengguna Baru**: Jalankan skrip SQL lengkap di bawah ini pada langkah instalasi. Skrip sudah mencakup semua fitur terbaru (termasuk kolom `age_groups`).
+- **Untuk Pengguna Lama**: 
+    1. Masuk sebagai Super Admin.
+    2. Buka menu **SQL Editor**.
+    3. Salin perintah pada kartu **"Pembaruan Skema Database: Kategori Fleksibel"**.
+    4. Jalankan perintah tersebut di SQL Editor Supabase Anda.
 
 ---
 
@@ -171,7 +136,8 @@ Supabase akan berfungsi sebagai database, layanan otentikasi, dan backend *real-
         sponsor_logo text,
         is_registration_open boolean NOT NULL DEFAULT false,
         number_of_lanes integer NOT NULL DEFAULT 8,
-        registration_deadline timestamp with time zone
+        registration_deadline timestamp with time zone,
+        age_groups text
     );
     -- RLS Policies for competition_info
     ALTER TABLE public.competition_info ENABLE ROW LEVEL SECURITY;

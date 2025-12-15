@@ -50,6 +50,9 @@ export const SqlEditorView: React.FC = () => {
     const fixPapanLuncurQuery = `-- Menambahkan 'Papan Luncur' ke tipe data gaya renang
 ALTER TYPE public.swim_style ADD VALUE IF NOT EXISTS 'Papan Luncur';`;
 
+    const addAgeGroupsQuery = `-- Menambahkan kolom age_groups ke tabel competition_info
+ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS age_groups text;`;
+
     const fullSetupScript = `-- Create custom types for enums, but only if they don't already exist.
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'swim_style') THEN
@@ -82,7 +85,8 @@ CREATE TABLE IF NOT EXISTS public.competition_info (
     sponsor_logo text,
     is_registration_open boolean NOT NULL DEFAULT false,
     number_of_lanes integer NOT NULL DEFAULT 8,
-    registration_deadline timestamp with time zone
+    registration_deadline timestamp with time zone,
+    age_groups text
 );
 -- RLS Policies for competition_info
 ALTER TABLE public.competition_info ENABLE ROW LEVEL SECURITY;
@@ -287,6 +291,17 @@ ON CONFLICT (id) DO NOTHING;`;
                 >
                     Buka Supabase SQL Editor
                 </Button>
+            </Card>
+
+            <Card className="mt-6 border-blue-500/50 bg-blue-500/5">
+                <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">Pembaruan Skema Database: Kategori Fleksibel</h3>
+                <p className="text-text-secondary mt-2">
+                    Untuk menggunakan fitur kategori/KU yang fleksibel (seperti "TK", "SD", dll), Anda perlu menambahkan kolom baru ke database Anda.
+                </p>
+                <p className="text-text-secondary mt-2">
+                    Jalankan perintah SQL berikut di Editor Supabase Anda:
+                </p>
+                <CodeBlock>{addAgeGroupsQuery}</CodeBlock>
             </Card>
 
             <Card className="mt-6 border-orange-500/50 bg-orange-500/5">

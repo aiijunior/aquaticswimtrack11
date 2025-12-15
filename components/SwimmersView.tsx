@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { Swimmer, SwimEvent } from '../types';
+import type { Swimmer, SwimEvent, CompetitionInfo } from '../types';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
@@ -58,6 +58,7 @@ interface SwimmersViewProps {
   isLoading: boolean;
   onDataUpdate: () => void;
   initialState?: any;
+  competitionInfo: CompetitionInfo | null; // Added prop
 }
 
 const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: number | string; onClick?: () => void; isActive?: boolean; }> = ({ icon, label, value, onClick, isActive }) => (
@@ -74,7 +75,7 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: number |
 );
 
 
-export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, isLoading, onDataUpdate, initialState }) => {
+export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, isLoading, onDataUpdate, initialState, competitionInfo }) => {
   const [searchQuery, setSearchQuery] = useState(initialState?.searchQuery || '');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -112,6 +113,14 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
   const [genderFilter, setGenderFilter] = useState<'Male' | 'Female' | 'All'>(initialState?.genderFilter || 'All');
   const [viewMode, setViewMode] = useState<'swimmerList' | 'clubRecap'>(initialState?.viewMode || 'swimmerList');
   const [relayFilter, setRelayFilter] = useState<'Men\'s' | 'Women\'s' | 'Mixed' | 'All' | null>(initialState?.relayFilter || null);
+
+  // Dynamic Age Groups Logic
+  const ageOptions = useMemo(() => {
+      if (competitionInfo?.ageGroups) {
+          return competitionInfo.ageGroups.split('\n').map(s => s.trim()).filter(Boolean);
+      }
+      return AGE_GROUP_OPTIONS;
+  }, [competitionInfo]);
 
 
   const stats = useMemo(() => {
@@ -605,7 +614,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
             </Select>
             <Select label="Kelompok Umur (KU) (Opsional)" id="add-ageGroup" name="ageGroup" value={addFormData.ageGroup} onChange={handleAddFormChange}>
                 <option value="">-- Tanpa KU --</option>
-                {AGE_GROUP_OPTIONS.map(ku => <option key={ku} value={ku}>{ku}</option>)}
+                {ageOptions.map(ku => <option key={ku} value={ku}>{ku}</option>)}
             </Select>
             <Input label="Nama Tim (Klub/Daerah)" id="add-club" name="club" value={addFormData.club} onChange={handleAddFormChange} required />
             <div className="flex justify-end pt-4 space-x-2">
@@ -626,7 +635,7 @@ export const SwimmersView: React.FC<SwimmersViewProps> = ({ swimmers, events, is
             </Select>
             <Select label="Kelompok Umur (KU) (Opsional)" id="edit-ageGroup" name="ageGroup" value={editFormData.ageGroup || ''} onChange={handleEditFormChange}>
                 <option value="">-- Tanpa KU --</option>
-                {AGE_GROUP_OPTIONS.map(ku => <option key={ku} value={ku}>{ku}</option>)}
+                {ageOptions.map(ku => <option key={ku} value={ku}>{ku}</option>)}
             </Select>
             <Input label="Nama Tim (Klub/Daerah)" id="club" name="club" value={editFormData.club} onChange={handleEditFormChange} required />
             <div className="flex justify-end pt-4 space-x-2">
