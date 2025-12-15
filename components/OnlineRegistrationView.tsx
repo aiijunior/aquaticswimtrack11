@@ -169,6 +169,37 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         return Object.values(selectedEvents).filter((e: { selected: boolean }) => e.selected).length;
     }, [selectedEvents]);
 
+    // Calculate a summary of selected events for the review card
+    const selectedEventsSummary = useMemo(() => {
+        return Object.entries(selectedEvents)
+            .filter(([_, val]) => val.selected)
+            .map(([eventId, val]) => {
+                const event = localEvents.find(e => e.id === eventId);
+                if (!event) return null;
+                
+                // Format display time
+                let timeStr = 'NT';
+                const min = val.time.min || '0';
+                const sec = val.time.sec || '0';
+                const ms = val.time.ms || '0';
+                
+                if (min === '99' && sec === '99' && ms === '99') {
+                    timeStr = 'NT';
+                } else {
+                    timeStr = `${min.padStart(2, '0')}:${sec.padStart(2, '0')}.${ms.padStart(2, '0')}`;
+                }
+
+                return { event, timeStr };
+            })
+            .filter((item): item is { event: SwimEvent, timeStr: string } => item !== null)
+            .sort((a, b) => {
+                // Sort summary by style then distance
+                const styleCompare = a.event.style.localeCompare(b.event.style);
+                if (styleCompare !== 0) return styleCompare;
+                return a.event.distance - b.event.distance;
+            });
+    }, [selectedEvents, localEvents]);
+
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -429,18 +460,29 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                             <h2 className="text-xl font-bold mb-4">Pilih Nomor Lomba</h2>
                             {Object.entries(groupedAvailableEvents).length > 0 ? (
                                 <div className="space-y-2">
-                                    {Object.entries(groupedAvailableEvents).map(([style, eventsInStyle]) => (
+                                    {Object.entries(groupedAvailableEvents).map(([style, eventsInStyle]) => {
+                                        // Calculate selected count for this style
+                                        const selectedCountInStyle = eventsInStyle.filter(e => selectedEvents[e.id]?.selected).length;
+                                        
+                                        return (
                                         <div key={style} className="border border-border rounded-lg">
                                             <button
                                                 type="button"
                                                 onClick={() => handleAccordionToggle(style as SwimStyle)}
-                                                className="w-full flex justify-between items-center p-4 bg-background hover:bg-surface/50"
+                                                className={`w-full flex justify-between items-center p-4 bg-background hover:bg-surface/50 transition-colors ${selectedCountInStyle > 0 ? 'bg-primary/5' : ''}`}
                                             >
-                                                <h3 className="text-lg font-semibold">{translateSwimStyle(style as SwimStyle)}</h3>
+                                                <h3 className={`text-lg font-semibold flex items-center ${selectedCountInStyle > 0 ? 'text-primary' : ''}`}>
+                                                    {translateSwimStyle(style as SwimStyle)}
+                                                    {selectedCountInStyle > 0 && (
+                                                        <span className="ml-3 text-xs bg-primary text-white px-2 py-0.5 rounded-full">
+                                                            {selectedCountInStyle} Dipilih
+                                                        </span>
+                                                    )}
+                                                </h3>
                                                 <ChevronDownIcon isOpen={openAccordion === style} />
                                             </button>
                                             {openAccordion === style && (
-                                                <div className="p-4 space-y-4">
+                                                <div className="p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                                                     {eventsInStyle.map(event => (
                                                         <div key={event.id} className="border-b border-border last:border-b-0 pb-4 last:pb-0">
                                                             <div className="flex items-start">
@@ -451,7 +493,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                                                     onChange={() => handleEventSelectionChange(event.id)}
                                                                     className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary mt-1"
                                                                 />
-                                                                <label htmlFor={`event-${event.id}`} className="ml-3 flex-grow">
+                                                                <label htmlFor={`event-${event.id}`} className="ml-3 flex-grow cursor-pointer select-none">
                                                                     <span className="font-semibold text-text-primary">{formatEventName(event)}</span>
                                                                 </label>
                                                             </div>
@@ -468,7 +510,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                                 </div>
                                             )}
                                         </div>
-                                    ))}
+                                    )})}
                                 </div>
                             ) : (
                                 <p className="text-text-secondary text-center py-4">Tidak ada nomor lomba yang tersedia untuk jenis kelamin yang dipilih, atau semua nomor lomba sudah terdaftar.</p>
@@ -476,11 +518,35 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                         </Card>
                         
                         <div className="mt-6">
+                            {/* NEW: Selection Summary Card */}
+                            {selectedEventsSummary.length > 0 && (
+                                <Card className="mb-4 border-l-4 border-primary bg-primary/5 dark:bg-primary/10">
+                                    <h3 className="font-bold text-lg mb-2 text-text-primary flex justify-between items-center">
+                                        <span>Ringkasan Pilihan Anda</span>
+                                        <span className="bg-primary text-white text-xs px-2 py-1 rounded-full">{selectedEventsSummary.length} Nomor</span>
+                                    </h3>
+                                    <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                                        <ul className="space-y-1">
+                                            {selectedEventsSummary.map(({ event, timeStr }) => (
+                                                <li key={event.id} className="flex justify-between items-center text-sm border-b border-border/50 last:border-0 py-2">
+                                                    <span className="text-text-primary">{formatEventName(event)}</span>
+                                                    <span className="font-mono font-semibold bg-surface px-2 py-0.5 rounded border border-border/50 text-text-primary whitespace-nowrap ml-4">
+                                                        {timeStr}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </Card>
+                            )}
+
                             {error && <p className="text-red-500 text-center mb-4 font-semibold">{error}</p>}
-                             <Card className="sticky bottom-4 z-10 shadow-2xl">
-                                <div className="flex justify-between items-center">
-                                    <p className="text-text-secondary"><span className="font-bold text-text-primary">{selectedEventCount}</span> nomor lomba dipilih.</p>
-                                    <Button type="submit" disabled={isSubmitting || !isFormValid}>
+                             <Card className="sticky bottom-4 z-10 shadow-2xl border-t-2 border-primary">
+                                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                                    <p className="text-text-secondary text-sm md:text-base">
+                                        Pastikan data atlet dan <span className="font-bold text-text-primary">{selectedEventCount}</span> nomor lomba yang dipilih sudah benar.
+                                    </p>
+                                    <Button type="submit" disabled={isSubmitting || !isFormValid} className="w-full md:w-auto px-8">
                                         {isSubmitting ? <Spinner /> : 'Kirim Pendaftaran'}
                                     </Button>
                                 </div>
