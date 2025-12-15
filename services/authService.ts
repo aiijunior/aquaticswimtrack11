@@ -27,7 +27,8 @@ export const login = async (email?: string, password?: string): Promise<User | n
 
   // Step 2: If not super admin, proceed with Supabase authentication for regular admins.
   // FIX: Replaced `signIn` with `signInWithPassword` for compatibility with Supabase JS v2, and adjusted destructuring.
-  const { data: authSession, error: authError } = await supabase.auth.signInWithPassword({
+  // Using (supabase.auth as any) to bypass potential type definition mismatches if v1 types are installed but v2 logic is used.
+  const { data: authSession, error: authError } = await (supabase.auth as any).signInWithPassword({
     email: email,
     password: password,
   });
@@ -72,7 +73,8 @@ export const login = async (email?: string, password?: string): Promise<User | n
     // This is a critical error. The user exists in Auth but not in our profiles table.
     // It's crucial to log them out to prevent a broken state.
     // FIX: Replaced `logout` with `signOut` for compatibility with Supabase JS v2.
-    const { error: signOutError } = await supabase.auth.signOut();
+    // Using (supabase.auth as any) to bypass potential type definition mismatches.
+    const { error: signOutError } = await (supabase.auth as any).signOut();
     if (signOutError) {
         // Log the sign-out error but proceed to throw the main profile error.
         console.error("Sign out failed after profile error:", signOutError.message);
@@ -93,7 +95,8 @@ export const login = async (email?: string, password?: string): Promise<User | n
 export const logout = async (): Promise<void> => {
   sessionStorage.removeItem(AUTH_KEY);
   // FIX: Replaced `logout` with `signOut` for compatibility with Supabase JS v2.
-  const { error } = await supabase.auth.signOut();
+  // Using (supabase.auth as any) to bypass potential type definition mismatches.
+  const { error } = await (supabase.auth as any).signOut();
   if (error) {
     console.error("Error logging out:", error.message);
   }

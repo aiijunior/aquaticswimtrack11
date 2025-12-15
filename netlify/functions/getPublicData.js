@@ -16,7 +16,8 @@ const toCompetitionInfo = (data) => (data ? {
     sponsorLogo: data.sponsor_logo,
     isRegistrationOpen: data.is_registration_open,
     numberOfLanes: data.number_of_lanes,
-    registrationDeadline: data.registration_deadline
+    registrationDeadline: data.registration_deadline,
+    ageGroups: data.age_groups // Added missing field
 } : null);
 
 const toSwimmer = (data) => ({
