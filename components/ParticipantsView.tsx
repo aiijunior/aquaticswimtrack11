@@ -3,8 +3,8 @@ import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Spinner } from './ui/Spinner';
 import { processParticipantUpload, getEvents, registerSwimmerToEvent } from '../services/databaseService';
-import { formatEventName, formatTime } from '../constants';
-import type { Swimmer, SwimEvent } from '../types';
+import { formatEventName, formatTime, AGE_GROUP_OPTIONS } from '../constants';
+import type { Swimmer, SwimEvent, CompetitionInfo } from '../types';
 import { Gender } from '../types';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
@@ -16,9 +16,10 @@ interface ParticipantsViewProps {
   swimmers: Swimmer[];
   events: SwimEvent[];
   onUploadSuccess: () => void;
+  competitionInfo: CompetitionInfo | null; // Added competitionInfo
 }
 
-export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, events, onUploadSuccess }) => {
+export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, events, onUploadSuccess, competitionInfo }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -29,6 +30,14 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
   // State for manual registration
   const [manualForm, setManualForm] = useState({ swimmerId: '', eventId: '', min: '99', sec: '99', ms: '99' });
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+
+  // Dynamic Age Groups Logic
+  const ageOptions = useMemo(() => {
+      if (competitionInfo?.ageGroups) {
+          return competitionInfo.ageGroups.split('\n').map(s => s.trim()).filter(Boolean);
+      }
+      return AGE_GROUP_OPTIONS;
+  }, [competitionInfo]);
 
   useEffect(() => {
     setCanDownload(events.length > 0);
@@ -103,6 +112,8 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
             templateData.push({ ...columnHeaders, "Nama Atlet": `--- ${title.toUpperCase()} ---` });
         };
 
+        const defaultKU = ageOptions.length > 0 ? ageOptions[0] : "KU 1";
+
         // --- EXAMPLE: PERORANGAN PUTRA ---
         const maleEvents = events.filter(e => e.gender === Gender.MALE && !e.relayLegs);
         if (maleEvents.length > 0) {
@@ -114,7 +125,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                     "Tahun Lahir": 2005,
                     "Jenis Kelamin (L/P)": "L",
                     "Nama Tim": "Tim Cepat",
-                    "KU": "KU 1",
+                    "KU": defaultKU,
                     "Nomor Lomba": formatEventName(event),
                     "Waktu Unggulan (mm:ss.SS)": index === 0 ? "01:05.50" : "99:99.99"
                 });
@@ -133,7 +144,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                     "Tahun Lahir": 2006,
                     "Jenis Kelamin (L/P)": "P",
                     "Nama Tim": "Tim Cepat",
-                    "KU": "KU Senior",
+                    "KU": defaultKU,
                     "Nomor Lomba": formatEventName(event),
                     "Waktu Unggulan (mm:ss.SS)": index === 0 ? "01:15.20" : "00:31.40"
                 });
@@ -196,7 +207,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                 "Tahun Lahir": 2005,
                 "Jenis Kelamin (L/P)": "L",
                 "Nama Tim": "Tim Contoh",
-                "KU": "KU 1",
+                "KU": defaultKU,
                 "Nomor Lomba": events.length > 0 ? formatEventName(events[0]) : "Tidak ada nomor lomba",
                 "Waktu Unggulan (mm:ss.SS)": "01:25.50"
             });
@@ -213,45 +224,64 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
 
         const maxRows = 2000;
         if (!wsTemplate['!dataValidation']) wsTemplate['!dataValidation'] = [];
+        
         // Data validation for Race Name
         wsTemplate['!dataValidation'].push({
             sqref: `F2:F${maxRows}`, 
             opts: { type: 'list', allowBlank: false, formula1: `'Daftar Nomor Lomba'!$A$6:$A$${events.length + 6}`, showDropDown: true, error: 'Silakan pilih nomor lomba yang valid dari daftar.', errorTitle: 'Pilihan Tidak Valid' }
         });
+        
         // Data validation for Gender
         wsTemplate['!dataValidation'].push({
             sqref: `C2:C${maxRows}`,
             opts: { type: 'list', allowBlank: false, formula1: `"L,P"`, showDropDown: true, error: 'Gunakan "L" untuk Laki-laki atau "P" untuk Perempuan.', errorTitle: 'Pilihan Tidak Valid'}
         });
+
+        // Data validation for Age Group (KU) - NEW
+        if (ageOptions.length > 0) {
+             wsTemplate['!dataValidation'].push({
+                sqref: `E2:E${maxRows}`,
+                opts: { type: 'list', allowBlank: true, formula1: `'Daftar Nomor Lomba'!$C$6:$C$${ageOptions.length + 6}`, showDropDown: true, error: 'Silakan pilih KU yang valid dari daftar.', errorTitle: 'Pilihan Tidak Valid'}
+            });
+        }
         
         wsTemplate['!cols'] = [ { wch: 40 }, { wch: 15 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 50 }, { wch: 25 }];
         XLSX.utils.book_append_sheet(workbook, wsTemplate, "Template Pendaftaran");
         
-        // --- Sheet 2: Daftar Nomor Lomba ---
-        const allEventsFormatted = events.sort((a,b) => formatEventName(a).localeCompare(formatEventName(b))).map(e => [formatEventName(e)]); // Create array of arrays
+        // --- Sheet 2: Daftar Nomor Lomba & KU ---
+        const allEventsFormatted = events.sort((a,b) => formatEventName(a).localeCompare(formatEventName(b))).map(e => [formatEventName(e)]); 
         
-        const raceListAOA = [
+        const infoSheetAOA = [
             ['PETUNJUK PENGISIAN NOMOR LOMBA'],
-            ["Salin (copy) nama nomor lomba dari kolom A di bawah ini, lalu tempel (paste) ke kolom 'Nomor Lomba' di sheet 'Template Pendaftaran'."],
+            ["Salin (copy) nama nomor lomba dari kolom A, lalu tempel (paste) ke kolom 'Nomor Lomba' di sheet 'Template Pendaftaran'."],
             ["Pastikan nama nomor lomba sesuai persis dengan yang ada di daftar ini."],
             [], // Spacer
-            ['DAFTAR LOMBA YANG TERSEDIA']
+            ['DAFTAR LOMBA YANG TERSEDIA', '', 'DAFTAR KATEGORI UMUR (KU)'],
         ];
         
-        const newMerges = [
-            { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } },
-            { s: { r: 1, c: 0 }, e: { r: 1, c: 0 } },
-            { s: { r: 2, c: 0 }, e: { r: 2, c: 0 } },
-            { s: { r: 4, c: 0 }, e: { r: 4, c: 0 } }
+        // Combine events list with KU list side-by-side
+        const maxLength = Math.max(allEventsFormatted.length, ageOptions.length);
+        const dataRows = [];
+        
+        for (let i = 0; i < maxLength; i++) {
+            const eventName = allEventsFormatted[i] ? allEventsFormatted[i][0] : "";
+            const ageGroupName = ageOptions[i] || "";
+            dataRows.push([eventName, "", ageGroupName]);
+        }
+
+        const fullInfoSheetAOA = infoSheetAOA.concat(dataRows);
+        
+        const wsInfo = XLSX.utils.aoa_to_sheet(fullInfoSheetAOA);
+        wsInfo['!cols'] = [ { wch: 70 }, { wch: 5 }, { wch: 30 } ];
+        
+        // Merges for header text
+        wsInfo['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } },
+            { s: { r: 2, c: 0 }, e: { r: 2, c: 2 } },
         ];
 
-        const fullRaceListAOA = raceListAOA.concat(allEventsFormatted);
-        
-        const wsRaces = XLSX.utils.aoa_to_sheet(fullRaceListAOA);
-        wsRaces['!cols'] = [ { wch: 70 } ];
-        wsRaces['!merges'] = newMerges;
-
-        XLSX.utils.book_append_sheet(workbook, wsRaces, "Daftar Nomor Lomba");
+        XLSX.utils.book_append_sheet(workbook, wsInfo, "Daftar Nomor Lomba");
 
         // --- Write File ---
         XLSX.writeFile(workbook, "Template_Pendaftaran_Lomba.xlsx");
@@ -539,7 +569,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                 <code className="block text-sm bg-surface p-2 rounded-md whitespace-pre mt-1">Nama Atlet | Tahun Lahir | Jenis Kelamin (L/P) | Nama Tim | KU | Nomor Lomba | Waktu Unggulan (mm:ss.SS)</code>
               </div>
               <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" onClick={downloadTemplate} disabled={isDownloading || !canDownload} title={!canDownload ? "Buat 'Nomor Lomba' terlebih dahulu untuk mengunduh template" : "Unduh template Excel dengan daftar nomor lomba"}>
+                  <Button variant="secondary" onClick={downloadTemplate} disabled={isDownloading || !canDownload} title={!canDownload ? "Buat 'Nomor Lomba' terlebih dahulu untuk mengunduh template" : "Unduh template Excel dengan daftar nomor lomba dan KU"}>
                       {isDownloading ? <Spinner /> : 'Unduh Template Pendaftaran'}
                   </Button>
                   <Button variant="secondary" onClick={handleDownloadParticipants} disabled={swimmers.length === 0} title={swimmers.length === 0 ? "Tidak ada atlet untuk diunduh" : "Unduh rekap semua atlet"}>
@@ -549,7 +579,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                       {isDownloading ? <Spinner /> : 'Unduh Rekap Pendaftaran Lengkap'}
                     </Button>
               </div>
-              <p className="text-xs text-text-secondary">{canDownload ? "Template Pendaftaran akan berisi daftar nomor lomba yang telah dibuat." : "Tombol 'Unduh Template Pendaftaran' akan aktif setelah Anda membuat setidaknya satu nomor lomba."}</p>
+              <p className="text-xs text-text-secondary">{canDownload ? "Template Pendaftaran akan berisi daftar nomor lomba dan KU yang telah dibuat." : "Tombol 'Unduh Template Pendaftaran' akan aktif setelah Anda membuat setidaknya satu nomor lomba."}</p>
           </div>
 
           <div className="flex items-center space-x-4">

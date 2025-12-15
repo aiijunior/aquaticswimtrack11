@@ -308,7 +308,8 @@ const App: React.FC = () => {
       case View.RACES:
         return <EventsView events={events} isLoading={isLoading} onSelectEvent={handleSelectEvent} onStartTiming={handleStartTiming} onDataUpdate={refreshData} />;
       case View.PARTICIPANTS:
-          return <ParticipantsView swimmers={swimmers} events={events} onUploadSuccess={refreshData} />;
+          // FIX: Pass competitionInfo to ParticipantsView so it can use dynamic age groups for templates
+          return <ParticipantsView swimmers={swimmers} events={events} onUploadSuccess={refreshData} competitionInfo={competitionInfo} />;
       case View.SWIMMERS_LIST:
           // FIX: Pass competitionInfo to SwimmersView
           return <SwimmersView swimmers={swimmers} events={events} isLoading={isLoading} onDataUpdate={refreshData} initialState={navigationState} competitionInfo={competitionInfo} />;
