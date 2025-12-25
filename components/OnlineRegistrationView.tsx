@@ -131,8 +131,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
     const isFormValid = useMemo(() => {
         const hasPersonalInfo = formData.name.trim() !== '' && formData.club.trim() !== '';
-        // FIX: Explicitly type `e` to resolve 'unknown' type error.
-        const hasSelectedEvent = Object.values(selectedEvents).some((e: { selected: boolean; }) => e.selected);
+        // FIX: Explicitly cast `e` to resolve 'unknown' type error.
+        const hasSelectedEvent = Object.values(selectedEvents).some((e) => (e as { selected: boolean }).selected);
         return hasPersonalInfo && hasSelectedEvent;
     }, [formData, selectedEvents]);
     
@@ -166,22 +166,26 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     }, [availableEvents]);
     
     const selectedEventCount = useMemo(() => {
-        return Object.values(selectedEvents).filter((e: { selected: boolean }) => e.selected).length;
+        // FIX: Explicitly cast `e` to resolve 'unknown' type error.
+        return Object.values(selectedEvents).filter((e) => (e as { selected: boolean }).selected).length;
     }, [selectedEvents]);
 
     // Calculate a summary of selected events for the review card
     const selectedEventsSummary = useMemo(() => {
         return Object.entries(selectedEvents)
-            .filter(([_, val]) => val.selected)
+            // FIX: Explicitly cast `val` to resolve 'unknown' type error.
+            .filter(([_, val]) => (val as { selected: boolean }).selected)
             .map(([eventId, val]) => {
                 const event = localEvents.find(e => e.id === eventId);
                 if (!event) return null;
                 
+                // FIX: Explicitly cast `val` to resolve 'unknown' type error.
+                const typedVal = val as { time: RegistrationTime };
                 // Format display time
                 let timeStr = 'NT';
-                const min = val.time.min || '0';
-                const sec = val.time.sec || '0';
-                const ms = val.time.ms || '0';
+                const min = typedVal.time.min || '0';
+                const sec = typedVal.time.sec || '0';
+                const ms = typedVal.time.ms || '0';
                 
                 if (min === '99' && sec === '99' && ms === '99') {
                     timeStr = 'NT';
