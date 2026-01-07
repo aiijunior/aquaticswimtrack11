@@ -204,8 +204,8 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
             }
             
             const entriesRaw = event.entries as EventEntry[] | undefined;
-            // FIX: Explicitly cast event.entries to prevent it being inferred as 'unknown'.
-            const eventEntries: Entry[] = ((entriesRaw as EventEntry[]) || []).map((entry: EventEntry) => {
+            // FIX: Explicitly cast entriesRaw to any[] before mapping to prevent it being inferred as 'unknown'.
+            const eventEntries: Entry[] = (((entriesRaw as any[]) || [])).map((entry: EventEntry) => {
                 const swimmer = swimmersMap.get(entry.swimmerId);
                 return swimmer ? { ...entry, swimmer } : null;
             }).filter((e): e is Entry => e !== null);
@@ -939,14 +939,14 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     // --- EXCEL DOWNLOAD HANDLER ---
     const handleDownloadExcel = () => {
         if (typeof XLSX === 'undefined' || !competitionInfo) {
-            addNotification('Pustaka Excel belum termuat atau data kompetisi tidak ada.', 'error');
+            addNotification('Pustaka Excel belum termuat or data kompetisi tidak ada.', 'error');
             return;
         }
         setIsDownloadingExcel(true);
         try {
             const wb = XLSX.utils.book_new();
             const reportTitle = getReportTitle();
-            const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+            const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
 
             const createHeaderAoa = (title: string) => [
                 [competitionInfo.eventName.split('\n')[0] || ''],
@@ -963,7 +963,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     // FIX: Explicitly type `aoa` to allow mixed content types (string, number).
                     let aoa: (string | number | null | undefined)[][] = createHeaderAoa(reportTitle);
                     aoa.push(['No. Acara', 'Nomor Lomba', 'Sesi', 'Perkiraan Waktu Mulai']);
-                    eventsToDisplay.forEach(e => {
+                    // FIX: Cast eventsToDisplay as any[] for the loop to resolve 'unknown' type errors.
+                    (eventsToDisplay as any[]).forEach(e => {
                         const startTime = e.sessionDateTime ? new Date(e.sessionDateTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : 'TBD';
                         aoa.push([e.globalEventNumber, formatEventName(e), e.sessionNumber, startTime]);
                     });
@@ -1001,12 +1002,13 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                                 const heats = generateHeats(entries, competitionInfo.numberOfLanes || 8);
                                 if (heats.length === 0) { aoa.push(['(Belum ada peserta terdaftar)']); } 
                                 else {
-                                    heats.forEach(heat => {
+                                    // FIX: Cast heats as any[] for the loop to avoid 'unknown' errors inside the callback.
+                                    (heats as any[]).forEach(heat => {
                                         aoa.push([`Seri ${heat.heatNumber} dari ${heats.length}`]);
                                         aoa.push(['Lintasan', 'Nama Atlet', 'KU', 'Tahun', 'Nama Tim', 'Waktu Unggulan']);
                                         Array.from({length: competitionInfo.numberOfLanes || 8}, (_,i)=>i+1).forEach(lane => {
-                                            const assignment = heat.assignments.find(a => a.lane === lane);
-                                            // FIX: Used optional chaining and nullish coalescing to prevent errors when accessing properties of a potentially undefined 'swimmer' object.
+                                            const assignment = (heat as any).assignments.find((a: any) => a.lane === lane);
+                                            // FIX: Cast swimmer as Swimmer to prevent 'unknown' property access errors.
                                             const swimmer = assignment?.entry.swimmer as Swimmer | undefined;
                                             aoa.push([lane, swimmer?.name ?? '-', swimmer?.ageGroup ?? '-', swimmer?.birthYear ?? '-', swimmer?.club ?? '-', assignment ? formatTime(assignment.entry.seedTime) : '-']);
                                         });
@@ -1020,7 +1022,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                                     const sorted = [...event.results].sort((a,b) => (a.time > 0 && b.time > 0) ? a.time - b.time : (a.time < 0 ? 1 : -1)).map(r => ({...r, rank: r.time > 0 ? validResults.findIndex(vr => vr.swimmerId === r.swimmerId) + 1 : 0}));
                                     aoa.push(['Peringkat', 'Nama Atlet', 'KU', 'Tahun', 'Nama Tim', 'Waktu', 'Rekor']);
                                     sorted.forEach(res => {
-                                        const swimmer = swimmersMap.get(res.swimmerId);
+                                        // FIX: Cast swimmersMap.get() result as Swimmer to resolve 'unknown' error.
+                                        const swimmer = swimmersMap.get(res.swimmerId) as Swimmer | undefined;
                                         const recordsBrokenText = brokenRecords.filter(br => br.newHolder.id === swimmer?.id && br.newTime === res.time && br.record.style === event.style && br.record.distance === event.distance).map(br => br.record.type).join(', ');
                                         aoa.push([res.rank > 0 ? res.rank : formatTime(res.time), swimmer?.name || 'N/A', event.relayLegs ? '-' : (swimmer?.ageGroup || '-'), event.relayLegs ? '-' : (swimmer?.birthYear || ''), swimmer?.club || 'N/A', formatTime(res.time), recordsBrokenText]);
                                     });
@@ -1037,10 +1040,10 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 
                 case 'medals': {
                      const allClubs = [...new Set(swimmers.map(s => s.club))];
-                     // FIX: Explicitly typed the accumulator in the reduce function to prevent TypeScript from inferring it as `{}`, resolving several type errors.
-                     const clubMedals = allClubs.reduce((acc: Record<string, { gold: number, silver: number, bronze: number }>, club: string) => ({ ...acc, [club]: { gold: 0, silver: 0, bronze: 0 } }), {});
-                     // FIX: Added explicit types to parameters in array methods to ensure correct type inference.
-                     (events as SwimEvent[]).forEach((event: SwimEvent) => { if (!event.results) return; [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => { const rank = i + 1; const swimmer: Swimmer | undefined = swimmersMap.get(result.swimmerId); if (swimmer && clubMedals[swimmer.club]) { if (rank === 1) clubMedals[swimmer.club].gold++; else if (rank === 2) clubMedals[swimmer.club].silver++; else if (rank === 3) clubMedals[swimmer.club].bronze++; } }); });
+                     // FIX: Explicitly type the accumulator in the reduce function to prevent TypeScript from inferring it as `{}`, resolving several type errors.
+                     const clubMedals = allClubs.reduce((acc: Record<string, { gold: number, silver: number, bronze: number }>, club: string) => ({ ...acc, [club]: { gold: 0, silver: 0, bronze: 0 } }), {} as Record<string, { gold: number, silver: number, bronze: number }>);
+                     // FIX: Cast events as SwimEvent[] to ensure correct type inference for results and swimmerId lookup.
+                     (events as SwimEvent[]).forEach((event: SwimEvent) => { if (!event.results) return; [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => { const rank = i + 1; const swimmer: Swimmer | undefined = swimmersMap.get(result.swimmerId) as Swimmer | undefined; if (swimmer && clubMedals[swimmer.club]) { if (rank === 1) clubMedals[swimmer.club].gold++; else if (rank === 2) clubMedals[swimmer.club].silver++; else if (rank === 3) clubMedals[swimmer.club].bronze++; } }); });
                      const sortedData = Object.entries(clubMedals).sort(([, a], [, b]) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze);
 
                     // FIX: Explicitly type `aoa` to allow mixed content types (string, number).
@@ -1057,8 +1060,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 case 'medalsWithAthletes': {
                      type MedalCounts = { gold: number, silver: number, bronze: number }; type Win = { eventName: string, rank: number, time: number }; type AthleteWins = { swimmer: Swimmer, wins: Win[] }; type ClubData = { medals: MedalCounts, athletes: Record<string, AthleteWins> };
                     const clubDataRecalc: Record<string, ClubData> = {}; (swimmers as Swimmer[]).forEach((s: Swimmer) => { if (!clubDataRecalc[s.club]) { clubDataRecalc[s.club] = { medals: { gold: 0, silver: 0, bronze: 0 }, athletes: {} }; }});
-                    // FIX: Added explicit types to parameters in array methods to ensure correct type inference.
-                    (events as SwimEvent[]).forEach((event: SwimEvent) => { if (!event.results) return; [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => { const rank = i + 1; const swimmer: Swimmer | undefined = swimmersMap.get(result.swimmerId); if (swimmer) { const club = clubDataRecalc[swimmer.club]; if (rank === 1) club.medals.gold++; else if (rank === 2) club.medals.silver++; else if (rank === 3) club.medals.bronze++; if (!club.athletes[swimmer.id]) { club.athletes[swimmer.id] = { swimmer, wins: [] }; } club.athletes[swimmer.id].wins.push({ eventName: formatEventName(event), rank, time: result.time }); } }); });
+                    // FIX: Cast swimmer lookup as Swimmer to prevent 'unknown' errors.
+                    (events as SwimEvent[]).forEach((event: SwimEvent) => { if (!event.results) return; [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => { const rank = i + 1; const swimmer: Swimmer | undefined = swimmersMap.get(result.swimmerId) as Swimmer | undefined; if (swimmer) { const club = clubDataRecalc[swimmer.club]; if (rank === 1) club.medals.gold++; else if (rank === 2) club.medals.silver++; else if (rank === 3) club.medals.bronze++; if (!club.athletes[swimmer.id]) { club.athletes[swimmer.id] = { swimmer, wins: [] }; } club.athletes[swimmer.id].wins.push({ eventName: formatEventName(event), rank, time: result.time }); } }); });
                     const sortedData = Object.entries(clubDataRecalc).sort(([cA, a], [cB, b]) => b.medals.gold - a.medals.gold || b.medals.silver - a.medals.silver || b.medals.bronze - a.medals.bronze || cA.localeCompare(cB));
 
                     // FIX: Explicitly type `aoa` to allow mixed content types (string, number).
@@ -1083,8 +1086,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 }
                 case 'individualMedals': {
                     const individualMedals: Record<string, { swimmer: Swimmer, gold: number, silver: number, bronze: number }> = {};
-                    // FIX: Added explicit types to parameters in array methods to ensure correct type inference.
-                    (events as SwimEvent[]).forEach((event: SwimEvent) => { if (event.results && event.results.length > 0 && event.gender !== Gender.MIXED) { [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => { const rank = i + 1; const swimmer: Swimmer | undefined = swimmersMap.get(result.swimmerId); if (swimmer) { if (!individualMedals[swimmer.id]) { individualMedals[swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 }; } if (rank === 1) individualMedals[swimmer.id].gold++; else if (rank === 2) individualMedals[swimmer.id].silver++; else if (rank === 3) individualMedals[swimmer.id].bronze++; } }); } });
+                    // FIX: Cast swimmer lookup as Swimmer to prevent 'unknown' errors.
+                    (events as SwimEvent[]).forEach((event: SwimEvent) => { if (event.results && event.results.length > 0 && event.gender !== Gender.MIXED) { [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => { const rank = i + 1; const swimmer: Swimmer | undefined = swimmersMap.get(result.swimmerId) as Swimmer | undefined; if (swimmer) { if (!individualMedals[swimmer.id]) { individualMedals[swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 }; } if (rank === 1) individualMedals[swimmer.id].gold++; else if (rank === 2) individualMedals[swimmer.id].silver++; else if (rank === 3) individualMedals[swimmer.id].bronze++; } }); } });
                     const sortedStandings = Object.values(individualMedals).sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || a.swimmer.name.localeCompare(b.swimmer.name));
                     const maleStandings = sortedStandings.filter(s => s.swimmer.gender === 'Male');
                     const femaleStandings = sortedStandings.filter(s => s.swimmer.gender === 'Female');
@@ -1102,8 +1105,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 case 'individualMedalsByCategory': {
                     type Standing = { swimmer: Swimmer, gold: number, silver: number, bronze: number };
                     const medalsByAgeGroup: Record<string, Record<string, Standing>> = {};
-                    // FIX: Added explicit types to parameters in array methods to ensure correct type inference.
-                    (events as SwimEvent[]).forEach((event: SwimEvent) => { if (event.results && event.results.length > 0 && event.gender !== Gender.MIXED) { [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => { const rank = i + 1; const swimmer: Swimmer | undefined = swimmersMap.get(result.swimmerId); if (swimmer) { const ageGroup = swimmer.ageGroup || 'Umum'; if (!medalsByAgeGroup[ageGroup]) medalsByAgeGroup[ageGroup] = {}; if (!medalsByAgeGroup[ageGroup][swimmer.id]) { medalsByAgeGroup[ageGroup][swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 }; } if (rank === 1) medalsByAgeGroup[ageGroup][swimmer.id].gold++; else if (rank === 2) medalsByAgeGroup[ageGroup][swimmer.id].silver++; else if (rank === 3) medalsByAgeGroup[ageGroup][swimmer.id].bronze++; } }); } });
+                    // FIX: Cast swimmer lookup as Swimmer to prevent 'unknown' errors.
+                    (events as SwimEvent[]).forEach((event: SwimEvent) => { if (event.results && event.results.length > 0 && event.gender !== Gender.MIXED) { [...(event.results as Result[])].filter((r: Result) => r.time > 0).sort((a: Result, b: Result) => a.time - b.time).slice(0, 3).forEach((result: Result, i: number) => { const rank = i + 1; const swimmer: Swimmer | undefined = swimmersMap.get(result.swimmerId) as Swimmer | undefined; if (swimmer) { const ageGroup = swimmer.ageGroup || 'Umum'; if (!medalsByAgeGroup[ageGroup]) medalsByAgeGroup[ageGroup] = {}; if (!medalsByAgeGroup[ageGroup][swimmer.id]) { medalsByAgeGroup[ageGroup][swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 }; } if (rank === 1) medalsByAgeGroup[ageGroup][swimmer.id].gold++; else if (rank === 2) medalsByAgeGroup[ageGroup][swimmer.id].silver++; else if (rank === 3) medalsByAgeGroup[ageGroup][swimmer.id].bronze++; } }); } });
                     const finalData = Object.entries(medalsByAgeGroup).map(([ageGroup, swimmersMedals]) => {
                         const sorted = Object.values(swimmersMedals).sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || a.swimmer.name.localeCompare(b.swimmer.name));
                         return { ageGroup, maleStandings: sorted.filter(s => s.swimmer.gender === 'Male'), femaleStandings: sorted.filter(s => s.swimmer.gender === 'Female') };

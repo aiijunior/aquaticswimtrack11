@@ -130,9 +130,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     };
 
     const isFormValid = useMemo(() => {
-        const hasPersonalInfo = formData.name.trim() !== '' && formData.club.trim() !== '';
-        // FIX: Explicitly cast `e` to resolve 'unknown' type error.
-        const hasSelectedEvent = Object.values(selectedEvents).some((e) => (e as { selected: boolean }).selected);
+        const hasPersonalInfo = formData.name.trim() !== '' && formData.club.trim() !== '' && formData.ageGroup !== '';
+        // FIX: Explicitly cast value from Object.values to resolve 'unknown' type error.
+        const hasSelectedEvent = Object.values(selectedEvents).some((e: any) => (e as { selected: boolean }).selected);
         return hasPersonalInfo && hasSelectedEvent;
     }, [formData, selectedEvents]);
     
@@ -149,10 +149,25 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         return localEvents
             .filter((event: SwimEvent) => {
                 if (registeredEventIds.has(event.id)) return false;
-                return event.gender === "Mixed" || (formData.gender === "Male" && event.gender === "Men's") || (formData.gender === "Female" && event.gender === "Women's");
+
+                // 1. Filter by Gender
+                const genderMatch = event.gender === "Mixed" || 
+                                   (formData.gender === "Male" && event.gender === "Men's") || 
+                                   (formData.gender === "Female" && event.gender === "Women's");
+                
+                if (!genderMatch) return false;
+
+                // 2. Filter by Category (KU)
+                // If user has selected an age group, show only events matching that group OR "Open" events (category null)
+                if (formData.ageGroup) {
+                    return !event.category || event.category === formData.ageGroup;
+                }
+
+                // If ageGroup is not selected, we don't show specific events to avoid wrong selections
+                return false;
             })
             .sort((a,b) => a.distance - b.distance || a.style.localeCompare(b.style));
-    }, [localEvents, formData.gender, existingSwimmer]);
+    }, [localEvents, formData.gender, formData.ageGroup, existingSwimmer]);
 
     const groupedAvailableEvents = useMemo(() => {
         return availableEvents.reduce((acc: Record<SwimStyle, SwimEvent[]>, event: SwimEvent) => {
@@ -166,20 +181,19 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     }, [availableEvents]);
     
     const selectedEventCount = useMemo(() => {
-        // FIX: Explicitly cast `e` to resolve 'unknown' type error.
-        return Object.values(selectedEvents).filter((e) => (e as { selected: boolean }).selected).length;
+        // FIX: Explicitly cast value from Object.values to resolve 'unknown' type error.
+        return Object.values(selectedEvents).filter((e: any) => (e as { selected: boolean }).selected).length;
     }, [selectedEvents]);
 
     // Calculate a summary of selected events for the review card
     const selectedEventsSummary = useMemo(() => {
-        return Object.entries(selectedEvents)
-            // FIX: Explicitly cast `val` to resolve 'unknown' type error.
+        // FIX: Explicitly cast Object.entries results to resolve 'unknown' property access errors.
+        return (Object.entries(selectedEvents) as [string, any][])
             .filter(([_, val]) => (val as { selected: boolean }).selected)
             .map(([eventId, val]) => {
                 const event = localEvents.find(e => e.id === eventId);
                 if (!event) return null;
                 
-                // FIX: Explicitly cast `val` to resolve 'unknown' type error.
                 const typedVal = val as { time: RegistrationTime };
                 // Format display time
                 let timeStr = 'NT';
@@ -288,8 +302,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         setSuccessMessage('');
         setIsSubmitting(true);
 
-        if (!formData.name.trim() || !formData.club.trim()) {
-            setError('Nama atlet dan nama tim wajib diisi.');
+        if (!formData.name.trim() || !formData.club.trim() || !formData.ageGroup) {
+            setError('Data atlet (Nama, Tim, dan KU) wajib diisi lengkap.');
             setIsSubmitting(false);
             return;
         }
@@ -338,6 +352,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             });
 
             // Previously registered events (without seed time, as we don't have it easily)
+            // FIX: Explicitly cast result.previouslyRegisteredEvents as any[] to resolve 'unknown' type errors.
             const eventsFromServer = ((result.previouslyRegisteredEvents || []) as any[]);
             const previouslyRegisteredEventsList = eventsFromServer.map((event: any) => {
                 const formattableEvent: FormattableEvent = {
@@ -453,8 +468,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                     <option value="Male">Laki-laki (Male)</option>
                                     <option value="Female">Perempuan (Female)</option>
                                 </Select>
-                                 <Select label="Kelompok Umur (KU) (Opsional)" id="ageGroup" name="ageGroup" value={formData.ageGroup} onChange={handleFormChange}>
-                                    <option value="">-- Tanpa KU --</option>
+                                 <Select label="Kelompok Umur (KU)" id="ageGroup" name="ageGroup" value={formData.ageGroup} onChange={handleFormChange} required>
+                                    <option value="">-- Pilih KU Terlebih Dahulu --</option>
                                     {ageOptions.map((ku: string) => <option key={ku} value={ku}>{ku}</option>)}
                                 </Select>
                             </div>
@@ -462,11 +477,15 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                         
                         <Card>
                             <h2 className="text-xl font-bold mb-4">Pilih Nomor Lomba</h2>
-                            {Object.entries(groupedAvailableEvents).length > 0 ? (
+                            {!formData.ageGroup ? (
+                                <div className="text-center py-10 bg-background/50 rounded-lg border-2 border-dashed border-border">
+                                    <p className="text-text-secondary font-medium italic">Silakan pilih Kelompok Umur (KU) di atas terlebih dahulu untuk menampilkan nomor lomba yang tersedia.</p>
+                                </div>
+                            ) : Object.entries(groupedAvailableEvents).length > 0 ? (
                                 <div className="space-y-2">
                                     {Object.entries(groupedAvailableEvents).map(([style, eventsInStyle]) => {
                                         // Calculate selected count for this style
-                                        const selectedCountInStyle = eventsInStyle.filter(e => selectedEvents[e.id]?.selected).length;
+                                        const selectedCountInStyle = eventsInStyle.filter(e => (selectedEvents[e.id] as any)?.selected).length;
                                         
                                         return (
                                         <div key={style} className="border border-border rounded-lg">
@@ -493,7 +512,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                                                 <input
                                                                     type="checkbox"
                                                                     id={`event-${event.id}`}
-                                                                    checked={selectedEvents[event.id]?.selected || false}
+                                                                    checked={(selectedEvents[event.id] as any)?.selected || false}
                                                                     onChange={() => handleEventSelectionChange(event.id)}
                                                                     className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary mt-1"
                                                                 />
@@ -501,11 +520,11 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                                                     <span className="font-semibold text-text-primary">{formatEventName(event)}</span>
                                                                 </label>
                                                             </div>
-                                                            {selectedEvents[event.id]?.selected && (
+                                                            {(selectedEvents[event.id] as any)?.selected && (
                                                                 <div className="mt-2 ml-8 grid grid-cols-3 md:grid-cols-4 gap-2 items-end">
-                                                                    <Input label="Menit" id={`min-${event.id}`} type="number" min="0" value={selectedEvents[event.id].time.min} onChange={e => handleTimeChange(event.id, 'min', e.target.value)} />
-                                                                    <Input label="Detik" id={`sec-${event.id}`} type="number" min="0" max="99" value={selectedEvents[event.id].time.sec} onChange={e => handleTimeChange(event.id, 'sec', e.target.value)} />
-                                                                    <Input label="ss/100" id={`ms-${event.id}`} type="number" min="0" max="99" value={selectedEvents[event.id].time.ms} onChange={e => handleTimeChange(event.id, 'ms', e.target.value)} />
+                                                                    <Input label="Menit" id={`min-${event.id}`} type="number" min="0" value={(selectedEvents[event.id] as any).time.min} onChange={e => handleTimeChange(event.id, 'min', e.target.value)} />
+                                                                    <Input label="Detik" id={`sec-${event.id}`} type="number" min="0" max="99" value={(selectedEvents[event.id] as any).time.sec} onChange={e => handleTimeChange(event.id, 'sec', e.target.value)} />
+                                                                    <Input label="ss/100" id={`ms-${event.id}`} type="number" min="0" max="99" value={(selectedEvents[event.id] as any).time.ms} onChange={e => handleTimeChange(event.id, 'ms', e.target.value)} />
                                                                     <Button type="button" variant="secondary" onClick={() => handleSetNoTime(event.id)} className="whitespace-nowrap">No Time</Button>
                                                                 </div>
                                                             )}
@@ -517,7 +536,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                     )})}
                                 </div>
                             ) : (
-                                <p className="text-text-secondary text-center py-4">Tidak ada nomor lomba yang tersedia untuk jenis kelamin yang dipilih, atau semua nomor lomba sudah terdaftar.</p>
+                                <p className="text-text-secondary text-center py-4">Tidak ada nomor lomba yang tersedia untuk Jenis Kelamin dan KU yang dipilih, atau semua nomor lomba sudah terdaftar.</p>
                             )}
                         </Card>
                         
