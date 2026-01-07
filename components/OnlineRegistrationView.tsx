@@ -358,30 +358,90 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         if (typeof XLSX === 'undefined') return;
         setIsDownloadingTemplate(true);
         
-        const templateData = [{
-            "Nama Atlet": "Contoh Atlet",
-            "Tahun Lahir": 2010,
-            "Jenis Kelamin (L/P)": "L",
-            "Nama Tim": "Tim Keren",
-            "KU": ageOptions[0] || "KU 1",
-            "Nomor Lomba": formatEventName(localEvents[0]),
-            "Waktu Unggulan (mm:ss.SS)": "01:25.50"
-        }];
+        const templateData = [
+            {
+                "Nama Atlet": "CONTOH NAMA ATLET",
+                "Tahun Lahir": 2010,
+                "Jenis Kelamin (L/P)": "L",
+                "Nama Tim": "NAMA KLUB ANDA",
+                "KU": ageOptions[0] || "KU 1",
+                "Nomor Lomba": "PILIH DARI TAB PANDUAN",
+                "Waktu Unggulan (mm:ss.SS)": "01:25.50"
+            }
+        ];
 
         const workbook = XLSX.utils.book_new();
+        
+        // --- Sheet 1: Form Pendaftaran ---
         const wsTemplate = XLSX.utils.json_to_sheet(templateData);
-        wsTemplate['!cols'] = [ { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 45 }, { wch: 25 }];
+        wsTemplate['!cols'] = [ 
+            { wch: 30 }, // Nama
+            { wch: 15 }, // Tahun
+            { wch: 20 }, // JK
+            { wch: 25 }, // Tim
+            { wch: 15 }, // KU
+            { wch: 50 }, // Nomor Lomba
+            { wch: 25 }  // Waktu
+        ];
+
+        // Add Data Validation (Dropdowns) if possible via cell comments or instructions
+        const maxRows = 500;
+        if (!wsTemplate['!dataValidation']) wsTemplate['!dataValidation'] = [];
+        
+        // Validation for L/P
+        wsTemplate['!dataValidation'].push({
+            sqref: `C2:C${maxRows}`,
+            opts: { type: 'list', formula1: '"L,P"', showDropDown: true }
+        });
+
+        // Validation for KU
+        const kuListString = ageOptions.join(',');
+        wsTemplate['!dataValidation'].push({
+            sqref: `E2:E${maxRows}`,
+            opts: { type: 'list', formula1: `"${kuListString}"`, showDropDown: true }
+        });
+
         XLSX.utils.book_append_sheet(workbook, wsTemplate, "Form Pendaftaran");
 
-        // Sheet info for reference
-        const infoData = [
-            ["DAFTAR NOMOR LOMBA", "", "DAFTAR KU"],
-            ...localEvents.map((e, i) => [formatEventName(e), "", ageOptions[i] || ""])
+        // --- Sheet 2: Panduan Nomor Lomba (PENTING) ---
+        // Kita buat daftar yang memetakan KU + JK ke Nomor Lomba
+        const guideRows = [
+            ["PANDUAN PEMILIHAN NOMOR LOMBA"],
+            ["Pastikan Nomor Lomba yang Anda ketik/tempel di Sheet 1 sesuai dengan Jenis Kelamin dan KU atlet."],
+            [],
+            ["KELOMPOK UMUR (KU)", "JENIS KELAMIN", "NOMOR LOMBA YANG TERSEDIA"]
         ];
-        const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
-        XLSX.utils.book_append_sheet(workbook, wsInfo, "Daftar Nomor & KU");
 
-        XLSX.writeFile(workbook, "Template_Pendaftaran_Kolektif.xlsx");
+        // Kelompokkan semua event berdasarkan KU dan Jenis Kelamin
+        const eventsSorted = [...localEvents].sort((a, b) => {
+            const catA = a.category || "Open";
+            const catB = b.category || "Open";
+            const catCompare = catA.localeCompare(catB);
+            if (catCompare !== 0) return catCompare;
+            return a.gender.localeCompare(b.gender);
+        });
+
+        eventsSorted.forEach(event => {
+            const jkShort = event.gender === "Men's" ? "L (Putra)" : event.gender === "Women's" ? "P (Putri)" : "L/P (Campuran)";
+            guideRows.push([
+                event.category || "Semua KU (Open)",
+                jkShort,
+                formatEventName(event)
+            ]);
+        });
+
+        const wsGuide = XLSX.utils.aoa_to_sheet(guideRows);
+        wsGuide['!cols'] = [ { wch: 25 }, { wch: 20 }, { wch: 60 } ];
+        
+        // Style Header
+        wsGuide['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } }
+        ];
+
+        XLSX.utils.book_append_sheet(workbook, wsGuide, "Panduan Nomor Lomba");
+
+        XLSX.writeFile(workbook, `Template_Pendaftaran_${competitionInfo?.eventName.split('\n')[0].replace(/\s+/g, '_')}.xlsx`);
         setIsDownloadingTemplate(false);
     };
 
@@ -516,7 +576,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                     <p className="text-text-secondary text-center py-4 italic">Pilih KU terlebih dahulu untuk melihat nomor lomba.</p>
                                 ) : Object.entries(groupedAvailableEvents).length > 0 ? (
                                     <div className="space-y-2">
-                                        {/* FIX: Cast Object.entries result to resolve unknown type errors for eventsInStyle.filter and map */}
                                         {(Object.entries(groupedAvailableEvents) as [SwimStyle, SwimEvent[]][]).map(([style, eventsInStyle]) => {
                                             const selectedCountInStyle = eventsInStyle.filter(e => (selectedEvents[e.id] as any)?.selected).length;
                                             return (
@@ -605,57 +664,76 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                             
                             <div className="space-y-8">
                                 <section>
-                                    <h3 className="text-lg font-bold flex items-center gap-2 mb-2">
-                                        <span className="bg-primary text-white h-6 w-6 rounded-full flex items-center justify-center text-xs">1</span>
-                                        Unduh Template Excel
-                                    </h3>
-                                    <p className="text-sm text-text-secondary mb-3">Sistem kami akan menyiapkan file Excel yang sudah berisi daftar lengkap nomor lomba untuk memudahkan pengisian.</p>
-                                    <Button onClick={handleDownloadTemplate} disabled={isDownloadingTemplate} variant="secondary">
-                                        {isDownloadingTemplate ? <Spinner /> : 'Unduh Template Excel'}
-                                    </Button>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <span className="bg-primary text-white h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold shadow-md">1</span>
+                                        <h3 className="text-lg font-bold">Unduh Template Excel Khusus</h3>
+                                    </div>
+                                    <Card className="bg-primary/5 border-dashed border-primary/30">
+                                        <p className="text-sm text-text-secondary mb-4 leading-relaxed">
+                                            Klik tombol di bawah untuk mendapatkan file Excel yang sudah dikonfigurasi dengan:
+                                            <ul className="list-disc list-inside mt-2 font-medium">
+                                                <li>Dropdown Jenis Kelamin (L/P)</li>
+                                                <li>Dropdown KU sesuai pengaturan acara</li>
+                                                <li>Tab <strong>"Panduan Nomor Lomba"</strong> sebagai referensi</li>
+                                            </ul>
+                                        </p>
+                                        <Button onClick={handleDownloadTemplate} disabled={isDownloadingTemplate} variant="secondary" className="flex items-center gap-2">
+                                            {isDownloadingTemplate ? <Spinner /> : <><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> Unduh Template Excel</>}
+                                        </Button>
+                                    </Card>
                                 </section>
 
                                 <section>
-                                    <h3 className="text-lg font-bold flex items-center gap-2 mb-2">
-                                        <span className="bg-primary text-white h-6 w-6 rounded-full flex items-center justify-center text-xs">2</span>
-                                        Isi Data & Unggah Kembali
-                                    </h3>
-                                    <p className="text-sm text-text-secondary mb-4">Pastikan data nama atlet, tim, and pilihan nomor lomba sudah sesuai with daftar yang disediakan di dalam file Excel.</p>
-                                    <div className="flex flex-col md:flex-row items-center gap-4">
-                                        <input type="file" id="team-upload" accept=".xlsx, .xls" className="hidden" onChange={handleTeamFileChange} />
-                                        <Button type="button" onClick={() => document.getElementById('team-upload')?.click()}>Pilih File Selesai</Button>
-                                        {teamFile && <span className="text-primary font-semibold">{teamFile.name}</span>}
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <span className="bg-primary text-white h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold shadow-md">2</span>
+                                        <h3 className="text-lg font-bold">Isi Data & Unggah Kembali</h3>
+                                    </div>
+                                    <div className="p-4 border border-border rounded-lg bg-background">
+                                        <p className="text-sm text-text-secondary mb-4">Pastikan data nama atlet, tim, <strong>Jenis Kelamin (L/P)</strong>, <strong>KU</strong>, dan <strong>Nomor Lomba</strong> sudah sesuai dengan panduan di file Excel.</p>
+                                        <div className="flex flex-col md:flex-row items-center gap-4">
+                                            <input type="file" id="team-upload" accept=".xlsx, .xls" className="hidden" onChange={handleTeamFileChange} />
+                                            <Button type="button" onClick={() => document.getElementById('team-upload')?.click()} variant="secondary">Pilih File Selesai</Button>
+                                            {teamFile && <div className="flex items-center gap-2 text-primary font-bold bg-primary/10 px-3 py-1 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>{teamFile.name}</div>}
+                                        </div>
                                     </div>
                                     <div className="mt-6">
                                         <Button 
                                             onClick={handleProcessTeamFile} 
                                             disabled={!teamFile || isProcessingTeamFile}
-                                            className="w-full py-4 text-xl"
+                                            className="w-full py-4 text-xl shadow-xl hover:shadow-2xl"
                                         >
-                                            {isProcessingTeamFile ? <Spinner /> : 'Proses & Kirim Pendaftaran Tim'}
+                                            {isProcessingTeamFile ? <Spinner /> : 'Kirim Pendaftaran Kolektif'}
                                         </Button>
                                     </div>
                                 </section>
                             </div>
 
                             {teamUploadResult && (
-                                <div className="mt-8 p-6 bg-surface rounded-lg border-2 border-border animate-in fade-in zoom-in">
-                                    <h3 className="font-bold text-xl mb-4">Hasil Pendaftaran Kolektif:</h3>
-                                    <div className="space-y-2">
-                                        <p className="text-green-500 font-bold text-lg">Berhasil: {teamUploadResult.updatedSwimmers} Pendaftaran Lomba</p>
-                                        {teamUploadResult.newSwimmers > 0 && <p className="text-text-secondary italic">({teamUploadResult.newSwimmers} atlet baru telah ditambahkan ke sistem)</p>}
+                                <div className="mt-8 p-6 bg-surface rounded-lg border-2 border-primary/30 animate-in fade-in zoom-in shadow-inner">
+                                    <h3 className="font-bold text-xl mb-4 border-b pb-2">Laporan Pendaftaran Kolektif:</h3>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="p-4 bg-green-500/10 rounded-lg">
+                                                <p className="text-green-600 font-bold text-2xl">{teamUploadResult.updatedSwimmers}</p>
+                                                <p className="text-green-800 text-sm font-medium uppercase tracking-tight">Pendaftaran Berhasil</p>
+                                            </div>
+                                            <div className="p-4 bg-blue-500/10 rounded-lg">
+                                                <p className="text-blue-600 font-bold text-2xl">{teamUploadResult.newSwimmers}</p>
+                                                <p className="text-blue-800 text-sm font-medium uppercase tracking-tight">Atlet Baru Dibuat</p>
+                                            </div>
+                                        </div>
                                         
                                         {teamUploadResult.errors.length > 0 && (
-                                            <div className="mt-4 pt-4 border-t border-border">
-                                                <p className="text-red-500 font-bold mb-2">Gagal pada beberapa baris:</p>
-                                                <ul className="list-disc list-inside text-red-400 text-sm max-h-40 overflow-y-auto">
+                                            <div className="mt-4 p-4 bg-red-500/5 rounded-lg border border-red-200">
+                                                <p className="text-red-500 font-bold mb-2">Daftar Kesalahan ({teamUploadResult.errors.length}):</p>
+                                                <ul className="list-disc list-inside text-red-400 text-sm max-h-40 overflow-y-auto space-y-1">
                                                     {teamUploadResult.errors.map((err, i) => <li key={i}>{err}</li>)}
                                                 </ul>
                                             </div>
                                         )}
                                     </div>
                                     <div className="mt-8 text-center">
-                                        <Button onClick={onBackToLogin}>Selesai & Kembali</Button>
+                                        <Button onClick={onBackToLogin} className="px-10">Selesai & Kembali</Button>
                                     </div>
                                 </div>
                             )}

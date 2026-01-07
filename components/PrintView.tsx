@@ -204,11 +204,11 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
             }
             
             const entriesRaw = event.entries as EventEntry[] | undefined;
-            // FIX: Use Array.isArray to check entriesRaw and avoid "unknown" type errors during map()
-            const eventEntries: Entry[] = (Array.isArray(entriesRaw) ? entriesRaw : []).map((entry: EventEntry) => {
+            // FIX: Using direct cast to any[] and any callback param to resolve unknown type issues with map().
+            const eventEntries: Entry[] = (entriesRaw as any[] || []).map((entry: any) => {
                 const swimmer = swimmersMap.get(entry.swimmerId);
                 return swimmer ? { ...entry, swimmer } : null;
-            }).filter((e): e is Entry => e !== null);
+            }).filter((e: any): e is Entry => e !== null);
 
             // Only push if there are entries or if we want to show empty events
             if (eventEntries.length > 0) {
@@ -998,12 +998,13 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                             aoa.push([]);
 
                             if (activeReport === 'program') {
-                                const entries: Entry[] = (event.entries || []).map(entry => ({...entry, swimmer: swimmersMap.get(entry.swimmerId)!})).filter(e => e.swimmer);
+                                // FIX: Use safer direct cast to any for entries mapping callback context.
+                                const entries: Entry[] = (event.entries as any[] || []).map((entry: any) => ({...entry, swimmer: swimmersMap.get(entry.swimmerId)!})).filter((e: any) => e.swimmer);
                                 const heats = generateHeats(entries, competitionInfo.numberOfLanes || 8);
                                 if (heats.length === 0) { aoa.push(['(Belum ada peserta terdaftar)']); } 
                                 else {
-                                    // FIX: Cast heats as any[] for the loop to avoid 'unknown' errors inside the callback.
-                                    (heats as any[]).forEach(heat => {
+                                    // FIX: Using direct cast to any to resolve unknown type issues with forEach().
+                                    (heats as any).forEach((heat: any) => {
                                         aoa.push([`Seri ${heat.heatNumber} dari ${heats.length}`]);
                                         aoa.push(['Lintasan', 'Nama Atlet', 'KU', 'Tahun', 'Nama Tim', 'Waktu Unggulan']);
                                         Array.from({length: competitionInfo.numberOfLanes || 8}, (_,i)=>i+1).forEach(lane => {

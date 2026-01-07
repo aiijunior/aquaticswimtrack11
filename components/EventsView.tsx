@@ -706,8 +706,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {/* FIX: Explicitly cast uploadResult.errors to any[] and err to string to avoid type inference issues with map() */}
-                                {(uploadResult.errors as any[]).map((err: any, i: number) => <li key={i}>{String(err)}</li>)}
+                                {/* FIX: Explicitly cast uploadResult to any to resolve potential unknown type issues in JSX map. */}
+                                {((uploadResult as any).errors as any[]).map((err: any, i: number) => <li key={i}>{String(err)}</li>)}
                             </ul>
                         </div>
                     )}
