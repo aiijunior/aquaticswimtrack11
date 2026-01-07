@@ -241,7 +241,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                     closeUploadModal();
                 }, 2000);
             } else if (result.errors.length > 0) {
-                addNotification(`Impor selesai dengan ${result.errors.length} galat. Periksa detail di bawah.`, 'error');
+                addNotification(`Impor selesai with ${result.errors.length} galat. Periksa detail di bawah.`, 'error');
             }
         } catch (error: any) {
             addNotification(`Gagal memproses file: ${error.message}`, 'error');
@@ -264,8 +264,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     const listsSheetData: any[][] = [
         ["PETUNJUK PENGISIAN"],
         ["1. Isi data nomor lomba pada sheet 'Template Nomor Lomba'."],
-        ["2. Kolom 'Jarak (m)', 'Gaya', dan 'Jenis Kelamin' wajib diisi."],
-        ["3. Untuk Gaya dan Jenis Kelamin, mohon gunakan pilihan yang tersedia di dropdown."],
+        ["2. Kolom 'Jarak (m)', 'Gaya', and 'Jenis Kelamin' wajib diisi."],
+        ["3. Untuk Gaya and Jenis Kelamin, mohon gunakan pilihan yang tersedia di dropdown."],
         ["4. Kolom 'Kategori' bersifat opsional. Kosongkan jika tidak ada (cth: untuk event senior/open)."],
         ["5. Kolom 'Jumlah Atlet' HANYA diisi untuk nomor estafet (relay), contoh: 4. Kosongkan untuk perorangan."],
         [], // Spacer
@@ -337,7 +337,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
 
   const handleDownloadEvents = () => {
     if (typeof XLSX === 'undefined') {
-        alert('Pustaka untuk membuat file Excel belum termuat. Periksa koneksi internet Anda dan muat ulang halaman.');
+        alert('Pustaka untuk membuat file Excel belum termuat. Periksa koneksi internet Anda and muat ulang halaman.');
         return;
     }
     if (events.length === 0) {
@@ -503,7 +503,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         ) : (
             <div className="text-center text-text-secondary py-10">
               <h3 className="text-xl font-semibold">Tidak Ada Nomor Lomba</h3>
-              <p className="mt-2">{searchQuery ? `Tidak ada nomor lomba yang cocok dengan "${searchQuery}".` : "Tidak ada nomor lomba dalam sesi ini atau belum ada nomor lomba yang dibuat."}</p>
+              <p className="mt-2">{searchQuery ? `Tidak ada nomor lomba yang cocok with "${searchQuery}".` : "Tidak ada nomor lomba dalam sesi ini atau belum ada nomor lomba yang dibuat."}</p>
             </div>
         )}
       </Card>
@@ -621,7 +621,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 <p className="text-text-secondary">
                     Anda benar-benar yakin ingin menghapus <strong className="text-text-primary">SEMUA</strong> data nomor lomba?
                     <br/><br/>
-                    Tindakan ini akan <strong className="text-red-500">menghapus permanen</strong> semua nomor lomba beserta data pendaftaran dan hasil yang terkait.
+                    Tindakan ini akan <strong className="text-red-500">menghapus permanen</strong> semua nomor lomba beserta data pendaftaran and hasil yang terkait.
                     <br />
                     Tindakan ini <strong className="font-bold">TIDAK DAPAT DIBATALKAN</strong>.
                 </p>
@@ -637,7 +637,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
             <div>
                 <p className="text-text-secondary mb-2">Unggah file Excel (.xlsx) untuk menambahkan beberapa nomor lomba sekaligus. File harus memiliki kolom berikut:</p>
                 <code className="block text-sm bg-surface p-2 rounded-md whitespace-pre">Jarak (m) | Gaya | Jenis Kelamin | Kategori | Jumlah Atlet</code>
-                <p className="text-xs text-text-secondary mt-1">Kolom 'Kategori' dan 'Jumlah Atlet' bersifat opsional.</p>
+                <p className="text-xs text-text-secondary mt-1">Kolom 'Kategori' and 'Jumlah Atlet' bersifat opsional.</p>
                 
                 <div className="mt-4 pt-4 border-t border-border">
                     <p className="text-sm font-semibold text-text-secondary mb-2">Contoh untuk nomor estafet (misal: 4x100m Estafet Gaya Ganti Campuran KU-3):</p>
@@ -691,12 +691,12 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                                 Penyimpanan gagal karena gaya renang baru (seperti "Papan Luncur") belum ada di database Anda.
                             </p>
                             <p className="text-red-300/90 mt-2">
-                                Buka menu <strong className="font-semibold">"SQL Editor"</strong>, salin perintah perbaikan yang tersedia di sana, dan jalankan di Supabase untuk mengatasi masalah ini.
+                                Buka menu <strong className="font-semibold">"SQL Editor"</strong>, salin perintah perbaikan yang tersedia di sana, and jalankan di Supabase untuk mengatasi masalah ini.
                             </p>
                         </div>
                     ) : uploadResult.errors.length > 0 ? (
                         <p className="text-red-500 font-bold">
-                            Ditemukan {uploadResult.errors.length} galat. {uploadResult.success > 0 ? `${uploadResult.success} nomor lomba berhasil ditambahkan.` : 'Tidak ada nomor lomba yang ditambahkan.'} Harap perbaiki file dan coba lagi.
+                            Ditemukan {uploadResult.errors.length} galat. {uploadResult.success > 0 ? `${uploadResult.success} nomor lomba berhasil ditambahkan.` : 'Tidak ada nomor lomba yang ditambahkan.'} Harap perbaiki file and coba lagi.
                         </p>
                     ) : (
                         <p className="text-green-500 font-bold">Berhasil! {uploadResult.success} nomor lomba baru telah ditambahkan.</p>
@@ -706,8 +706,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {/* FIX: Explicitly cast uploadResult.errors to string[] to resolve 'unknown' type error */}
-                                {(uploadResult.errors as string[]).map((err, i: number) => <li key={i}>{err}</li>)}
+                                {/* FIX: Explicitly cast uploadResult.errors to any[] and err to string to avoid type inference issues with map() */}
+                                {(uploadResult.errors as any[]).map((err: any, i: number) => <li key={i}>{String(err)}</li>)}
                             </ul>
                         </div>
                     )}

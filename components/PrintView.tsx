@@ -204,8 +204,8 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
             }
             
             const entriesRaw = event.entries as EventEntry[] | undefined;
-            // FIX: Explicitly cast entriesRaw to any[] before mapping to prevent it being inferred as 'unknown'.
-            const eventEntries: Entry[] = (((entriesRaw as any[]) || [])).map((entry: EventEntry) => {
+            // FIX: Use Array.isArray to check entriesRaw and avoid "unknown" type errors during map()
+            const eventEntries: Entry[] = (Array.isArray(entriesRaw) ? entriesRaw : []).map((entry: EventEntry) => {
                 const swimmer = swimmersMap.get(entry.swimmerId);
                 return swimmer ? { ...entry, swimmer } : null;
             }).filter((e): e is Entry => e !== null);
