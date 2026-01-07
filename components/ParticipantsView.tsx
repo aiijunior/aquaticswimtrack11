@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -97,198 +98,83 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
              return;
         }
 
-        const templateData: any[] = [];
-        const columnHeaders = {
-            "Nama Atlet": "",
-            "Tahun Lahir": "",
-            "Jenis Kelamin (L/P)": "",
-            "Nama Tim": "",
-            "KU": "",
-            "Nomor Lomba": "",
-            "Waktu Unggulan (mm:ss.SS)": ""
-        };
-
-        const addSectionHeader = (title: string) => {
-            templateData.push({ ...columnHeaders, "Nama Atlet": `--- ${title.toUpperCase()} ---` });
-        };
-
-        const defaultKU = ageOptions.length > 0 ? ageOptions[0] : "KU 1";
-
-        // --- EXAMPLE: PERORANGAN PUTRA ---
-        const maleEvents = events.filter(e => e.gender === Gender.MALE && !e.relayLegs);
-        if (maleEvents.length > 0) {
-            addSectionHeader("Contoh Pendaftaran Perorangan Putra");
-            const exampleEvents = maleEvents.slice(0, 2); // Take up to 2 examples
-            exampleEvents.forEach((event, index) => {
-                templateData.push({
-                    "Nama Atlet": "Budi Perkasa",
-                    "Tahun Lahir": 2005,
-                    "Jenis Kelamin (L/P)": "L",
-                    "Nama Tim": "Tim Cepat",
-                    "KU": defaultKU,
-                    "Nomor Lomba": formatEventName(event),
-                    "Waktu Unggulan (mm:ss.SS)": index === 0 ? "01:05.50" : "99:99.99"
-                });
-            });
-            templateData.push(columnHeaders); // Spacer
-        }
-
-        // --- EXAMPLE: PERORANGAN PUTRI ---
-        const femaleEvents = events.filter(e => e.gender === Gender.FEMALE && !e.relayLegs);
-        if (femaleEvents.length > 0) {
-            addSectionHeader("Contoh Pendaftaran Perorangan Putri");
-            const exampleEvents = femaleEvents.slice(0, 2);
-            exampleEvents.forEach((event, index) => {
-                templateData.push({
-                    "Nama Atlet": "Siti Cepat",
-                    "Tahun Lahir": 2006,
-                    "Jenis Kelamin (L/P)": "P",
-                    "Nama Tim": "Tim Cepat",
-                    "KU": defaultKU,
-                    "Nomor Lomba": formatEventName(event),
-                    "Waktu Unggulan (mm:ss.SS)": index === 0 ? "01:15.20" : "00:31.40"
-                });
-            });
-            templateData.push(columnHeaders); // Spacer
-        }
-
-        // --- EXAMPLE: ESTAFET (RELAY) ---
-        const relayMaleEvent = events.find(e => e.gender === Gender.MALE && e.relayLegs);
-        const relayFemaleEvent = events.find(e => e.gender === Gender.FEMALE && e.relayLegs);
-        const relayMixedEvent = events.find(e => e.gender === Gender.MIXED && e.relayLegs);
-
-        if (relayMaleEvent || relayFemaleEvent || relayMixedEvent) {
-            addSectionHeader("Contoh Pendaftaran Estafet (Relay)");
-            templateData.push({
-                ...columnHeaders,
-                "Nama Atlet": "CATATAN: Untuk Estafet, 'Nama Atlet' diisi NAMA TIM, 'Tahun Lahir' dan 'KU' dikosongkan."
-            });
-
-            if (relayMaleEvent) {
-                templateData.push({
-                    "Nama Atlet": `Tim Putra Tim Cepat`,
-                    "Tahun Lahir": "", // Intentionally blank for relays
-                    "Jenis Kelamin (L/P)": "L", // Gender is used to identify the team type
-                    "Nama Tim": "Tim Cepat",
-                    "KU": "",
-                    "Nomor Lomba": formatEventName(relayMaleEvent),
-                    "Waktu Unggulan (mm:ss.SS)": "04:10.00"
-                });
-            }
-            if (relayFemaleEvent) {
-                templateData.push({
-                    "Nama Atlet": `Tim Putri Tim Cepat`,
-                    "Tahun Lahir": "",
-                    "Jenis Kelamin (L/P)": "P",
-                    "Nama Tim": "Tim Cepat",
-                     "KU": "",
-                    "Nomor Lomba": formatEventName(relayFemaleEvent),
-                    "Waktu Unggulan (mm:ss.SS)": "04:30.00"
-                });
-            }
-            if (relayMixedEvent) {
-                templateData.push({
-                    "Nama Atlet": `Tim Campuran Tim Cepat`,
-                    "Tahun Lahir": "",
-                    "Jenis Kelamin (L/P)": "L", // For mixed, can be L or P, often tied to team contact
-                    "Nama Tim": "Tim Cepat",
-                     "KU": "",
-                    "Nomor Lomba": formatEventName(relayMixedEvent),
-                    "Waktu Unggulan (mm:ss.SS)": "04:20.00"
-                });
-            }
-            templateData.push(columnHeaders); // Spacer
-        }
-        
-        // --- If no examples could be generated ---
-        if (templateData.length === 0) {
-             templateData.push({
-                "Nama Atlet": "Contoh Nama",
-                "Tahun Lahir": 2005,
-                "Jenis Kelamin (L/P)": "L",
-                "Nama Tim": "Tim Contoh",
-                "KU": defaultKU,
-                "Nomor Lomba": events.length > 0 ? formatEventName(events[0]) : "Tidak ada nomor lomba",
-                "Waktu Unggulan (mm:ss.SS)": "01:25.50"
-            });
-        }
-
         const workbook = XLSX.utils.book_new();
-        
-        // --- Sheet 1: Template Pendaftaran ---
-        const wsTemplate = XLSX.utils.json_to_sheet(templateData, { skipHeader: true }); // Use skipHeader and manually add it
-        
-        // Manually create the header row
-        const header = ["Nama Atlet", "Tahun Lahir", "Jenis Kelamin (L/P)", "Nama Tim", "KU", "Nomor Lomba", "Waktu Unggulan (mm:ss.SS)"];
-        XLSX.utils.sheet_add_aoa(wsTemplate, [header], { origin: "A1" });
 
-        const maxRows = 2000;
-        if (!wsTemplate['!dataValidation']) wsTemplate['!dataValidation'] = [];
-        
-        // Data validation for Race Name
-        wsTemplate['!dataValidation'].push({
-            sqref: `F2:F${maxRows}`, 
-            opts: { type: 'list', allowBlank: false, formula1: `'Daftar Nomor Lomba'!$A$6:$A$${events.length + 6}`, showDropDown: true, error: 'Silakan pilih nomor lomba yang valid dari daftar.', errorTitle: 'Pilihan Tidak Valid' }
+        // 1. Persiapan Data untuk Dropdown Pintar
+        const allKUs = ageOptions;
+        const eventsByKU: Record<string, string[]> = {};
+        allKUs.forEach(ku => {
+            eventsByKU[ku] = events.filter(e => e.category === ku).map(e => formatEventName(e));
         });
-        
-        // Data validation for Gender
-        wsTemplate['!dataValidation'].push({
-            sqref: `C2:C${maxRows}`,
-            opts: { type: 'list', allowBlank: false, formula1: `"L,P"`, showDropDown: true, error: 'Gunakan "L" untuk Laki-laki atau "P" untuk Perempuan.', errorTitle: 'Pilihan Tidak Valid'}
-        });
+        const openEvents = events.filter(e => !e.category).map(e => formatEventName(e));
+        if (openEvents.length > 0) {
+            eventsByKU["Open"] = openEvents;
+            if (!allKUs.includes("Open")) allKUs.push("Open");
+        }
 
-        // Data validation for Age Group (KU) - NEW
-        if (ageOptions.length > 0) {
-             wsTemplate['!dataValidation'].push({
-                sqref: `E2:E${maxRows}`,
-                opts: { type: 'list', allowBlank: true, formula1: `'Daftar Nomor Lomba'!$C$6:$C$${ageOptions.length + 6}`, showDropDown: true, error: 'Silakan pilih KU yang valid dari daftar.', errorTitle: 'Pilihan Tidak Valid'}
+        // 2. Sheet DataMaster (Source data dropdown)
+        const masterAOA: any[][] = [
+            ["DAFTAR_KU", "", "DATA_NOMOR_LOMBA"],
+            ...allKUs.map(ku => [ku])
+        ];
+
+        // Masukkan event per kolom sesuai KU
+        const maxEventsCount = Math.max(...Object.values(eventsByKU).map(l => l.length));
+        for (let i = 0; i < maxEventsCount; i++) {
+            allKUs.forEach((ku, kIdx) => {
+                if (!masterAOA[i+1]) masterAOA[i+1] = Array(allKUs.length + 2).fill("");
+                masterAOA[i+1][kIdx + 2] = eventsByKU[ku][i] || "";
             });
         }
-        
-        wsTemplate['!cols'] = [ { wch: 40 }, { wch: 15 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 50 }, { wch: 25 }];
+        const wsMaster = XLSX.utils.aoa_to_sheet(masterAOA);
+        XLSX.utils.book_append_sheet(workbook, wsMaster, "DataMaster");
+
+        // 3. Named Ranges (Kunci untuk INDIRECT)
+        const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '_');
+        if (!workbook.Workbook) workbook.Workbook = {};
+        if (!workbook.Workbook.Names) workbook.Workbook.Names = [];
+
+        workbook.Workbook.Names.push({ name: "LIST_KU", formula: `DataMaster!$A$2:$A$${allKUs.length + 1}` });
+        allKUs.forEach((ku, idx) => {
+            const col = String.fromCharCode(67 + idx); // Start column C
+            const count = eventsByKU[ku].length;
+            if (count > 0) {
+                workbook.Workbook.Names.push({ name: sanitize(ku), formula: `DataMaster!$${col}$2:$${col}$${count + 1}` });
+            }
+        });
+
+        // 4. Sheet Template Pendaftaran
+        const templateAOA = [
+            ["Nama Atlet", "Tahun Lahir", "Jenis Kelamin (L/P)", "Nama Tim", "KU", "Nomor Lomba", "Waktu Unggulan (mm:ss.SS)"],
+            ["CONTOH ATLET", 2010, "L", "TIM CEPAT", allKUs[0], eventsByKU[allKUs[0]]?.[0] || "", "01:25.50"]
+        ];
+        const wsTemplate = XLSX.utils.aoa_to_sheet(templateAOA);
+        wsTemplate['!cols'] = [ { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 50 }, { wch: 25 }];
+
+        // 5. Data Validation
+        const maxRows = 1000;
+        if (!wsTemplate['!dataValidation']) wsTemplate['!dataValidation'] = [];
+
+        // JK
+        wsTemplate['!dataValidation'].push({ sqref: `C2:C${maxRows}`, opts: { type: 'list', formula1: '"L,P"' } });
+        // KU
+        wsTemplate['!dataValidation'].push({ sqref: `E2:E${maxRows}`, opts: { type: 'list', formula1: 'LIST_KU', showDropDown: true } });
+        // Nomor Lomba (Dependent)
+        wsTemplate['!dataValidation'].push({ 
+            sqref: `F2:F${maxRows}`, 
+            opts: { 
+                type: 'list', 
+                formula1: 'INDIRECT(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(E2," ","_"),"-","_"),"/","_"),".","_"))', 
+                showDropDown: true 
+            } 
+        });
+
         XLSX.utils.book_append_sheet(workbook, wsTemplate, "Template Pendaftaran");
-        
-        // --- Sheet 2: Daftar Nomor Lomba & KU ---
-        const allEventsFormatted = events.sort((a,b) => formatEventName(a).localeCompare(formatEventName(b))).map(e => [formatEventName(e)]); 
-        
-        const infoSheetAOA = [
-            ['PETUNJUK PENGISIAN NOMOR LOMBA'],
-            ["Salin (copy) nama nomor lomba dari kolom A, lalu tempel (paste) ke kolom 'Nomor Lomba' di sheet 'Template Pendaftaran'."],
-            ["Pastikan nama nomor lomba sesuai persis dengan yang ada di daftar ini."],
-            [], // Spacer
-            ['DAFTAR LOMBA YANG TERSEDIA', '', 'DAFTAR KATEGORI UMUR (KU)'],
-        ];
-        
-        // Combine events list with KU list side-by-side
-        const maxLength = Math.max(allEventsFormatted.length, ageOptions.length);
-        const dataRows = [];
-        
-        for (let i = 0; i < maxLength; i++) {
-            const eventName = allEventsFormatted[i] ? allEventsFormatted[i][0] : "";
-            const ageGroupName = ageOptions[i] || "";
-            dataRows.push([eventName, "", ageGroupName]);
-        }
-
-        const fullInfoSheetAOA = infoSheetAOA.concat(dataRows);
-        
-        const wsInfo = XLSX.utils.aoa_to_sheet(fullInfoSheetAOA);
-        wsInfo['!cols'] = [ { wch: 70 }, { wch: 5 }, { wch: 30 } ];
-        
-        // Merges for header text
-        wsInfo['!merges'] = [
-            { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } },
-            { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } },
-            { s: { r: 2, c: 0 }, e: { r: 2, c: 2 } },
-        ];
-
-        XLSX.utils.book_append_sheet(workbook, wsInfo, "Daftar Nomor Lomba");
-
-        // --- Write File ---
-        XLSX.writeFile(workbook, "Template_Pendaftaran_Lomba.xlsx");
+        XLSX.writeFile(workbook, "Template_Pendaftaran_Lomba_Cerdas.xlsx");
 
     } catch(error) {
         console.error("Failed to generate template:", error);
-        alert("Gagal membuat template. Silakan coba lagi.");
+        alert("Gagal membuat template.");
     } finally {
         setIsDownloading(false);
     }
@@ -569,7 +455,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                 <code className="block text-sm bg-surface p-2 rounded-md whitespace-pre mt-1">Nama Atlet | Tahun Lahir | Jenis Kelamin (L/P) | Nama Tim | KU | Nomor Lomba | Waktu Unggulan (mm:ss.SS)</code>
               </div>
               <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" onClick={downloadTemplate} disabled={isDownloading || !canDownload} title={!canDownload ? "Buat 'Nomor Lomba' terlebih dahulu untuk mengunduh template" : "Unduh template Excel dengan daftar nomor lomba dan KU"}>
+                  <Button variant="secondary" onClick={downloadTemplate} disabled={isDownloading || !canDownload} title={!canDownload ? "Buat 'Nomor Lomba' terlebih dahulu untuk mengunduh template" : "Unduh template Excel pintar dengan validasi KU dan Nomor Lomba"}>
                       {isDownloading ? <Spinner /> : 'Unduh Template Pendaftaran'}
                   </Button>
                   <Button variant="secondary" onClick={handleDownloadParticipants} disabled={swimmers.length === 0} title={swimmers.length === 0 ? "Tidak ada atlet untuk diunduh" : "Unduh rekap semua atlet"}>
@@ -579,7 +465,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                       {isDownloading ? <Spinner /> : 'Unduh Rekap Pendaftaran Lengkap'}
                     </Button>
               </div>
-              <p className="text-xs text-text-secondary">{canDownload ? "Template Pendaftaran akan berisi daftar nomor lomba dan KU yang telah dibuat." : "Tombol 'Unduh Template Pendaftaran' akan aktif setelah Anda membuat setidaknya satu nomor lomba."}</p>
+              <p className="text-xs text-text-secondary">{canDownload ? "Template Pendaftaran sudah dilengkapi dropdown KU dan Nomor Lomba yang saling terhubung." : "Tombol 'Unduh Template Pendaftaran' akan aktif setelah Anda membuat setidaknya satu nomor lomba."}</p>
           </div>
 
           <div className="flex items-center space-x-4">

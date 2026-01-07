@@ -203,12 +203,11 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
                 acc[sessionName] = [];
             }
             
-            const entriesRaw = event.entries as EventEntry[] | undefined;
-            // FIX: Using direct cast to any[] and any callback param to resolve unknown type issues with map().
-            const eventEntries: Entry[] = (entriesRaw as any[] || []).map((entry: any) => {
+            // FIX: Explicitly cast entries to EventEntry[] to resolve Property 'map' error on type 'unknown'.
+            const eventEntries: Entry[] = (event.entries as EventEntry[] || []).map((entry: EventEntry) => {
                 const swimmer = swimmersMap.get(entry.swimmerId);
                 return swimmer ? { ...entry, swimmer } : null;
-            }).filter((e: any): e is Entry => e !== null);
+            }).filter((e): e is Entry => e !== null);
 
             // Only push if there are entries or if we want to show empty events
             if (eventEntries.length > 0) {
@@ -998,18 +997,21 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                             aoa.push([]);
 
                             if (activeReport === 'program') {
-                                // FIX: Use safer direct cast to any for entries mapping callback context.
-                                const entries: Entry[] = (event.entries as any[] || []).map((entry: any) => ({...entry, swimmer: swimmersMap.get(entry.swimmerId)!})).filter((e: any) => e.swimmer);
+                                // FIX: Explicitly map event.entries to detailed entries with swimmer data.
+                                const entries: Entry[] = (event.entries as EventEntry[] || []).map((entry: EventEntry) => {
+                                    const swimmer = swimmersMap.get(entry.swimmerId);
+                                    return swimmer ? ({...entry, swimmer} as Entry) : null;
+                                }).filter((e): e is Entry => e !== null);
                                 const heats = generateHeats(entries, competitionInfo.numberOfLanes || 8);
                                 if (heats.length === 0) { aoa.push(['(Belum ada peserta terdaftar)']); } 
                                 else {
-                                    // FIX: Using direct cast to any to resolve unknown type issues with forEach().
-                                    (heats as any).forEach((heat: any) => {
+                                    // FIX: Explicitly cast heats to Heat[] array for iteration to resolve Property 'forEach' error on type 'unknown'.
+                                    (heats as Heat[]).forEach((heat: Heat) => {
                                         aoa.push([`Seri ${heat.heatNumber} dari ${heats.length}`]);
                                         aoa.push(['Lintasan', 'Nama Atlet', 'KU', 'Tahun', 'Nama Tim', 'Waktu Unggulan']);
                                         Array.from({length: competitionInfo.numberOfLanes || 8}, (_,i)=>i+1).forEach(lane => {
-                                            const assignment = (heat as any).assignments.find((a: any) => a.lane === lane);
-                                            // FIX: Cast swimmer as Swimmer to prevent 'unknown' property access errors.
+                                            const assignment = heat.assignments.find((a: any) => a.lane === lane);
+                                            // FIX: Cast swimmer lookup as Swimmer to resolve unknown property error.
                                             const swimmer = assignment?.entry.swimmer as Swimmer | undefined;
                                             aoa.push([lane, swimmer?.name ?? '-', swimmer?.ageGroup ?? '-', swimmer?.birthYear ?? '-', swimmer?.club ?? '-', assignment ? formatTime(assignment.entry.seedTime) : '-']);
                                         });
@@ -1023,7 +1025,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                                     const sorted = [...event.results].sort((a,b) => (a.time > 0 && b.time > 0) ? a.time - b.time : (a.time < 0 ? 1 : -1)).map(r => ({...r, rank: r.time > 0 ? validResults.findIndex(vr => vr.swimmerId === r.swimmerId) + 1 : 0}));
                                     aoa.push(['Peringkat', 'Nama Atlet', 'KU', 'Tahun', 'Nama Tim', 'Waktu', 'Rekor']);
                                     sorted.forEach(res => {
-                                        // FIX: Cast swimmersMap.get() result as Swimmer to resolve 'unknown' error.
+                                        // FIX: Cast swimmersMap.get() result as Swimmer to resolve Property 'id' error on type 'unknown'.
                                         const swimmer = swimmersMap.get(res.swimmerId) as Swimmer | undefined;
                                         const recordsBrokenText = brokenRecords.filter(br => br.newHolder.id === swimmer?.id && br.newTime === res.time && br.record.style === event.style && br.record.distance === event.distance).map(br => br.record.type).join(', ');
                                         aoa.push([res.rank > 0 ? res.rank : formatTime(res.time), swimmer?.name || 'N/A', event.relayLegs ? '-' : (swimmer?.ageGroup || '-'), event.relayLegs ? '-' : (swimmer?.birthYear || ''), swimmer?.club || 'N/A', formatTime(res.time), recordsBrokenText]);

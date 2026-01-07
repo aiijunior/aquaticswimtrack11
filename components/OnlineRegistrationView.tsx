@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, FormattableEvent } from '../types';
 import { getEventsForRegistration, processOnlineRegistration, findSwimmerByName, processParticipantUpload } from '../services/databaseService';
@@ -358,91 +359,136 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         if (typeof XLSX === 'undefined') return;
         setIsDownloadingTemplate(true);
         
-        const templateData = [
-            {
-                "Nama Atlet": "CONTOH NAMA ATLET",
-                "Tahun Lahir": 2010,
-                "Jenis Kelamin (L/P)": "L",
-                "Nama Tim": "NAMA KLUB ANDA",
-                "KU": ageOptions[0] || "KU 1",
-                "Nomor Lomba": "PILIH DARI TAB PANDUAN",
-                "Waktu Unggulan (mm:ss.SS)": "01:25.50"
+        try {
+            const workbook = XLSX.utils.book_new();
+            
+            // --- DATA PREPARATION ---
+            const allKUs = ageOptions;
+            const eventsByKU: Record<string, string[]> = {};
+            allKUs.forEach(ku => {
+                eventsByKU[ku] = localEvents
+                    .filter(e => e.category === ku)
+                    .map(e => formatEventName(e));
+            });
+            // Open Category (no specific KU)
+            const openEvents = localEvents
+                .filter(e => !e.category)
+                .map(e => formatEventName(e));
+            if (openEvents.length > 0) {
+                eventsByKU["Open"] = openEvents;
+                if (!allKUs.includes("Open")) allKUs.push("Open");
             }
-        ];
 
-        const workbook = XLSX.utils.book_new();
-        
-        // --- Sheet 1: Form Pendaftaran ---
-        const wsTemplate = XLSX.utils.json_to_sheet(templateData);
-        wsTemplate['!cols'] = [ 
-            { wch: 30 }, // Nama
-            { wch: 15 }, // Tahun
-            { wch: 20 }, // JK
-            { wch: 25 }, // Tim
-            { wch: 15 }, // KU
-            { wch: 50 }, // Nomor Lomba
-            { wch: 25 }  // Waktu
-        ];
+            // --- Sheet 1: Form Pendaftaran ---
+            const templateData = [
+                {
+                    "Nama Atlet": "CONTOH NAMA ATLET",
+                    "Tahun Lahir": 2010,
+                    "Jenis Kelamin (L/P)": "L",
+                    "Nama Tim": "NAMA KLUB ANDA",
+                    "KU": allKUs[0] || "Open",
+                    "Nomor Lomba": eventsByKU[allKUs[0] || "Open"]?.[0] || "",
+                    "Waktu Unggulan (mm:ss.SS)": "01:25.50"
+                }
+            ];
+            const wsTemplate = XLSX.utils.json_to_sheet(templateData);
+            wsTemplate['!cols'] = [ { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 50 }, { wch: 25 } ];
 
-        // Add Data Validation (Dropdowns) if possible via cell comments or instructions
-        const maxRows = 500;
-        if (!wsTemplate['!dataValidation']) wsTemplate['!dataValidation'] = [];
-        
-        // Validation for L/P
-        wsTemplate['!dataValidation'].push({
-            sqref: `C2:C${maxRows}`,
-            opts: { type: 'list', formula1: '"L,P"', showDropDown: true }
-        });
+            // --- Sheet 2: Data Master (Source for Dropdowns) ---
+            // Kita susun data master secara vertikal agar mudah di-range
+            const masterAOA: any[][] = [
+                ["DAFTAR KU", "", "DAFTAR NOMOR LOMBA PER KATEGORI"],
+                ...allKUs.map(ku => [ku])
+            ];
+            
+            // Tambahkan kolom untuk setiap KU berisi event terkait
+            const maxEvents = Math.max(...Object.values(eventsByKU).map(list => list.length));
+            for (let i = 0; i < maxEvents; i++) {
+                allKUs.forEach((ku, kuIdx) => {
+                    const eventName = eventsByKU[ku][i] || "";
+                    if (!masterAOA[i + 1]) masterAOA[i + 1] = Array(allKUs.length + 2).fill("");
+                    masterAOA[i + 1][kuIdx + 2] = eventName;
+                });
+            }
+            
+            const wsMaster = XLSX.utils.aoa_to_sheet(masterAOA);
+            XLSX.utils.book_append_sheet(workbook, wsMaster, "DataMaster");
 
-        // Validation for KU
-        const kuListString = ageOptions.join(',');
-        wsTemplate['!dataValidation'].push({
-            sqref: `E2:E${maxRows}`,
-            opts: { type: 'list', formula1: `"${kuListString}"`, showDropDown: true }
-        });
+            // --- NAMED RANGES (Dinamis untuk Dependent Dropdown) ---
+            // Excel Named Ranges tidak boleh ada spasi, jadi kita bersihkan
+            const sanitize = (name: string) => name.replace(/[^a-zA-Z0-9]/g, '_');
+            
+            if (!workbook.Workbook) workbook.Workbook = {};
+            if (!workbook.Workbook.Names) workbook.Workbook.Names = [];
 
-        XLSX.utils.book_append_sheet(workbook, wsTemplate, "Form Pendaftaran");
+            // 1. Range untuk Daftar KU
+            workbook.Workbook.Names.push({
+                name: "DAFTAR_KU",
+                formula: `DataMaster!$A$2:$A$${allKUs.length + 1}`
+            });
 
-        // --- Sheet 2: Panduan Nomor Lomba (PENTING) ---
-        // Kita buat daftar yang memetakan KU + JK ke Nomor Lomba
-        const guideRows = [
-            ["PANDUAN PEMILIHAN NOMOR LOMBA"],
-            ["Pastikan Nomor Lomba yang Anda ketik/tempel di Sheet 1 sesuai dengan Jenis Kelamin dan KU atlet."],
-            [],
-            ["KELOMPOK UMUR (KU)", "JENIS KELAMIN", "NOMOR LOMBA YANG TERSEDIA"]
-        ];
+            // 2. Range untuk setiap KU (untuk dependent dropdown)
+            allKUs.forEach((ku, idx) => {
+                const colLetter = String.fromCharCode(67 + idx); // Start from 'C'
+                const eventCount = eventsByKU[ku].length;
+                if (eventCount > 0) {
+                    workbook.Workbook.Names.push({
+                        name: sanitize(ku),
+                        formula: `DataMaster!$${colLetter}$2:$${colLetter}$${eventCount + 1}`
+                    });
+                }
+            });
 
-        // Kelompokkan semua event berdasarkan KU dan Jenis Kelamin
-        const eventsSorted = [...localEvents].sort((a, b) => {
-            const catA = a.category || "Open";
-            const catB = b.category || "Open";
-            const catCompare = catA.localeCompare(catB);
-            if (catCompare !== 0) return catCompare;
-            return a.gender.localeCompare(b.gender);
-        });
+            // --- DATA VALIDATION ---
+            const maxRows = 500;
+            if (!wsTemplate['!dataValidation']) wsTemplate['!dataValidation'] = [];
 
-        eventsSorted.forEach(event => {
-            const jkShort = event.gender === "Men's" ? "L (Putra)" : event.gender === "Women's" ? "P (Putri)" : "L/P (Campuran)";
-            guideRows.push([
-                event.category || "Semua KU (Open)",
-                jkShort,
-                formatEventName(event)
-            ]);
-        });
+            // Validation Jenis Kelamin (L/P)
+            wsTemplate['!dataValidation'].push({
+                sqref: `C2:C${maxRows}`,
+                opts: { type: 'list', formula1: '"L,P"', showDropDown: true }
+            });
 
-        const wsGuide = XLSX.utils.aoa_to_sheet(guideRows);
-        wsGuide['!cols'] = [ { wch: 25 }, { wch: 20 }, { wch: 60 } ];
-        
-        // Style Header
-        wsGuide['!merges'] = [
-            { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } },
-            { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } }
-        ];
+            // Validation KU (Dinamis dari Named Range)
+            wsTemplate['!dataValidation'].push({
+                sqref: `E2:E${maxRows}`,
+                opts: { 
+                    type: 'list', 
+                    formula1: "DAFTAR_KU", 
+                    showDropDown: true,
+                    error: 'Pilih kategori yang tersedia di daftar.',
+                    errorTitle: 'Kategori Tidak Valid'
+                }
+            });
 
-        XLSX.utils.book_append_sheet(workbook, wsGuide, "Panduan Nomor Lomba");
+            // Validation Nomor Lomba (Dependent Dropdown menggunakan INDIRECT)
+            // Rumus: =INDIRECT(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(E2;" ";"_");"-";"_");"/";"_"))
+            // Namun karena kita sudah men-sanitize nama range di JS, kita gunakan formula yang cocok
+            // Note: Excel menggunakan koma atau titik koma tergantung locale, tapi XLSX biasanya pakai koma.
+            wsTemplate['!dataValidation'].push({
+                sqref: `F2:F${maxRows}`,
+                opts: { 
+                    type: 'list', 
+                    // Formula ini membersihkan input sel E (KU) agar cocok dengan sanitize kita di JS
+                    formula1: 'INDIRECT(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(E2," ","_"),"-","_"),"/","_"),".","_"))',
+                    showDropDown: true,
+                    error: 'Silakan pilih Nomor Lomba yang sesuai dengan KU yang Anda pilih.',
+                    errorTitle: 'Lomba Tidak Sesuai KU'
+                }
+            });
 
-        XLSX.writeFile(workbook, `Template_Pendaftaran_${competitionInfo?.eventName.split('\n')[0].replace(/\s+/g, '_')}.xlsx`);
-        setIsDownloadingTemplate(false);
+            XLSX.utils.book_append_sheet(workbook, wsTemplate, "Form Pendaftaran");
+            
+            // Move Form Pendaftaran to front
+            workbook.SheetNames.reverse();
+
+            XLSX.writeFile(workbook, `Template_Pendaftaran_${competitionInfo?.eventName.split('\n')[0].replace(/\s+/g, '_')}.xlsx`);
+        } catch (err) {
+            console.error("Gagal membuat template:", err);
+            alert("Terjadi kesalahan saat membuat file template.");
+        } finally {
+            setIsDownloadingTemplate(false);
+        }
     };
 
     const handleTeamFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -674,7 +720,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                             <ul className="list-disc list-inside mt-2 font-medium">
                                                 <li>Dropdown Jenis Kelamin (L/P)</li>
                                                 <li>Dropdown KU sesuai pengaturan acara</li>
-                                                <li>Tab <strong>"Panduan Nomor Lomba"</strong> sebagai referensi</li>
+                                                <li><strong>Kunci Otomatis:</strong> Kolom Nomor Lomba akan berubah otomatis menampilkan lomba yang sesuai dengan KU yang Anda pilih.</li>
                                             </ul>
                                         </p>
                                         <Button onClick={handleDownloadTemplate} disabled={isDownloadingTemplate} variant="secondary" className="flex items-center gap-2">
