@@ -39,7 +39,7 @@ const parseTimeToMs = (time: RegistrationTime): number => {
 };
 
 const ChevronDownIcon = ({ isOpen }: { isOpen: boolean }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 transform transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 transform transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
     </svg>
 );
@@ -363,7 +363,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             const workbook = XLSX.utils.book_new();
             
             // --- DATA PREPARATION ---
-            const allKUs = ageOptions;
+            const allKUs = [...ageOptions];
             const eventsByKU: Record<string, string[]> = {};
             allKUs.forEach(ku => {
                 eventsByKU[ku] = localEvents
@@ -395,18 +395,16 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             wsTemplate['!cols'] = [ { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 50 }, { wch: 25 } ];
 
             // --- Sheet 2: Data Master (Source for Dropdowns) ---
-            // Kita susun data master secara vertikal agar mudah di-range
             const masterAOA: any[][] = [
                 ["DAFTAR KU", "", "DAFTAR NOMOR LOMBA PER KATEGORI"],
                 ...allKUs.map(ku => [ku])
             ];
             
-            // Tambahkan kolom untuk setiap KU berisi event terkait
-            const maxEvents = Math.max(...Object.values(eventsByKU).map(list => list.length));
+            const maxEvents = Math.max(...Object.values(eventsByKU).map(list => list.length), 1);
             for (let i = 0; i < maxEvents; i++) {
+                if (!masterAOA[i + 1]) masterAOA[i + 1] = Array(allKUs.length + 2).fill("");
                 allKUs.forEach((ku, kuIdx) => {
                     const eventName = eventsByKU[ku][i] || "";
-                    if (!masterAOA[i + 1]) masterAOA[i + 1] = Array(allKUs.length + 2).fill("");
                     masterAOA[i + 1][kuIdx + 2] = eventName;
                 });
             }
@@ -414,22 +412,21 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             const wsMaster = XLSX.utils.aoa_to_sheet(masterAOA);
             XLSX.utils.book_append_sheet(workbook, wsMaster, "DataMaster");
 
-            // --- NAMED RANGES (Dinamis untuk Dependent Dropdown) ---
-            // Excel Named Ranges tidak boleh ada spasi, jadi kita bersihkan
-            const sanitize = (name: string) => name.replace(/[^a-zA-Z0-9]/g, '_');
+            // --- NAMED RANGES (Excel logic for dependent dropdowns) ---
+            const sanitize = (name: string) => 'VAL_' + name.replace(/[^a-zA-Z0-9]/g, '_');
             
             if (!workbook.Workbook) workbook.Workbook = {};
             if (!workbook.Workbook.Names) workbook.Workbook.Names = [];
 
-            // 1. Range untuk Daftar KU
+            // 1. Range for KU List
             workbook.Workbook.Names.push({
-                name: "DAFTAR_KU",
+                name: "LIST_KU",
                 formula: `DataMaster!$A$2:$A$${allKUs.length + 1}`
             });
 
-            // 2. Range untuk setiap KU (untuk dependent dropdown)
+            // 2. Range for each category's events
             allKUs.forEach((ku, idx) => {
-                const colLetter = String.fromCharCode(67 + idx); // Start from 'C'
+                const colLetter = String.fromCharCode(67 + idx); // Column C, D, E...
                 const eventCount = eventsByKU[ku].length;
                 if (eventCount > 0) {
                     workbook.Workbook.Names.push({
@@ -443,46 +440,41 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             const maxRows = 500;
             if (!wsTemplate['!dataValidation']) wsTemplate['!dataValidation'] = [];
 
-            // Validation Jenis Kelamin (L/P)
+            // Gender
             wsTemplate['!dataValidation'].push({
                 sqref: `C2:C${maxRows}`,
                 opts: { type: 'list', formula1: '"L,P"', showDropDown: true }
             });
 
-            // Validation KU (Dinamis dari Named Range)
+            // KU (Primary Dropdown)
             wsTemplate['!dataValidation'].push({
                 sqref: `E2:E${maxRows}`,
                 opts: { 
                     type: 'list', 
-                    formula1: "DAFTAR_KU", 
+                    formula1: "LIST_KU", 
                     showDropDown: true,
-                    error: 'Pilih kategori yang tersedia di daftar.',
+                    error: 'Silakan pilih kategori yang terdaftar.',
                     errorTitle: 'Kategori Tidak Valid'
                 }
             });
 
-            // Validation Nomor Lomba (Dependent Dropdown menggunakan INDIRECT)
-            // Rumus: =INDIRECT(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(E2;" ";"_");"-";"_");"/";"_"))
-            // Namun karena kita sudah men-sanitize nama range di JS, kita gunakan formula yang cocok
-            // Note: Excel menggunakan koma atau titik koma tergantung locale, tapi XLSX biasanya pakai koma.
+            // Event Number (Dependent Dropdown using INDIRECT)
             wsTemplate['!dataValidation'].push({
                 sqref: `F2:F${maxRows}`,
                 opts: { 
                     type: 'list', 
-                    // Formula ini membersihkan input sel E (KU) agar cocok dengan sanitize kita di JS
-                    formula1: 'INDIRECT(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(E2," ","_"),"-","_"),"/","_"),".","_"))',
+                    // Excel formula to sanitize cell E value and look up the named range
+                    formula1: 'INDIRECT("VAL_"&SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(E2," ","_"),"-","_"),"/","_"),".","_"),"(","_"))',
                     showDropDown: true,
-                    error: 'Silakan pilih Nomor Lomba yang sesuai dengan KU yang Anda pilih.',
-                    errorTitle: 'Lomba Tidak Sesuai KU'
+                    error: 'Silakan pilih Nomor Lomba yang sesuai dengan KU.',
+                    errorTitle: 'Pilihan Tidak Sesuai'
                 }
             });
 
             XLSX.utils.book_append_sheet(workbook, wsTemplate, "Form Pendaftaran");
-            
-            // Move Form Pendaftaran to front
             workbook.SheetNames.reverse();
 
-            XLSX.writeFile(workbook, `Template_Pendaftaran_${competitionInfo?.eventName.split('\n')[0].replace(/\s+/g, '_')}.xlsx`);
+            XLSX.writeFile(workbook, `Template_Reg_${competitionInfo?.eventName.split('\n')[0].replace(/\s+/g, '_')}.xlsx`);
         } catch (err) {
             console.error("Gagal membuat template:", err);
             alert("Terjadi kesalahan saat membuat file template.");
@@ -720,7 +712,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                             <ul className="list-disc list-inside mt-2 font-medium">
                                                 <li>Dropdown Jenis Kelamin (L/P)</li>
                                                 <li>Dropdown KU sesuai pengaturan acara</li>
-                                                <li><strong>Kunci Otomatis:</strong> Kolom Nomor Lomba akan berubah otomatis menampilkan lomba yang sesuai dengan KU yang Anda pilih.</li>
+                                                <li><strong>Kunci Otomatis:</strong> Kolom Nomor Lomba akan dikunci dan hanya menampilkan lomba yang sesuai dengan KU yang Anda pilih.</li>
                                             </ul>
                                         </p>
                                         <Button onClick={handleDownloadTemplate} disabled={isDownloadingTemplate} variant="secondary" className="flex items-center gap-2">
@@ -735,7 +727,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                         <h3 className="text-lg font-bold">Isi Data & Unggah Kembali</h3>
                                     </div>
                                     <div className="p-4 border border-border rounded-lg bg-background">
-                                        <p className="text-sm text-text-secondary mb-4">Pastikan data nama atlet, tim, <strong>Jenis Kelamin (L/P)</strong>, <strong>KU</strong>, dan <strong>Nomor Lomba</strong> sudah sesuai dengan panduan di file Excel.</p>
+                                        <p className="text-sm text-text-secondary mb-4">Pastikan data nama atlet, tim, <strong>Jenis Kelamin (L/P)</strong>, <strong>KU</strong>, dan <strong>Nomor Lomba</strong> sudah sesuai dengan pilihan di template.</p>
                                         <div className="flex flex-col md:flex-row items-center gap-4">
                                             <input type="file" id="team-upload" accept=".xlsx, .xls" className="hidden" onChange={handleTeamFileChange} />
                                             <Button type="button" onClick={() => document.getElementById('team-upload')?.click()} variant="secondary">Pilih File Selesai</Button>

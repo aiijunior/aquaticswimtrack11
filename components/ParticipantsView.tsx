@@ -101,7 +101,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         const workbook = XLSX.utils.book_new();
 
         // 1. Persiapan Data untuk Dropdown Pintar
-        const allKUs = ageOptions;
+        const allKUs = [...ageOptions];
         const eventsByKU: Record<string, string[]> = {};
         allKUs.forEach(ku => {
             eventsByKU[ku] = events.filter(e => e.category === ku).map(e => formatEventName(e));
@@ -119,10 +119,10 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         ];
 
         // Masukkan event per kolom sesuai KU
-        const maxEventsCount = Math.max(...Object.values(eventsByKU).map(l => l.length));
+        const maxEventsCount = Math.max(...Object.values(eventsByKU).map(l => l.length), 1);
         for (let i = 0; i < maxEventsCount; i++) {
+            if (!masterAOA[i+1]) masterAOA[i+1] = Array(allKUs.length + 2).fill("");
             allKUs.forEach((ku, kIdx) => {
-                if (!masterAOA[i+1]) masterAOA[i+1] = Array(allKUs.length + 2).fill("");
                 masterAOA[i+1][kIdx + 2] = eventsByKU[ku][i] || "";
             });
         }
@@ -130,7 +130,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         XLSX.utils.book_append_sheet(workbook, wsMaster, "DataMaster");
 
         // 3. Named Ranges (Kunci untuk INDIRECT)
-        const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '_');
+        const sanitize = (s: string) => 'VAL_' + s.replace(/[^a-zA-Z0-9]/g, '_');
         if (!workbook.Workbook) workbook.Workbook = {};
         if (!workbook.Workbook.Names) workbook.Workbook.Names = [];
 
@@ -164,13 +164,14 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
             sqref: `F2:F${maxRows}`, 
             opts: { 
                 type: 'list', 
-                formula1: 'INDIRECT(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(E2," ","_"),"-","_"),"/","_"),".","_"))', 
+                // Excel formula yang membersihkan input sel E agar cocok dengan prefix VAL_ dan sanitasi underscore
+                formula1: 'INDIRECT("VAL_"&SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(E2," ","_"),"-","_"),"/","_"),".","_"),"(","_"))', 
                 showDropDown: true 
             } 
         });
 
         XLSX.utils.book_append_sheet(workbook, wsTemplate, "Template Pendaftaran");
-        XLSX.writeFile(workbook, "Template_Pendaftaran_Lomba_Cerdas.xlsx");
+        XLSX.writeFile(workbook, "Template_Pendaftaran_Lomba.xlsx");
 
     } catch(error) {
         console.error("Failed to generate template:", error);
@@ -282,7 +283,6 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
 
     try {
         const dataToExport = [];
-        // FIX: Explicitly typed the Map to ensure correct type inference for the swimmer object.
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
 
         for (const event of events) {
