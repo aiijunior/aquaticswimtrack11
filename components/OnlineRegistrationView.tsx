@@ -95,7 +95,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     }, [formData.paymentAmount, competitionInfo]);
 
     const selectedEventCount = useMemo(() => {
-        // FIX: Cast Object.values to any[] to avoid property access error on unknown type.
         return (Object.values(selectedEvents) as any[]).filter((e) => e.selected).length;
     }, [selectedEvents]);
 
@@ -133,7 +132,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     const handleEventSelectionChange = (eventId: string) => {
         const isCurrentlySelected = !!selectedEvents[eventId]?.selected;
         if (!isCurrentlySelected && selectedEventCount >= maxAllowedEvents && !competitionInfo?.isFree) {
-            alert(`Kuota pemilihan nomor sudah habis. Nominal transfer Rp ${parseInt(formData.paymentAmount).toLocaleString('id-ID')} hanya cukup untuk ${maxAllowedEvents} nomor lomba.`);
+            alert(`Kuota pemilihan nomor sudah habis sesuai nominal transfer Rp ${parseInt(formData.paymentAmount).toLocaleString('id-ID')}.`);
             return;
         }
 
@@ -161,9 +160,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         setError('');
         setIsSubmitting(true);
 
-        const registrationsToSubmit = Object.entries(selectedEvents)
-            .filter(([_, val]: any) => val.selected)
-            .map(([eventId, val]: any) => ({
+        const registrationsToSubmit = (Object.entries(selectedEvents) as [string, any][])
+            .filter(([_, val]) => val.selected)
+            .map(([eventId, val]) => ({
                 eventId,
                 seedTime: parseTimeToMs(val.time),
             }));
@@ -210,16 +209,14 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             }, {} as Record<string, SwimEvent[]>);
     }, [localEvents, formData.gender, formData.ageGroup]);
 
-    // Summary of selected events for the final step
     const summaryList = useMemo(() => {
-        // FIX: Casting Object.entries(selectedEvents) to [string, any][] to avoid property access error on unknown type.
         return (Object.entries(selectedEvents) as [string, any][])
             .filter(([_, val]) => val.selected)
             .map(([eventId, val]) => {
                 const event = localEvents.find(e => e.id === eventId);
                 return {
                     name: event ? formatEventName(event) : 'Unknown Event',
-                    time: `${val.time.min}:${val.time.sec}.${val.time.ms}`
+                    time: `${val.time.min.padStart(2, '0')}:${val.time.sec.padStart(2, '0')}.${val.time.ms.padEnd(2, '0').slice(0, 2)}`
                 };
             });
     }, [selectedEvents, localEvents]);
@@ -232,7 +229,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 <header className="text-center py-6">
                     {competitionInfo?.eventLogo && <img src={competitionInfo.eventLogo} alt="Logo" className="mx-auto h-20 mb-4" />}
                     <h1 className="text-3xl font-extrabold text-primary tracking-tight">{competitionInfo?.eventName.split('\n')[0]}</h1>
-                    <h3 className="text-xl font-bold mt-2 opacity-80 uppercase tracking-widest">Formulir Pendaftaran</h3>
+                    <h3 className="text-xl font-bold mt-2 opacity-80 uppercase tracking-widest">Pendaftaran Online</h3>
                 </header>
 
                 {regType === 'CHOICE' && (
@@ -279,7 +276,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                         <Card className="shadow-xl border-l-4 border-l-primary">
                             <h2 className="text-xl font-black mb-4 flex items-center gap-2">
                                 <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
-                                Informasi Pembayaran & Bukti Transfer
+                                Pembayaran & Bukti Transfer
                             </h2>
                             
                             {competitionInfo?.isFree ? (
@@ -294,36 +291,44 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                         <p className="text-sm font-bold uppercase text-primary mb-3">{competitionInfo?.recipientName || '-'}</p>
                                         
                                         <div className="pt-3 border-t border-border flex justify-between items-center">
-                                            <span className="text-xs font-bold text-text-secondary uppercase">Biaya Pendaftaran</span>
+                                            <span className="text-xs font-bold text-text-secondary uppercase tracking-tight">Biaya Pendaftaran</span>
                                             <span className="text-lg font-black text-text-primary">Rp {(competitionInfo?.feePerEvent || 0).toLocaleString('id-ID')} <span className="text-[10px] font-normal text-text-secondary">/ nomor</span></span>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        <div className="space-y-4">
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-black text-primary uppercase">1. Pratinjau Bukti Bayar (Klik gambar untuk zoom)</label>
+                                            <div className="w-full min-h-[400px] max-h-[600px] bg-background border-2 border-border rounded-xl flex items-center justify-center overflow-auto shadow-inner relative group">
+                                                {formData.paymentProof ? (
+                                                    <img 
+                                                        src={formData.paymentProof} 
+                                                        alt="Bukti Transfer" 
+                                                        className="max-w-full h-auto object-contain cursor-zoom-in transition-transform duration-300 group-hover:scale-[1.02]" 
+                                                        onClick={() => window.open(formData.paymentProof || '', '_blank')} 
+                                                    />
+                                                ) : (
+                                                    <div className="text-center p-10">
+                                                        <svg className="mx-auto h-16 w-16 text-text-secondary opacity-20 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                        </svg>
+                                                        <p className="text-sm text-text-secondary opacity-50 font-bold uppercase tracking-widest">Silakan Unggah Bukti Bayar Dahulu</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-2">
-                                                <label className="block text-sm font-bold text-text-secondary uppercase">1. Unggah Bukti Bayar</label>
-                                                <div className="relative border-2 border-dashed border-border rounded-xl p-4 bg-background/50 hover:bg-primary/5 transition-all text-center">
+                                                <label className="block text-sm font-bold text-text-secondary uppercase">2. Unggah / Ganti File</label>
+                                                <div className="relative border-2 border-dashed border-primary/40 rounded-xl p-6 bg-primary/5 hover:bg-primary/10 transition-all text-center">
                                                     <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required />
-                                                    {formData.paymentProof ? (
-                                                        <div className="flex flex-col items-center">
-                                                            <span className="text-green-500 text-3xl mb-1">✓</span>
-                                                            <p className="text-xs font-black text-green-600">File Berhasil Dipilih</p>
-                                                            <p className="text-[10px] text-text-secondary mt-1 italic">Klik untuk ganti</p>
-                                                        </div>
-                                                    ) : (
-                                                        <div>
-                                                            <svg className="mx-auto h-8 w-8 text-text-secondary opacity-50 mb-2" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                                                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                            </svg>
-                                                            <p className="text-[10px] font-bold text-text-secondary uppercase">Klik Untuk Unggah Gambar</p>
-                                                        </div>
-                                                    )}
+                                                    <p className="text-xs font-black text-primary uppercase">{formData.paymentProof ? '✓ Ganti Bukti Bayar' : 'Klik Untuk Unggah Bukti'}</p>
                                                 </div>
                                             </div>
 
                                             <div className="space-y-2">
-                                                <label className="block text-sm font-bold text-text-secondary uppercase">2. Masukkan Nominal Transfer (Rp)</label>
+                                                <label className="block text-sm font-bold text-text-secondary uppercase tracking-tight">3. Masukkan Nominal Yang Ditransfer (Rp)</label>
                                                 <Input 
                                                     label="" 
                                                     id="paymentAmount" 
@@ -331,21 +336,11 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                                     type="number" 
                                                     value={formData.paymentAmount} 
                                                     onChange={handleFormChange} 
-                                                    placeholder="Lihat angka pada bukti bayar Anda"
+                                                    placeholder="Ketik nominal persis sesuai bukti di atas"
                                                     required 
+                                                    className="text-xl font-bold"
                                                 />
-                                                <p className="text-[10px] text-text-secondary italic">Ketik nominal sesuai yang tertera pada bukti transfer.</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-bold text-text-secondary uppercase">Pratinjau Bukti Bayar</label>
-                                            <div className="w-full h-48 bg-background border border-border rounded-xl flex items-center justify-center overflow-hidden shadow-inner">
-                                                {formData.paymentProof ? (
-                                                    <img src={formData.paymentProof} alt="Bukti Transfer" className="max-h-full max-w-full object-contain cursor-zoom-in" onClick={() => window.open(formData.paymentProof || '', '_blank')} />
-                                                ) : (
-                                                    <p className="text-xs text-text-secondary opacity-50 px-8 text-center italic">Unggah bukti bayar di sebelah kiri untuk melihat pratinjau di sini</p>
-                                                )}
+                                                <p className="text-[10px] text-text-secondary italic">Lihat angka pada pratinjau bukti bayar di atas untuk mengisi nominal ini.</p>
                                             </div>
                                         </div>
                                     </div>
@@ -355,45 +350,45 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
                         {/* LANGKAH 3: PILIH NOMOR LOMBA */}
                         <Card className="shadow-xl">
-                            <div className="flex justify-between items-end mb-4 border-b border-border pb-4">
+                            <div className="flex justify-between items-center mb-6 border-b border-border pb-4">
                                 <h2 className="text-xl font-black flex items-center gap-2">
                                     <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
                                     Pilih Nomor Lomba
                                 </h2>
                                 {!competitionInfo?.isFree && formData.paymentAmount && (
-                                    <div className="text-right">
-                                        <p className="text-[10px] font-bold text-text-secondary uppercase">Sisa Kuota</p>
-                                        <p className={`text-xl font-black ${maxAllowedEvents - selectedEventCount === 0 ? 'text-red-500' : 'text-primary'}`}>
-                                            {maxAllowedEvents - selectedEventCount} <span className="text-xs font-normal">nomor lagi</span>
+                                    <div className="text-right bg-primary/10 px-4 py-2 rounded-xl border border-primary/20">
+                                        <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Sisa Kuota Pilihan</p>
+                                        <p className={`text-2xl font-black ${maxAllowedEvents - selectedEventCount === 0 ? 'text-red-500' : 'text-primary'}`}>
+                                            {maxAllowedEvents - selectedEventCount} <span className="text-xs font-normal">nomor</span>
                                         </p>
                                     </div>
                                 )}
                             </div>
 
                             {!formData.ageGroup ? (
-                                <div className="text-center py-8 bg-yellow-50 rounded-lg border border-yellow-200">
+                                <div className="text-center py-12 bg-yellow-50 rounded-2xl border border-yellow-200">
                                     <p className="text-yellow-700 font-bold">⚠️ Harap pilih Kelompok Umur di Langkah 1</p>
                                 </div>
                             ) : !isPaymentStepValid ? (
-                                <div className="text-center py-8 bg-red-50 rounded-lg border border-red-200">
+                                <div className="text-center py-12 bg-red-50 rounded-2xl border border-red-200">
                                     <p className="text-red-700 font-bold">⚠️ Harap lengkapi Bukti Bayar & Nominal di Langkah 2</p>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
                                     {Object.entries(groupedAvailableEvents).map(([style, eventsInStyle]: any) => (
-                                        <div key={style} className="border border-border rounded-xl overflow-hidden shadow-sm">
-                                            <button type="button" onClick={() => handleAccordionToggle(style)} className="w-full flex justify-between p-4 bg-surface hover:bg-primary/5 transition-colors">
+                                        <div key={style} className="border border-border rounded-2xl overflow-hidden shadow-sm">
+                                            <button type="button" onClick={() => handleAccordionToggle(style)} className="w-full flex justify-between p-5 bg-surface hover:bg-primary/5 transition-colors">
                                                 <h3 className="font-black text-text-primary uppercase text-sm tracking-widest">{translateSwimStyle(style as SwimStyle)}</h3>
                                                 <ChevronDownIcon isOpen={openAccordion === style} />
                                             </button>
                                             {openAccordion === style && (
-                                                <div className="p-4 space-y-4 bg-background/30 border-t border-border">
+                                                <div className="p-5 space-y-5 bg-background/30 border-t border-border">
                                                     {eventsInStyle.map((event: SwimEvent) => {
                                                         const isSelected = !!selectedEvents[event.id]?.selected;
                                                         const isLocked = !isSelected && selectedEventCount >= maxAllowedEvents && !competitionInfo?.isFree;
                                                         
                                                         return (
-                                                            <div key={event.id} className={`flex flex-col border-b border-border last:border-0 pb-4 last:pb-0 ${isLocked ? 'opacity-40 grayscale' : ''}`}>
+                                                            <div key={event.id} className={`flex flex-col border-b border-border last:border-0 pb-5 last:pb-0 ${isLocked ? 'opacity-40 grayscale' : ''}`}>
                                                                 <div className="flex items-center">
                                                                     <input 
                                                                         type="checkbox" 
@@ -401,16 +396,19 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                                                         checked={isSelected} 
                                                                         onChange={() => handleEventSelectionChange(event.id)} 
                                                                         disabled={isLocked}
-                                                                        className="h-6 w-6 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" 
+                                                                        className="h-7 w-7 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer transition-transform active:scale-90" 
                                                                     />
-                                                                    <label htmlFor={`check-${event.id}`} className={`ml-3 font-bold text-text-primary cursor-pointer flex-grow ${isSelected ? 'text-primary' : ''}`}>
+                                                                    <label htmlFor={`check-${event.id}`} className={`ml-4 font-bold text-text-primary cursor-pointer flex-grow text-lg ${isSelected ? 'text-primary' : ''}`}>
                                                                         {formatEventName(event)}
-                                                                        {isLocked && <span className="ml-2 text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded font-black">KUOTA HABIS</span>}
+                                                                        {isLocked && <span className="ml-3 text-[10px] bg-red-100 text-red-600 px-3 py-1 rounded-full font-black tracking-tighter">KUOTA HABIS</span>}
                                                                     </label>
                                                                 </div>
                                                                 {isSelected && (
-                                                                    <div className="mt-4 ml-9 bg-surface p-4 rounded-xl border border-primary/20 grid grid-cols-3 gap-3 animate-in slide-in-from-left-2">
-                                                                        <div className="col-span-3 mb-1"><p className="text-[10px] font-black uppercase text-text-secondary italic">Input Waktu Unggulan (Seed Time)</p></div>
+                                                                    <div className="mt-5 ml-11 bg-surface p-5 rounded-2xl border border-primary/20 grid grid-cols-3 gap-4 animate-in slide-in-from-left-4 duration-300">
+                                                                        <div className="col-span-3 mb-1 flex items-center gap-2">
+                                                                            <span className="text-primary">⏱</span>
+                                                                            <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest italic">Waktu Unggulan (Seed Time)</p>
+                                                                        </div>
                                                                         <Input label="Menit" type="number" min="0" value={selectedEvents[event.id].time.min} onChange={e => handleTimeChange(event.id, 'min', e.target.value)} />
                                                                         <Input label="Detik" type="number" min="0" max="59" value={selectedEvents[event.id].time.sec} onChange={e => handleTimeChange(event.id, 'sec', e.target.value)} />
                                                                         <Input label="ss/100" type="number" min="0" max="99" value={selectedEvents[event.id].time.ms} onChange={e => handleTimeChange(event.id, 'ms', e.target.value)} />
@@ -424,7 +422,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                         </div>
                                     ))}
                                     {Object.keys(groupedAvailableEvents).length === 0 && (
-                                        <p className="text-center py-10 text-text-secondary italic">Mohon maaf, tidak ada nomor lomba yang tersedia untuk kategori ini.</p>
+                                        <p className="text-center py-12 text-text-secondary italic">Mohon maaf, tidak ada nomor lomba yang tersedia untuk kategori ini.</p>
                                     )}
                                 </div>
                             )}
@@ -432,51 +430,67 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
                         {/* LANGKAH 4: RINGKASAN PENDAFTARAN */}
                         {selectedEventCount > 0 && (
-                            <Card className="shadow-xl bg-primary/5 border-primary/20 border-2">
-                                <h2 className="text-xl font-black mb-4 flex items-center gap-2">
-                                    <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">4</span>
+                            <Card className="shadow-2xl bg-gradient-to-br from-primary/10 to-transparent border-primary/30 border-2 rounded-3xl">
+                                <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
+                                    <span className="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-lg">4</span>
                                     Ringkasan Pendaftaran
                                 </h2>
-                                <div className="space-y-2">
-                                    <p className="text-xs font-bold text-text-secondary uppercase mb-2">Daftar Nomor Lomba Terpilih:</p>
-                                    {summaryList.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between items-center bg-surface p-3 rounded-lg border border-border shadow-sm">
-                                            <span className="font-bold text-sm text-text-primary">{item.name}</span>
-                                            <span className="font-mono text-xs bg-background px-2 py-1 rounded border border-border">Waktu: {item.time}</span>
+                                <div className="space-y-3">
+                                    <p className="text-xs font-black text-text-secondary uppercase tracking-widest mb-4">Nomor Lomba Yang Diikuti:</p>
+                                    <div className="space-y-2">
+                                        {summaryList.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between items-center bg-surface/80 backdrop-blur-sm p-4 rounded-2xl border border-border shadow-sm hover:border-primary/40 transition-colors">
+                                                <span className="font-black text-sm text-text-primary tracking-tight">{item.name}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] text-text-secondary font-bold uppercase">Waktu:</span>
+                                                    <span className="font-mono text-sm bg-primary/5 text-primary font-black px-3 py-1 rounded-lg border border-primary/10">{item.time}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-8 pt-6 border-t border-dashed border-primary/30 flex justify-between items-end">
+                                        <div>
+                                            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Total Atlet</p>
+                                            <p className="text-xl font-black text-text-primary tracking-tighter">{formData.name || '-'}</p>
                                         </div>
-                                    ))}
-                                    <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
-                                        <span className="font-black text-text-secondary uppercase text-xs">Total Pembayaran:</span>
-                                        <span className="text-lg font-black text-primary underline">Rp {parseInt(formData.paymentAmount || '0').toLocaleString('id-ID')}</span>
+                                        <div className="text-right">
+                                            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Total Bayar</p>
+                                            <p className="text-3xl font-black text-primary underline decoration-primary/20 underline-offset-8">Rp {parseInt(formData.paymentAmount || '0').toLocaleString('id-ID')}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </Card>
                         )}
 
-                        {error && <div className="p-4 bg-red-100 border border-red-300 text-red-700 rounded-xl font-black text-center animate-bounce">{error}</div>}
+                        {error && <div className="p-5 bg-red-100 border-2 border-red-300 text-red-700 rounded-2xl font-black text-center animate-bounce shadow-lg">{error}</div>}
                         
-                        <div className="pt-4">
+                        <div className="pt-6">
                             <Button 
                                 type="submit" 
                                 disabled={isSubmitting || !isFormValid} 
-                                className="w-full py-6 text-2xl font-black shadow-2xl rounded-2xl tracking-tighter transition-transform active:scale-95"
+                                className="w-full py-8 text-3xl font-black shadow-2xl rounded-3xl tracking-tighter transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-30"
                             >
-                                {isSubmitting ? <div className="flex items-center justify-center gap-3"><Spinner /> <span>Mengirim Data...</span></div> : 'KIRIM PENDAFTARAN SEKARANG'}
+                                {isSubmitting ? (
+                                    <div className="flex items-center justify-center gap-4">
+                                        <Spinner /> <span className="animate-pulse">MENGIRIM DATA...</span>
+                                    </div>
+                                ) : 'KIRIM PENDAFTARAN SEKARANG'}
                             </Button>
+                            <p className="text-center text-[10px] text-text-secondary mt-4 font-bold uppercase tracking-widest opacity-60">Pastikan data sudah benar sebelum mengirim</p>
                         </div>
                     </form>
                 )}
 
                 {successMessage && (
-                    <Card className="text-center p-12 shadow-2xl border-2 border-green-500 rounded-3xl animate-in zoom-in duration-500">
-                        <div className="bg-green-100 h-24 w-24 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-green-500 shadow-xl">
-                            <span className="text-green-500 text-6xl font-bold">✓</span>
+                    <Card className="text-center p-16 shadow-2xl border-4 border-green-500 rounded-[3rem] animate-in zoom-in duration-700 bg-white">
+                        <div className="bg-green-100 h-32 w-32 rounded-full flex items-center justify-center mx-auto mb-8 border-8 border-green-500 shadow-2xl animate-bounce">
+                            <span className="text-green-500 text-7xl font-bold">✓</span>
                         </div>
-                        <h2 className="text-3xl font-black text-text-primary mb-2 italic tracking-tighter">BERHASIL!</h2>
-                        <p className="text-lg text-text-secondary font-medium leading-relaxed">{successMessage}</p>
-                        <div className="mt-10 flex flex-col gap-4">
-                            <Button onClick={() => { setSuccessMessage(''); setRegType('CHOICE'); }} className="py-4 font-black text-lg">DAFTARKAN ATLET LAIN</Button>
-                            <Button variant="secondary" onClick={onBackToLogin}>KEMBALI KE BERANDA</Button>
+                        <h2 className="text-4xl font-black text-text-primary mb-4 italic tracking-tighter uppercase">BERHASIL!</h2>
+                        <p className="text-xl text-text-secondary font-medium leading-relaxed max-w-md mx-auto">{successMessage}</p>
+                        <div className="mt-12 flex flex-col gap-5">
+                            <Button onClick={() => { setSuccessMessage(''); setRegType('CHOICE'); }} className="py-6 font-black text-xl rounded-2xl shadow-xl">DAFTARKAN ATLET LAIN</Button>
+                            <Button variant="secondary" onClick={onBackToLogin} className="py-4 rounded-xl opacity-70 hover:opacity-100 transition-opacity">KEMBALI KE BERANDA</Button>
                         </div>
                     </Card>
                 )}

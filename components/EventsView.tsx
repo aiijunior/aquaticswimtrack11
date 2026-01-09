@@ -1,4 +1,3 @@
-
 // FIX: Casting uploadResult.errors to string[] to resolve the mapping over unknown error.
 import React, { useState, useMemo } from 'react';
 import type { SwimEvent } from '../types';
@@ -58,7 +57,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     distance: 100,
     style: SwimStyle.FREESTYLE,
     gender: Gender.MALE,
-    isRelay: false, // FIX: Provided initializer to fix shorthand property 'isRelay' error
+    isRelay: false, // Initializer provided
     relayLegs: 4,
     category: '',
   });
@@ -71,7 +70,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
   const [uploadResult, setUploadResult] = useState<{ success: number; errors: string[] } | null>(null);
 
   // Explicitly typed options for rendering to prevent type errors
-  // FIX: Removed redundant cast as types are now explicit in constants.ts
   const genderOptions: Gender[] = GENDER_OPTIONS;
   const styleOptions: SwimStyle[] = SWIM_STYLE_OPTIONS;
 
@@ -101,7 +99,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         return acc;
     }, {} as Record<number, SwimEvent[]>);
 
-    // This correctly infers the type of `sessionEvents` as `SwimEvent[]` for sorting.
+    // Sorting within sessions
     Object.values(grouped).forEach((sessionEvents: SwimEvent[]) => {
       sessionEvents.sort((a, b) => (a.heatOrder ?? 999) - (b.heatOrder ?? 999));
     });
@@ -708,8 +706,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {/* FIX: Cast errors to string[] to fix mapping over unknown type during compilation */}
-                                {(uploadResult.errors as string[]).map((err, i) => <li key={i}>{String(err)}</li>)}
+                                {/* FIX: Safely access errors after confirming uploadResult is not null */}
+                                {uploadResult.errors.map((err: string, i: number) => <li key={i}>{err}</li>)}
                             </ul>
                         </div>
                     )}
