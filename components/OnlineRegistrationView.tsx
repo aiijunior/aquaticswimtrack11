@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, FormattableEvent } from '../types';
-import { getEventsForRegistration, processOnlineRegistration } from '../services/databaseService';
+import { getEventsForRegistration, processOnlineRegistration, processCollectiveRegistration } from '../services/databaseService';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -9,6 +9,8 @@ import { Select } from './ui/Select';
 import { Spinner } from './ui/Spinner';
 import { formatEventName, toTitleCase, translateSwimStyle, AGE_GROUP_OPTIONS, formatTime } from '../constants';
 import { SwimStyle } from '../types';
+
+declare var XLSX: any;
 
 interface OnlineRegistrationViewProps {
     competitionInfo: CompetitionInfo | null;
@@ -55,6 +57,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     const [regType, setRegType] = useState<'CHOICE' | 'INDIVIDUAL' | 'TEAM'>('CHOICE');
     const [localEvents, setLocalEvents] = useState<SwimEvent[]>([]);
     const [isDataLoading, setIsDataLoading] = useState(true);
+    
+    // Individual form states
     const [formData, setFormData] = useState({
         name: '',
         birthYear: new Date().getFullYear() - 10,
@@ -65,6 +69,17 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         paymentAmount: '' as string
     });
     const [selectedEvents, setSelectedEvents] = useState<SelectedEvents>({});
+    
+    // Team form states
+    const [teamFormData, setTeamFormData] = useState({
+        clubName: '',
+        picName: '',
+        paymentProof: null as string | null,
+        paymentAmount: '' as string
+    });
+    const [teamParticipants, setTeamParticipants] = useState<any[]>([]);
+    const [isParsingExcel, setIsParsingExcel] = useState(false);
+
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState<React.ReactNode | string>('');
@@ -100,18 +115,19 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
     const isPaymentStepValid = useMemo(() => {
         if (competitionInfo?.isFree) return true;
-        return formData.paymentProof !== null && parseInt(formData.paymentAmount) >= (competitionInfo?.feePerEvent || 0);
-    }, [formData.paymentProof, formData.paymentAmount, competitionInfo]);
-
-    const isFormValid = useMemo(() => {
-        const hasPersonalInfo = formData.name.trim() !== '' && formData.club.trim() !== '' && formData.ageGroup !== '';
-        const hasSelectedEvent = selectedEventCount > 0 && selectedEventCount <= maxAllowedEvents;
-        return hasPersonalInfo && isPaymentStepValid && hasSelectedEvent;
-    }, [formData, selectedEventCount, maxAllowedEvents, isPaymentStepValid]);
+        const proof = regType === 'INDIVIDUAL' ? formData.paymentProof : teamFormData.paymentProof;
+        const amount = regType === 'INDIVIDUAL' ? formData.paymentAmount : teamFormData.paymentAmount;
+        return proof !== null && parseInt(amount) >= (competitionInfo?.feePerEvent || 0);
+    }, [formData, teamFormData, regType, competitionInfo]);
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: (name === 'name' || name === 'club') ? toTitleCase(value) : value }));
+    };
+
+    const handleTeamFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setTeamFormData(prev => ({ ...prev, [name]: (name === 'clubName' || name === 'picName') ? toTitleCase(value) : value }));
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,9 +135,165 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, paymentProof: reader.result as string }));
+                if (regType === 'INDIVIDUAL') {
+                    setFormData(prev => ({ ...prev, paymentProof: reader.result as string }));
+                } else {
+                    setTeamFormData(prev => ({ ...prev, paymentProof: reader.result as string }));
+                }
             };
             reader.readAsDataURL(file);
+        }
+    };
+
+    // Collective Registration Helpers
+    const downloadTeamTemplate = () => {
+        if (typeof XLSX === 'undefined') {
+            alert('Pustaka Excel belum termuat.');
+            return;
+        }
+
+        const workbook = XLSX.utils.book_new();
+        const allKUs = [...ageOptions];
+        const eventNames = localEvents.map(e => formatEventName(e));
+
+        const masterAOA = [
+            ["DAFTAR_KU", "DAFTAR_NOMOR_LOMBA"],
+            ...allKUs.map((ku, i) => [ku, eventNames[i] || ""])
+        ];
+        // Continue adding event names if there are more than KUs
+        if (eventNames.length > allKUs.length) {
+            for(let i = allKUs.length; i < eventNames.length; i++) {
+                masterAOA.push(["", eventNames[i]]);
+            }
+        }
+
+        const wsMaster = XLSX.utils.aoa_to_sheet(masterAOA);
+        XLSX.utils.book_append_sheet(workbook, wsMaster, "DataMaster");
+
+        const templateAOA = [
+            ["Nama Atlet", "Tahun Lahir", "Jenis Kelamin (L/P)", "KU", "Nomor Lomba", "Waktu Unggulan (mm:ss.SS)"],
+            ["CONTOH ATLET 1", 2012, "L", allKUs[0] || "", eventNames[0] || "", "01:15.50"],
+            ["CONTOH ATLET 2", 2013, "P", allKUs[0] || "", eventNames[0] || "", "00:45.00"]
+        ];
+        const wsTemplate = XLSX.utils.aoa_to_sheet(templateAOA);
+        wsTemplate['!cols'] = [{ wch: 30 }, { wch: 12 }, { wch: 18 }, { wch: 15 }, { wch: 45 }, { wch: 25 }];
+
+        const maxRows = 500;
+        if (!wsTemplate['!dataValidation']) wsTemplate['!dataValidation'] = [];
+        wsTemplate['!dataValidation'].push({ sqref: `C2:C${maxRows}`, opts: { type: 'list', formula1: '"L,P"' } });
+        wsTemplate['!dataValidation'].push({ sqref: `D2:D${maxRows}`, opts: { type: 'list', formula1: `DataMaster!$A$2:$A$${allKUs.length + 1}` } });
+        wsTemplate['!dataValidation'].push({ sqref: `E2:E${maxRows}`, opts: { type: 'list', formula1: `DataMaster!$B$2:$B$${eventNames.length + 1}` } });
+
+        XLSX.utils.book_append_sheet(workbook, wsTemplate, "Form Pendaftaran");
+        XLSX.writeFile(workbook, `Template_Kolektif_${teamFormData.clubName || 'Klub'}.xlsx`);
+    };
+
+    const handleTeamExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsParsingExcel(true);
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames.find(n => n.includes('Form')) || workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet);
+
+                const processed = json.map((row: any) => {
+                    const eventName = row["Nomor Lomba"];
+                    const event = localEvents.find(e => formatEventName(e) === eventName);
+                    
+                    // Parse time string "mm:ss.SS"
+                    let ms = 0;
+                    const timeStr = String(row["Waktu Unggulan (mm:ss.SS)"] || "99:99.99");
+                    if (timeStr.includes(':')) {
+                        const [min, rest] = timeStr.split(':');
+                        const [sec, centi] = rest.split('.');
+                        ms = (parseInt(min) * 60000) + (parseInt(sec) * 1000) + (parseInt(centi) * 10);
+                    }
+
+                    return {
+                        name: toTitleCase(String(row["Nama Atlet"] || "")),
+                        birthYear: parseInt(row["Tahun Lahir"]),
+                        gender: String(row["Jenis Kelamin (L/P)"]).toUpperCase() === 'L' ? 'L' : 'P',
+                        ageGroup: row["KU"],
+                        eventName: eventName,
+                        eventId: event?.id,
+                        seedTimeMs: ms,
+                        displayTime: timeStr
+                    };
+                }).filter(p => p.name && p.eventId);
+
+                setTeamParticipants(processed);
+                
+                // Auto calculate amount
+                const totalEvents = processed.length;
+                const totalCost = totalEvents * (competitionInfo?.feePerEvent || 0);
+                setTeamFormData(prev => ({ ...prev, paymentAmount: String(totalCost) }));
+
+            } catch (err) {
+                alert("Gagal memproses file Excel. Pastikan format kolom sesuai template.");
+            } finally {
+                setIsParsingExcel(false);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setIsSubmitting(true);
+
+        try {
+            if (regType === 'INDIVIDUAL') {
+                const registrationsToSubmit = (Object.entries(selectedEvents) as [string, any][])
+                    .filter(([_, val]) => val.selected)
+                    .map(([eventId, val]) => ({
+                        eventId,
+                        seedTime: parseTimeToMs(val.time),
+                    }));
+
+                const result = await processOnlineRegistration({
+                    name: formData.name,
+                    birthYear: formData.birthYear,
+                    gender: formData.gender,
+                    club: formData.club,
+                    ageGroup: formData.ageGroup,
+                    paymentProof: formData.paymentProof,
+                    paymentAmount: parseInt(formData.paymentAmount) || 0
+                }, registrationsToSubmit);
+
+                if (result.success) {
+                    setSuccessMessage(`Pendaftaran atlet ${formData.name} berhasil!`);
+                    onRegistrationSuccess();
+                } else {
+                    setError(result.message);
+                }
+            } else {
+                // TEAM SUBMISSION
+                if (teamParticipants.length === 0) throw new Error("Belum ada data atlet yang diunggah.");
+                
+                const result = await processCollectiveRegistration({
+                    clubName: teamFormData.clubName,
+                    picName: teamFormData.picName,
+                    paymentProof: teamFormData.paymentProof,
+                    paymentAmount: parseInt(teamFormData.paymentAmount) || 0
+                }, teamParticipants);
+
+                if (result.success) {
+                    setSuccessMessage(`Berhasil mendaftarkan tim ${teamFormData.clubName}!`);
+                    onRegistrationSuccess();
+                } else {
+                    setError(result.message);
+                }
+            }
+        } catch (err: any) {
+            setError(err.message || 'Terjadi kesalahan.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -153,45 +325,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 time: { ...prev[eventId].time, [part]: value },
             },
         }));
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setIsSubmitting(true);
-
-        const registrationsToSubmit = (Object.entries(selectedEvents) as [string, any][])
-            .filter(([_, val]) => val.selected)
-            .map(([eventId, val]) => ({
-                eventId,
-                seedTime: parseTimeToMs(val.time),
-            }));
-
-        const swimmerPayload = {
-            name: formData.name,
-            birthYear: formData.birthYear,
-            gender: formData.gender,
-            club: formData.club,
-            ageGroup: formData.ageGroup,
-            paymentProof: formData.paymentProof,
-            paymentAmount: parseInt(formData.paymentAmount) || 0
-        };
-
-        try {
-            const result = await processOnlineRegistration(swimmerPayload, registrationsToSubmit);
-            setIsSubmitting(false);
-            if (result.success) {
-                setSuccessMessage(`Pendaftaran untuk ${formData.name} berhasil dikirim!`);
-                onRegistrationSuccess();
-                setFormData({ name: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', club: '', ageGroup: '', paymentProof: null, paymentAmount: '' });
-                setSelectedEvents({});
-            } else {
-                setError(result.message);
-            }
-        } catch (err: any) {
-            setError(err.message || 'Terjadi kesalahan server.');
-            setIsSubmitting(false);
-        }
     };
 
     const groupedAvailableEvents = useMemo(() => {
@@ -234,232 +367,269 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
                 {regType === 'CHOICE' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                        <Card className="cursor-pointer hover:border-primary p-8 text-center transition-all hover:scale-105 group" onClick={() => setRegType('INDIVIDUAL')}>
-                            <UserIcon /><h3 className="text-2xl font-bold mt-4 group-hover:text-primary transition-colors">Pendaftaran Mandiri</h3>
-                            <p className="text-text-secondary mt-2 text-sm italic">Daftarkan atlet satu per satu</p>
+                        <Card className="cursor-pointer hover:border-primary p-8 text-center transition-all hover:scale-105 group shadow-xl" onClick={() => setRegType('INDIVIDUAL')}>
+                            <UserIcon /><h3 className="text-2xl font-black mt-4 group-hover:text-primary transition-colors">PENDAFTARAN MANDIRI</h3>
+                            <p className="text-text-secondary mt-2 text-sm italic">Daftarkan atlet satu per satu secara langsung</p>
                         </Card>
-                        <Card className="cursor-pointer hover:border-primary p-8 text-center transition-all hover:scale-105 group" onClick={() => setRegType('TEAM')}>
-                            <UserGroupIcon /><h3 className="text-2xl font-bold mt-4 group-hover:text-primary transition-colors">Pendaftaran Kolektif</h3>
-                            <p className="text-text-secondary mt-2 text-sm italic">Gunakan Excel untuk mendaftarkan tim besar</p>
+                        <Card className="cursor-pointer hover:border-primary p-8 text-center transition-all hover:scale-105 group shadow-xl" onClick={() => setRegType('TEAM')}>
+                            <UserGroupIcon /><h3 className="text-2xl font-black mt-4 group-hover:text-primary transition-colors">PENDAFTARAN KOLEKTIF</h3>
+                            <p className="text-text-secondary mt-2 text-sm italic">Gunakan Excel untuk mendaftarkan tim besar / klub</p>
                         </Card>
                     </div>
                 )}
 
-                {regType === 'INDIVIDUAL' && !successMessage && (
+                {regType !== 'CHOICE' && !successMessage && (
                     <form onSubmit={handleSubmit} className="space-y-6 pb-20">
                         <div className="flex justify-start">
-                            <Button variant="secondary" onClick={() => setRegType('CHOICE')}>&larr; Kembali ke Pilihan</Button>
+                            <Button variant="secondary" onClick={() => { setRegType('CHOICE'); setTeamParticipants([]); setSelectedEvents({}); }}>&larr; Kembali ke Pilihan</Button>
                         </div>
-                        
-                        {/* LANGKAH 1: PROFIL */}
-                        <Card className="shadow-xl">
-                            <h2 className="text-xl font-black mb-4 flex items-center gap-2">
-                                <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
-                                Profil Atlet
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Input label="Nama Lengkap" id="name" name="name" value={formData.name} onChange={handleFormChange} placeholder="Sesuai Akta Kelahiran" required />
-                                <Input label="Nama Tim / Klub" id="club" name="club" value={formData.club} onChange={handleFormChange} placeholder="Contoh: Sidoarjo Swim Club" required />
-                                <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={formData.birthYear} onChange={handleFormChange} required />
-                                <Select label="Jenis Kelamin" id="gender" name="gender" value={formData.gender} onChange={handleFormChange}>
-                                    <option value="Male">Laki-laki</option>
-                                    <option value="Female">Perempuan</option>
-                                </Select>
-                                <Select label="Kelompok Umur (KU)" id="ageGroup" name="ageGroup" value={formData.ageGroup} onChange={handleFormChange} required>
-                                    <option value="">-- Pilih KU --</option>
-                                    {ageOptions.map(ku => <option key={ku} value={ku}>{ku}</option>)}
-                                </Select>
-                            </div>
-                        </Card>
 
-                        {/* LANGKAH 2: PEMBAYARAN */}
-                        <Card className="shadow-xl border-l-4 border-l-primary">
-                            <h2 className="text-xl font-black mb-4 flex items-center gap-2">
-                                <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
-                                Pembayaran & Bukti Transfer
-                            </h2>
-                            
-                            {competitionInfo?.isFree ? (
-                                <div className="bg-green-100 p-4 rounded-md text-green-800 font-bold border border-green-200">
-                                    ✓ Kompetisi ini Gratis. Lanjutkan ke langkah berikutnya.
-                                </div>
-                            ) : (
-                                <div className="space-y-6">
-                                    <div className="bg-surface p-4 rounded-lg border border-primary/20 shadow-inner">
-                                        <p className="text-xs text-text-secondary uppercase font-bold tracking-widest mb-1">Rekening Tujuan</p>
-                                        <p className="text-2xl font-black text-text-primary tracking-tighter">{competitionInfo?.accountNumber || '-'}</p>
-                                        <p className="text-sm font-bold uppercase text-primary mb-3">{competitionInfo?.recipientName || '-'}</p>
-                                        
-                                        <div className="pt-3 border-t border-border flex justify-between items-center">
-                                            <span className="text-xs font-bold text-text-secondary uppercase tracking-tight">Biaya Pendaftaran</span>
-                                            <span className="text-lg font-black text-text-primary">Rp {(competitionInfo?.feePerEvent || 0).toLocaleString('id-ID')} <span className="text-[10px] font-normal text-text-secondary">/ nomor</span></span>
-                                        </div>
+                        {regType === 'INDIVIDUAL' ? (
+                            <>
+                                {/* INDIVIDUAL STEPS */}
+                                <Card className="shadow-xl">
+                                    <h2 className="text-xl font-black mb-4 flex items-center gap-2">
+                                        <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
+                                        Profil Atlet
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <Input label="Nama Lengkap" id="name" name="name" value={formData.name} onChange={handleFormChange} placeholder="Sesuai Akta Kelahiran" required />
+                                        <Input label="Nama Tim / Klub" id="club" name="club" value={formData.club} onChange={handleFormChange} placeholder="Contoh: Sidoarjo Swim Club" required />
+                                        <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={formData.birthYear} onChange={handleFormChange} required />
+                                        <Select label="Jenis Kelamin" id="gender" name="gender" value={formData.gender} onChange={handleFormChange}>
+                                            <option value="Male">Laki-laki</option>
+                                            <option value="Female">Perempuan</option>
+                                        </Select>
+                                        <Select label="Kelompok Umur (KU)" id="ageGroup" name="ageGroup" value={formData.ageGroup} onChange={handleFormChange} required>
+                                            <option value="">-- Pilih KU --</option>
+                                            {ageOptions.map(ku => <option key={ku} value={ku}>{ku}</option>)}
+                                        </Select>
+                                    </div>
+                                </Card>
+
+                                <Card className="shadow-xl border-l-4 border-l-primary">
+                                    <h2 className="text-xl font-black mb-4 flex items-center gap-2">
+                                        <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
+                                        Pembayaran & Bukti Transfer
+                                    </h2>
+                                    <PaymentSection 
+                                        info={competitionInfo} 
+                                        data={formData} 
+                                        onFileChange={handleFileChange} 
+                                        onAmountChange={handleFormChange} 
+                                    />
+                                </Card>
+
+                                <Card className="shadow-xl">
+                                    <div className="flex justify-between items-center mb-6 border-b border-border pb-4">
+                                        <h2 className="text-xl font-black flex items-center gap-2">
+                                            <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
+                                            Pilih Nomor Lomba
+                                        </h2>
+                                        {!competitionInfo?.isFree && formData.paymentAmount && (
+                                            <div className="text-right bg-primary/10 px-4 py-2 rounded-xl border border-primary/20">
+                                                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Sisa Kuota Pilihan</p>
+                                                <p className={`text-2xl font-black ${maxAllowedEvents - selectedEventCount === 0 ? 'text-red-500' : 'text-primary'}`}>
+                                                    {maxAllowedEvents - selectedEventCount} <span className="text-xs font-normal">nomor</span>
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    <div className="space-y-6">
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-black text-primary uppercase">1. Pratinjau Bukti Bayar (Klik gambar untuk zoom)</label>
-                                            <div className="w-full min-h-[400px] max-h-[600px] bg-background border-2 border-border rounded-xl flex items-center justify-center overflow-auto shadow-inner relative group">
-                                                {formData.paymentProof ? (
-                                                    <img 
-                                                        src={formData.paymentProof} 
-                                                        alt="Bukti Transfer" 
-                                                        className="max-w-full h-auto object-contain cursor-zoom-in transition-transform duration-300 group-hover:scale-[1.02]" 
-                                                        onClick={() => window.open(formData.paymentProof || '', '_blank')} 
-                                                    />
-                                                ) : (
-                                                    <div className="text-center p-10">
-                                                        <svg className="mx-auto h-16 w-16 text-text-secondary opacity-20 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                                                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                        </svg>
-                                                        <p className="text-sm text-text-secondary opacity-50 font-bold uppercase tracking-widest">Silakan Unggah Bukti Bayar Dahulu</p>
-                                                    </div>
-                                                )}
-                                            </div>
+                                    {!formData.ageGroup ? (
+                                        <div className="text-center py-12 bg-yellow-50 rounded-2xl border border-yellow-200">
+                                            <p className="text-yellow-700 font-bold">⚠️ Harap pilih Kelompok Umur di Langkah 1</p>
                                         </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <label className="block text-sm font-bold text-text-secondary uppercase">2. Unggah / Ganti File</label>
-                                                <div className="relative border-2 border-dashed border-primary/40 rounded-xl p-6 bg-primary/5 hover:bg-primary/10 transition-all text-center">
-                                                    <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required />
-                                                    <p className="text-xs font-black text-primary uppercase">{formData.paymentProof ? '✓ Ganti Bukti Bayar' : 'Klik Untuk Unggah Bukti'}</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <label className="block text-sm font-bold text-text-secondary uppercase tracking-tight">3. Masukkan Nominal Yang Ditransfer (Rp)</label>
-                                                <Input 
-                                                    label="" 
-                                                    id="paymentAmount" 
-                                                    name="paymentAmount" 
-                                                    type="number" 
-                                                    value={formData.paymentAmount} 
-                                                    onChange={handleFormChange} 
-                                                    placeholder="Ketik nominal persis sesuai bukti di atas"
-                                                    required 
-                                                    className="text-xl font-bold"
-                                                />
-                                                <p className="text-[10px] text-text-secondary italic">Lihat angka pada pratinjau bukti bayar di atas untuk mengisi nominal ini.</p>
-                                            </div>
+                                    ) : !isPaymentStepValid ? (
+                                        <div className="text-center py-12 bg-red-50 rounded-2xl border border-red-200">
+                                            <p className="text-red-700 font-bold">⚠️ Harap lengkapi Bukti Bayar & Nominal di Langkah 2</p>
                                         </div>
-                                    </div>
-                                </div>
-                            )}
-                        </Card>
-
-                        {/* LANGKAH 3: PILIH NOMOR LOMBA */}
-                        <Card className="shadow-xl">
-                            <div className="flex justify-between items-center mb-6 border-b border-border pb-4">
-                                <h2 className="text-xl font-black flex items-center gap-2">
-                                    <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
-                                    Pilih Nomor Lomba
-                                </h2>
-                                {!competitionInfo?.isFree && formData.paymentAmount && (
-                                    <div className="text-right bg-primary/10 px-4 py-2 rounded-xl border border-primary/20">
-                                        <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Sisa Kuota Pilihan</p>
-                                        <p className={`text-2xl font-black ${maxAllowedEvents - selectedEventCount === 0 ? 'text-red-500' : 'text-primary'}`}>
-                                            {maxAllowedEvents - selectedEventCount} <span className="text-xs font-normal">nomor</span>
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {!formData.ageGroup ? (
-                                <div className="text-center py-12 bg-yellow-50 rounded-2xl border border-yellow-200">
-                                    <p className="text-yellow-700 font-bold">⚠️ Harap pilih Kelompok Umur di Langkah 1</p>
-                                </div>
-                            ) : !isPaymentStepValid ? (
-                                <div className="text-center py-12 bg-red-50 rounded-2xl border border-red-200">
-                                    <p className="text-red-700 font-bold">⚠️ Harap lengkapi Bukti Bayar & Nominal di Langkah 2</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    {Object.entries(groupedAvailableEvents).map(([style, eventsInStyle]: any) => (
-                                        <div key={style} className="border border-border rounded-2xl overflow-hidden shadow-sm">
-                                            <button type="button" onClick={() => handleAccordionToggle(style)} className="w-full flex justify-between p-5 bg-surface hover:bg-primary/5 transition-colors">
-                                                <h3 className="font-black text-text-primary uppercase text-sm tracking-widest">{translateSwimStyle(style as SwimStyle)}</h3>
-                                                <ChevronDownIcon isOpen={openAccordion === style} />
-                                            </button>
-                                            {openAccordion === style && (
-                                                <div className="p-5 space-y-5 bg-background/30 border-t border-border">
-                                                    {eventsInStyle.map((event: SwimEvent) => {
-                                                        const isSelected = !!selectedEvents[event.id]?.selected;
-                                                        const isLocked = !isSelected && selectedEventCount >= maxAllowedEvents && !competitionInfo?.isFree;
-                                                        
-                                                        return (
-                                                            <div key={event.id} className={`flex flex-col border-b border-border last:border-0 pb-5 last:pb-0 ${isLocked ? 'opacity-40 grayscale' : ''}`}>
-                                                                <div className="flex items-center">
-                                                                    <input 
-                                                                        type="checkbox" 
-                                                                        id={`check-${event.id}`}
-                                                                        checked={isSelected} 
-                                                                        onChange={() => handleEventSelectionChange(event.id)} 
-                                                                        disabled={isLocked}
-                                                                        className="h-7 w-7 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer transition-transform active:scale-90" 
-                                                                    />
-                                                                    <label htmlFor={`check-${event.id}`} className={`ml-4 font-bold text-text-primary cursor-pointer flex-grow text-lg ${isSelected ? 'text-primary' : ''}`}>
-                                                                        {formatEventName(event)}
-                                                                        {isLocked && <span className="ml-3 text-[10px] bg-red-100 text-red-600 px-3 py-1 rounded-full font-black tracking-tighter">KUOTA HABIS</span>}
-                                                                    </label>
-                                                                </div>
-                                                                {isSelected && (
-                                                                    <div className="mt-5 ml-11 bg-surface p-5 rounded-2xl border border-primary/20 grid grid-cols-3 gap-4 animate-in slide-in-from-left-4 duration-300">
-                                                                        <div className="col-span-3 mb-1 flex items-center gap-2">
-                                                                            <span className="text-primary">⏱</span>
-                                                                            <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest italic">Waktu Unggulan (Seed Time)</p>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {Object.entries(groupedAvailableEvents).map(([style, eventsInStyle]: any) => (
+                                                <div key={style} className="border border-border rounded-2xl overflow-hidden shadow-sm">
+                                                    <button type="button" onClick={() => handleAccordionToggle(style)} className="w-full flex justify-between p-5 bg-surface hover:bg-primary/5 transition-colors">
+                                                        <h3 className="font-black text-text-primary uppercase text-sm tracking-widest">{translateSwimStyle(style as SwimStyle)}</h3>
+                                                        <ChevronDownIcon isOpen={openAccordion === style} />
+                                                    </button>
+                                                    {openAccordion === style && (
+                                                        <div className="p-5 space-y-5 bg-background/30 border-t border-border">
+                                                            {eventsInStyle.map((event: SwimEvent) => {
+                                                                const isSelected = !!selectedEvents[event.id]?.selected;
+                                                                const isLocked = !isSelected && selectedEventCount >= maxAllowedEvents && !competitionInfo?.isFree;
+                                                                
+                                                                return (
+                                                                    <div key={event.id} className={`flex flex-col border-b border-border last:border-0 pb-5 last:pb-0 ${isLocked ? 'opacity-40 grayscale' : ''}`}>
+                                                                        <div className="flex items-center">
+                                                                            <input 
+                                                                                type="checkbox" 
+                                                                                id={`check-${event.id}`}
+                                                                                checked={isSelected} 
+                                                                                onChange={() => handleEventSelectionChange(event.id)} 
+                                                                                disabled={isLocked}
+                                                                                className="h-7 w-7 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" 
+                                                                            />
+                                                                            <label htmlFor={`check-${event.id}`} className={`ml-4 font-bold text-text-primary cursor-pointer flex-grow text-lg ${isSelected ? 'text-primary' : ''}`}>
+                                                                                {formatEventName(event)}
+                                                                                {isLocked && <span className="ml-3 text-[10px] bg-red-100 text-red-600 px-3 py-1 rounded-full font-black tracking-tighter">KUOTA HABIS</span>}
+                                                                            </label>
                                                                         </div>
-                                                                        <Input label="Menit" type="number" min="0" value={selectedEvents[event.id].time.min} onChange={e => handleTimeChange(event.id, 'min', e.target.value)} />
-                                                                        <Input label="Detik" type="number" min="0" max="59" value={selectedEvents[event.id].time.sec} onChange={e => handleTimeChange(event.id, 'sec', e.target.value)} />
-                                                                        <Input label="ss/100" type="number" min="0" max="99" value={selectedEvents[event.id].time.ms} onChange={e => handleTimeChange(event.id, 'ms', e.target.value)} />
+                                                                        {isSelected && (
+                                                                            <div className="mt-5 ml-11 bg-surface p-5 rounded-2xl border border-primary/20 grid grid-cols-3 gap-4 animate-in slide-in-from-left-4 duration-300">
+                                                                                <div className="col-span-3 mb-1 flex items-center gap-2">
+                                                                                    <span className="text-primary">⏱</span>
+                                                                                    <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest italic">Waktu Unggulan (Seed Time)</p>
+                                                                                </div>
+                                                                                <Input label="Menit" type="number" min="0" value={selectedEvents[event.id].time.min} onChange={e => handleTimeChange(event.id, 'min', e.target.value)} />
+                                                                                <Input label="Detik" type="number" min="0" max="59" value={selectedEvents[event.id].time.sec} onChange={e => handleTimeChange(event.id, 'sec', e.target.value)} />
+                                                                                <Input label="ss/100" type="number" min="0" max="99" value={selectedEvents[event.id].time.ms} onChange={e => handleTimeChange(event.id, 'ms', e.target.value)} />
+                                                                            </div>
+                                                                        )}
                                                                     </div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
+                                            ))}
                                         </div>
-                                    ))}
-                                    {Object.keys(groupedAvailableEvents).length === 0 && (
-                                        <p className="text-center py-12 text-text-secondary italic">Mohon maaf, tidak ada nomor lomba yang tersedia untuk kategori ini.</p>
                                     )}
-                                </div>
-                            )}
-                        </Card>
+                                </Card>
 
-                        {/* LANGKAH 4: RINGKASAN PENDAFTARAN */}
-                        {selectedEventCount > 0 && (
-                            <Card className="shadow-2xl bg-gradient-to-br from-primary/10 to-transparent border-primary/30 border-2 rounded-3xl">
-                                <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
-                                    <span className="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-lg">4</span>
-                                    Ringkasan Pendaftaran
-                                </h2>
-                                <div className="space-y-3">
-                                    <p className="text-xs font-black text-text-secondary uppercase tracking-widest mb-4">Nomor Lomba Yang Diikuti:</p>
-                                    <div className="space-y-2">
-                                        {summaryList.map((item, idx) => (
-                                            <div key={idx} className="flex justify-between items-center bg-surface/80 backdrop-blur-sm p-4 rounded-2xl border border-border shadow-sm hover:border-primary/40 transition-colors">
-                                                <span className="font-black text-sm text-text-primary tracking-tight">{item.name}</span>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[10px] text-text-secondary font-bold uppercase">Waktu:</span>
-                                                    <span className="font-mono text-sm bg-primary/5 text-primary font-black px-3 py-1 rounded-lg border border-primary/10">{item.time}</span>
+                                {selectedEventCount > 0 && (
+                                    <Card className="shadow-2xl bg-gradient-to-br from-primary/10 to-transparent border-primary/30 border-2 rounded-3xl">
+                                        <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
+                                            <span className="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-lg">4</span>
+                                            Ringkasan Pendaftaran
+                                        </h2>
+                                        <div className="space-y-3">
+                                            <p className="text-xs font-black text-text-secondary uppercase tracking-widest mb-4">Nomor Lomba Yang Diikuti:</p>
+                                            <div className="space-y-2">
+                                                {summaryList.map((item, idx) => (
+                                                    <div key={idx} className="flex justify-between items-center bg-surface/80 backdrop-blur-sm p-4 rounded-2xl border border-border shadow-sm hover:border-primary/40 transition-colors">
+                                                        <span className="font-black text-sm text-text-primary tracking-tight">{item.name}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] text-text-secondary font-bold uppercase">Waktu:</span>
+                                                            <span className="font-mono text-sm bg-primary/5 text-primary font-black px-3 py-1 rounded-lg border border-primary/10">{item.time}</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="mt-8 pt-6 border-t border-dashed border-primary/30 flex justify-between items-end">
+                                                <div>
+                                                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Total Atlet</p>
+                                                    <p className="text-xl font-black text-text-primary tracking-tighter">{formData.name || '-'}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Total Bayar</p>
+                                                    <p className="text-3xl font-black text-primary underline decoration-primary/20 underline-offset-8">Rp {parseInt(formData.paymentAmount || '0').toLocaleString('id-ID')}</p>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                    <div className="mt-8 pt-6 border-t border-dashed border-primary/30 flex justify-between items-end">
-                                        <div>
-                                            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Total Atlet</p>
-                                            <p className="text-xl font-black text-text-primary tracking-tighter">{formData.name || '-'}</p>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Total Bayar</p>
-                                            <p className="text-3xl font-black text-primary underline decoration-primary/20 underline-offset-8">Rp {parseInt(formData.paymentAmount || '0').toLocaleString('id-ID')}</p>
+                                    </Card>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                {/* TEAM STEPS */}
+                                <Card className="shadow-xl">
+                                    <h2 className="text-xl font-black mb-4 flex items-center gap-2">
+                                        <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
+                                        Unggah Berkas Pendaftaran (Excel)
+                                    </h2>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <Input label="Nama Klub / Tim" id="clubName" name="clubName" value={teamFormData.clubName} onChange={handleTeamFormChange} placeholder="Contoh: Millenium Aquatic" required />
+                                            <Input label="Nama PIC / Penanggung Jawab" id="picName" name="picName" value={teamFormData.picName} onChange={handleTeamFormChange} placeholder="Nama Anda" required />
                                         </div>
+                                        
+                                        <div className="bg-surface p-6 rounded-2xl border-2 border-dashed border-border text-center space-y-4">
+                                            <p className="text-sm text-text-secondary">Silakan unduh template Excel kami, isi data atlet Anda, lalu unggah kembali di sini.</p>
+                                            <div className="flex flex-wrap justify-center gap-4">
+                                                <Button variant="secondary" onClick={downloadTeamTemplate}>UNDUH TEMPLATE EXCEL</Button>
+                                                <div className="relative">
+                                                    <Button disabled={isParsingExcel || !teamFormData.clubName}>
+                                                        {isParsingExcel ? <Spinner /> : 'UNGGAH BERKAS TERISI'}
+                                                    </Button>
+                                                    <input 
+                                                        type="file" 
+                                                        accept=".xlsx, .xls" 
+                                                        onChange={handleTeamExcelUpload} 
+                                                        className="absolute inset-0 opacity-0 cursor-pointer" 
+                                                        disabled={isParsingExcel || !teamFormData.clubName}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {teamParticipants.length > 0 && (
+                                            <div className="mt-6 animate-in slide-in-from-top-4">
+                                                <p className="text-xs font-black text-primary uppercase mb-2">Pratinjau Data Atlet ({teamParticipants.length} Entri):</p>
+                                                <div className="max-h-60 overflow-y-auto border border-border rounded-xl">
+                                                    <table className="w-full text-left text-xs">
+                                                        <thead className="bg-background sticky top-0">
+                                                            <tr>
+                                                                <th className="p-2">Nama</th>
+                                                                <th className="p-2">Tahun</th>
+                                                                <th className="p-2">KU</th>
+                                                                <th className="p-2">Nomor</th>
+                                                                <th className="p-2">Waktu</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {teamParticipants.map((p, i) => (
+                                                                <tr key={i} className="border-t border-border hover:bg-primary/5">
+                                                                    <td className="p-2 font-bold">{p.name}</td>
+                                                                    <td className="p-2">{p.birthYear}</td>
+                                                                    <td className="p-2">{p.ageGroup}</td>
+                                                                    <td className="p-2 truncate max-w-[150px]">{p.eventName}</td>
+                                                                    <td className="p-2 font-mono">{p.displayTime}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            </Card>
+                                </Card>
+
+                                <Card className="shadow-xl border-l-4 border-l-primary">
+                                    <h2 className="text-xl font-black mb-4 flex items-center gap-2">
+                                        <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
+                                        Pembayaran & Bukti Transfer
+                                    </h2>
+                                    <PaymentSection 
+                                        info={competitionInfo} 
+                                        data={teamFormData} 
+                                        onFileChange={handleFileChange} 
+                                        onAmountChange={handleTeamFormChange} 
+                                    />
+                                </Card>
+
+                                {teamParticipants.length > 0 && (
+                                    <Card className="shadow-2xl bg-gradient-to-br from-primary/10 to-transparent border-primary/30 border-2 rounded-3xl">
+                                        <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
+                                            <span className="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-lg">3</span>
+                                            Ringkasan Kolektif
+                                        </h2>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            <div className="p-4 bg-surface rounded-2xl border border-border shadow-sm">
+                                                <p className="text-[10px] font-black text-text-secondary uppercase">Jumlah Atlet</p>
+                                                <p className="text-2xl font-black text-primary">{new Set(teamParticipants.map(p => p.name)).size}</p>
+                                            </div>
+                                            <div className="p-4 bg-surface rounded-2xl border border-border shadow-sm">
+                                                <p className="text-[10px] font-black text-text-secondary uppercase">Total Nomor</p>
+                                                <p className="text-2xl font-black text-primary">{teamParticipants.length}</p>
+                                            </div>
+                                            <div className="col-span-2 p-4 bg-surface rounded-2xl border border-primary/20 shadow-sm text-right">
+                                                <p className="text-[10px] font-black text-text-secondary uppercase">Total Wajib Bayar</p>
+                                                <p className="text-3xl font-black text-primary tracking-tighter">Rp {parseInt(teamFormData.paymentAmount || '0').toLocaleString('id-ID')}</p>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                )}
+                            </>
                         )}
 
                         {error && <div className="p-5 bg-red-100 border-2 border-red-300 text-red-700 rounded-2xl font-black text-center animate-bounce shadow-lg">{error}</div>}
@@ -467,7 +637,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                         <div className="pt-6">
                             <Button 
                                 type="submit" 
-                                disabled={isSubmitting || !isFormValid} 
+                                disabled={isSubmitting || !isPaymentStepValid || (regType === 'TEAM' && teamParticipants.length === 0) || (regType === 'INDIVIDUAL' && selectedEventCount === 0)} 
                                 className="w-full py-8 text-3xl font-black shadow-2xl rounded-3xl tracking-tighter transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-30"
                             >
                                 {isSubmitting ? (
@@ -476,7 +646,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                     </div>
                                 ) : 'KIRIM PENDAFTARAN SEKARANG'}
                             </Button>
-                            <p className="text-center text-[10px] text-text-secondary mt-4 font-bold uppercase tracking-widest opacity-60">Pastikan data sudah benar sebelum mengirim</p>
                         </div>
                     </form>
                 )}
@@ -489,11 +658,84 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                         <h2 className="text-4xl font-black text-text-primary mb-4 italic tracking-tighter uppercase">BERHASIL!</h2>
                         <p className="text-xl text-text-secondary font-medium leading-relaxed max-w-md mx-auto">{successMessage}</p>
                         <div className="mt-12 flex flex-col gap-5">
-                            <Button onClick={() => { setSuccessMessage(''); setRegType('CHOICE'); }} className="py-6 font-black text-xl rounded-2xl shadow-xl">DAFTARKAN ATLET LAIN</Button>
+                            <Button onClick={() => { setSuccessMessage(''); setRegType('CHOICE'); setTeamParticipants([]); }} className="py-6 font-black text-xl rounded-2xl shadow-xl">PENDAFTARAN BARU</Button>
                             <Button variant="secondary" onClick={onBackToLogin} className="py-4 rounded-xl opacity-70 hover:opacity-100 transition-opacity">KEMBALI KE BERANDA</Button>
                         </div>
                     </Card>
                 )}
+            </div>
+        </div>
+    );
+};
+
+const PaymentSection: React.FC<{ info: any, data: any, onFileChange: any, onAmountChange: any }> = ({ info, data, onFileChange, onAmountChange }) => {
+    if (info?.isFree) {
+        return (
+            <div className="bg-green-100 p-4 rounded-md text-green-800 font-bold border border-green-200">
+                ✓ Kompetisi ini Gratis. Lanjutkan ke langkah berikutnya.
+            </div>
+        );
+    }
+    return (
+        <div className="space-y-6">
+            <div className="bg-surface p-4 rounded-lg border border-primary/20 shadow-inner">
+                <p className="text-xs text-text-secondary uppercase font-bold tracking-widest mb-1">Rekening Tujuan</p>
+                <p className="text-2xl font-black text-text-primary tracking-tighter">{info?.accountNumber || '-'}</p>
+                <p className="text-sm font-bold uppercase text-primary mb-3">{info?.recipientName || '-'}</p>
+                
+                <div className="pt-3 border-t border-border flex justify-between items-center">
+                    <span className="text-xs font-bold text-text-secondary uppercase tracking-tight">Biaya Pendaftaran</span>
+                    <span className="text-lg font-black text-text-primary">Rp {(info?.feePerEvent || 0).toLocaleString('id-ID')} <span className="text-[10px] font-normal text-text-secondary">/ nomor</span></span>
+                </div>
+            </div>
+
+            <div className="space-y-6">
+                <div className="space-y-2">
+                    <label className="block text-sm font-black text-primary uppercase">1. Pratinjau Bukti Bayar (Klik gambar untuk zoom)</label>
+                    <div className="w-full min-h-[400px] max-h-[600px] bg-background border-2 border-border rounded-xl flex items-center justify-center overflow-auto shadow-inner relative group">
+                        {data.paymentProof ? (
+                            <img 
+                                src={data.paymentProof} 
+                                alt="Bukti Transfer" 
+                                className="max-w-full h-auto object-contain cursor-zoom-in transition-transform duration-300 group-hover:scale-[1.02]" 
+                                onClick={() => window.open(data.paymentProof || '', '_blank')} 
+                            />
+                        ) : (
+                            <div className="text-center p-10">
+                                <svg className="mx-auto h-16 w-16 text-text-secondary opacity-20 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                                <p className="text-sm text-text-secondary opacity-50 font-bold uppercase tracking-widest">Silakan Unggah Bukti Bayar Dahulu</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <label className="block text-sm font-bold text-text-secondary uppercase">2. Unggah / Ganti File</label>
+                        <div className="relative border-2 border-dashed border-primary/40 rounded-xl p-6 bg-primary/5 hover:bg-primary/10 transition-all text-center">
+                            <input type="file" accept="image/*" onChange={onFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required />
+                            <p className="text-xs font-black text-primary uppercase">{data.paymentProof ? '✓ Ganti Bukti Bayar' : 'Klik Untuk Unggah Bukti'}</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="block text-sm font-bold text-text-secondary uppercase tracking-tight">3. Masukkan Nominal Yang Ditransfer (Rp)</label>
+                        <Input 
+                            label="" 
+                            id="paymentAmount" 
+                            name="paymentAmount" 
+                            type="number" 
+                            value={data.paymentAmount} 
+                            onChange={onAmountChange} 
+                            placeholder="Ketik nominal persis sesuai bukti di atas"
+                            required 
+                            className="text-xl font-bold"
+                        />
+                        <p className="text-[10px] text-text-secondary italic">Lihat angka pada pratinjau bukti bayar di atas untuk mengisi nominal ini.</p>
+                    </div>
+                </div>
             </div>
         </div>
     );
