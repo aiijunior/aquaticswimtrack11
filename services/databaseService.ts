@@ -1,4 +1,3 @@
-
 import type { Swimmer, SwimEvent, Result, CompetitionInfo, EventEntry, SwimRecord, User, FormattableEvent } from '../types';
 import { supabase } from './supabaseClient';
 import { Gender, SwimStyle, RecordType } from '../types';
@@ -17,6 +16,7 @@ const toUser = (data: any): User => ({
     user_metadata: {},
 });
 
+// FIX: Corrected mapping of database fields to CompetitionInfo interface properties to match types.ts (camelCase vs snake_case).
 const toCompetitionInfo = (data: any): CompetitionInfo | null => (data ? {
     id: data.id,
     eventName: data.event_name,
@@ -43,7 +43,8 @@ const toSwimmer = (data: any): Swimmer => ({
     paymentProof: data.payment_proof,
     paymentAmount: data.payment_amount,
     picName: data.pic_name,
-    picNamePhone: data.pic_phone
+    // FIX: Corrected property name from picNamePhone to picPhone to match Swimmer interface in types.ts
+    picPhone: data.pic_phone
 });
 
 const toEventEntry = (data: any): EventEntry => ({
