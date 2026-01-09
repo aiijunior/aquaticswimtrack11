@@ -1,3 +1,4 @@
+
 // FIX: Explicitly cast sessionEvents to TimedEvent[] to resolve mapping error over unknown.
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, Entry, Heat, Result, BrokenRecord, SwimRecord, EventEntry } from '../types';
@@ -176,7 +177,7 @@ const ScheduleOfEvents: React.FC<{ events: ScheduledEvent[] }> = ({ events }) =>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {sessionEvents.map(event => (
+                                    {(sessionEvents as ScheduledEvent[]).map(event => (
                                         <tr key={event.id}>
                                             <td className="font-bold">{event.globalEventNumber}</td>
                                             <td>{formatEventName(event)}</td>
@@ -194,7 +195,8 @@ const ScheduleOfEvents: React.FC<{ events: ScheduledEvent[] }> = ({ events }) =>
 
 const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[] }> = ({ events, swimmers, info, records }) => {
     const data = useMemo<Record<string, TimedEvent[]>>(() => {
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        // FIX: Explicitly typing the Map and casting 's' to Swimmer to avoid property access error on unknown.
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map((s: Swimmer) => [s.id, s]));
 
         const sessionsData = (events as ScheduledEvent[]).reduce<Record<string, TimedEvent[]>>((acc, event: ScheduledEvent) => {
             const sessionName = `Sesi ${romanize(event.sessionNumber || 0)}`;
@@ -341,17 +343,19 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
 
 const EventResults: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[], brokenRecords: BrokenRecord[] }> = ({ events, swimmers, info, records, brokenRecords }) => {
     const data = useMemo(() => {
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        // FIX: Casting 's' to Swimmer to fix property access on unknown type.
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map((s: Swimmer) => [s.id, s]));
         
         return events.map(event => {
             const validResults = [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time);
             
+            // FIX: Explicitly cast result to any or Result in the map to avoid type errors on time/swimmerId.
             const resultsWithDetails = [...event.results].sort((a,b) => {
                 if (a.time > 0 && b.time > 0) return a.time - b.time;
                 if (a.time > 0) return -1;
                 if (b.time > 0) return 1;
                 return b.time - a.time;
-            }).map(result => {
+            }).map((result: any) => {
                 const swimmer = swimmersMap.get(result.swimmerId);
                 const rank = result.time > 0 ? validResults.findIndex(r => r.swimmerId === result.swimmerId) + 1 : 0;
                 const brokenRecordDetails = brokenRecords.filter(br => 
@@ -362,7 +366,7 @@ const EventResults: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], in
                     br.record.gender === event.gender &&
                     (br.record.category ?? null) === (event.category ?? null)
                 );
-                return { ...result, rank, swimmer, brokenRecordDetails };
+                return { ...result, rank, swimmer: swimmer as Swimmer, brokenRecordDetails };
             });
 
             return { ...event, detailedResults: resultsWithDetails };

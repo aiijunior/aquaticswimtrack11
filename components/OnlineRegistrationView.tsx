@@ -7,7 +7,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Spinner } from './ui/Spinner';
-import { formatEventName, toTitleCase, translateSwimStyle, AGE_GROUP_OPTIONS } from '../constants';
+import { formatEventName, toTitleCase, translateSwimStyle, AGE_GROUP_OPTIONS, formatTime } from '../constants';
 import { SwimStyle } from '../types';
 
 interface OnlineRegistrationViewProps {
@@ -87,7 +87,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         fetchEvents();
     }, []);
 
-    // --- LOGIKA KUOTA PEMBAYARAN ---
     const maxAllowedEvents = useMemo(() => {
         if (competitionInfo?.isFree) return 999;
         const amount = parseInt(formData.paymentAmount) || 0;
@@ -96,7 +95,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     }, [formData.paymentAmount, competitionInfo]);
 
     const selectedEventCount = useMemo(() => {
-        return Object.values(selectedEvents).filter((e: any) => e.selected).length;
+        // FIX: Cast Object.values to any[] to avoid property access error on unknown type.
+        return (Object.values(selectedEvents) as any[]).filter((e) => e.selected).length;
     }, [selectedEvents]);
 
     const isPaymentStepValid = useMemo(() => {
@@ -132,8 +132,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
     const handleEventSelectionChange = (eventId: string) => {
         const isCurrentlySelected = !!selectedEvents[eventId]?.selected;
-        
-        // PENCEGAHAN: Jika kuota penuh dan ingin menambah pilihan baru
         if (!isCurrentlySelected && selectedEventCount >= maxAllowedEvents && !competitionInfo?.isFree) {
             alert(`Kuota pemilihan nomor sudah habis. Nominal transfer Rp ${parseInt(formData.paymentAmount).toLocaleString('id-ID')} hanya cukup untuk ${maxAllowedEvents} nomor lomba.`);
             return;
@@ -212,6 +210,20 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             }, {} as Record<string, SwimEvent[]>);
     }, [localEvents, formData.gender, formData.ageGroup]);
 
+    // Summary of selected events for the final step
+    const summaryList = useMemo(() => {
+        // FIX: Casting Object.entries(selectedEvents) to [string, any][] to avoid property access error on unknown type.
+        return (Object.entries(selectedEvents) as [string, any][])
+            .filter(([_, val]) => val.selected)
+            .map(([eventId, val]) => {
+                const event = localEvents.find(e => e.id === eventId);
+                return {
+                    name: event ? formatEventName(event) : 'Unknown Event',
+                    time: `${val.time.min}:${val.time.sec}.${val.time.ms}`
+                };
+            });
+    }, [selectedEvents, localEvents]);
+
     if (isDataLoading) return <div className="flex justify-center p-20"><Spinner /></div>;
 
     return (
@@ -263,11 +275,11 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                             </div>
                         </Card>
 
-                        {/* LANGKAH 2: PEMBAYARAN (DIPINDAHKAN KE SINI) */}
+                        {/* LANGKAH 2: PEMBAYARAN */}
                         <Card className="shadow-xl border-l-4 border-l-primary">
                             <h2 className="text-xl font-black mb-4 flex items-center gap-2">
                                 <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
-                                Informasi Pembayaran & Unggah Bukti
+                                Informasi Pembayaran & Bukti Transfer
                             </h2>
                             
                             {competitionInfo?.isFree ? (
@@ -287,46 +299,54 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-bold text-text-secondary uppercase">Lampirkan Bukti Bayar</label>
-                                            <div className="relative border-2 border-dashed border-border rounded-xl p-4 bg-background/50 hover:bg-primary/5 transition-all text-center">
-                                                <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required />
-                                                {formData.paymentProof ? (
-                                                    <div className="flex flex-col items-center">
-                                                        <span className="text-green-500 text-3xl mb-1">✓</span>
-                                                        <p className="text-xs font-black text-green-600">File Berhasil Dipilih</p>
-                                                        <p className="text-[10px] text-text-secondary mt-1 italic">Klik untuk ganti</p>
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        <svg className="mx-auto h-8 w-8 text-text-secondary opacity-50 mb-2" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                                                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                        </svg>
-                                                        <p className="text-[10px] font-bold text-text-secondary uppercase">Klik Untuk Unggah Gambar</p>
-                                                    </div>
-                                                )}
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-bold text-text-secondary uppercase">1. Unggah Bukti Bayar</label>
+                                                <div className="relative border-2 border-dashed border-border rounded-xl p-4 bg-background/50 hover:bg-primary/5 transition-all text-center">
+                                                    <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required />
+                                                    {formData.paymentProof ? (
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="text-green-500 text-3xl mb-1">✓</span>
+                                                            <p className="text-xs font-black text-green-600">File Berhasil Dipilih</p>
+                                                            <p className="text-[10px] text-text-secondary mt-1 italic">Klik untuk ganti</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div>
+                                                            <svg className="mx-auto h-8 w-8 text-text-secondary opacity-50 mb-2" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                            </svg>
+                                                            <p className="text-[10px] font-bold text-text-secondary uppercase">Klik Untuk Unggah Gambar</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-bold text-text-secondary uppercase">2. Masukkan Nominal Transfer (Rp)</label>
+                                                <Input 
+                                                    label="" 
+                                                    id="paymentAmount" 
+                                                    name="paymentAmount" 
+                                                    type="number" 
+                                                    value={formData.paymentAmount} 
+                                                    onChange={handleFormChange} 
+                                                    placeholder="Lihat angka pada bukti bayar Anda"
+                                                    required 
+                                                />
+                                                <p className="text-[10px] text-text-secondary italic">Ketik nominal sesuai yang tertera pada bukti transfer.</p>
                                             </div>
                                         </div>
-                                        <div className="space-y-4">
-                                            <Input 
-                                                label="Nominal Yang Ditransfer (Rp)" 
-                                                id="paymentAmount" 
-                                                name="paymentAmount" 
-                                                type="number" 
-                                                value={formData.paymentAmount} 
-                                                onChange={handleFormChange} 
-                                                placeholder="Contoh: 150000"
-                                                required 
-                                            />
-                                            {parseInt(formData.paymentAmount) > 0 && (
-                                                <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg animate-in zoom-in duration-300">
-                                                    <p className="text-[10px] text-primary font-black uppercase mb-1">Sistem Menghitung:</p>
-                                                    <p className="text-md font-black text-primary tracking-tight">
-                                                        Anda dapat memilih <span className="text-xl underline">{maxAllowedEvents}</span> Nomor Lomba
-                                                    </p>
-                                                </div>
-                                            )}
+
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-bold text-text-secondary uppercase">Pratinjau Bukti Bayar</label>
+                                            <div className="w-full h-48 bg-background border border-border rounded-xl flex items-center justify-center overflow-hidden shadow-inner">
+                                                {formData.paymentProof ? (
+                                                    <img src={formData.paymentProof} alt="Bukti Transfer" className="max-h-full max-w-full object-contain cursor-zoom-in" onClick={() => window.open(formData.paymentProof || '', '_blank')} />
+                                                ) : (
+                                                    <p className="text-xs text-text-secondary opacity-50 px-8 text-center italic">Unggah bukti bayar di sebelah kiri untuk melihat pratinjau di sini</p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -342,9 +362,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 </h2>
                                 {!competitionInfo?.isFree && formData.paymentAmount && (
                                     <div className="text-right">
-                                        <p className="text-[10px] font-bold text-text-secondary uppercase">Status Kuota</p>
-                                        <p className={`text-xl font-black ${selectedEventCount >= maxAllowedEvents ? 'text-red-500' : 'text-primary'}`}>
-                                            {selectedEventCount} / {maxAllowedEvents} <span className="text-xs font-normal">nomor terpilih</span>
+                                        <p className="text-[10px] font-bold text-text-secondary uppercase">Sisa Kuota</p>
+                                        <p className={`text-xl font-black ${maxAllowedEvents - selectedEventCount === 0 ? 'text-red-500' : 'text-primary'}`}>
+                                            {maxAllowedEvents - selectedEventCount} <span className="text-xs font-normal">nomor lagi</span>
                                         </p>
                                     </div>
                                 )}
@@ -410,6 +430,29 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                             )}
                         </Card>
 
+                        {/* LANGKAH 4: RINGKASAN PENDAFTARAN */}
+                        {selectedEventCount > 0 && (
+                            <Card className="shadow-xl bg-primary/5 border-primary/20 border-2">
+                                <h2 className="text-xl font-black mb-4 flex items-center gap-2">
+                                    <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">4</span>
+                                    Ringkasan Pendaftaran
+                                </h2>
+                                <div className="space-y-2">
+                                    <p className="text-xs font-bold text-text-secondary uppercase mb-2">Daftar Nomor Lomba Terpilih:</p>
+                                    {summaryList.map((item, idx) => (
+                                        <div key={idx} className="flex justify-between items-center bg-surface p-3 rounded-lg border border-border shadow-sm">
+                                            <span className="font-bold text-sm text-text-primary">{item.name}</span>
+                                            <span className="font-mono text-xs bg-background px-2 py-1 rounded border border-border">Waktu: {item.time}</span>
+                                        </div>
+                                    ))}
+                                    <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
+                                        <span className="font-black text-text-secondary uppercase text-xs">Total Pembayaran:</span>
+                                        <span className="text-lg font-black text-primary underline">Rp {parseInt(formData.paymentAmount || '0').toLocaleString('id-ID')}</span>
+                                    </div>
+                                </div>
+                            </Card>
+                        )}
+
                         {error && <div className="p-4 bg-red-100 border border-red-300 text-red-700 rounded-xl font-black text-center animate-bounce">{error}</div>}
                         
                         <div className="pt-4">
@@ -418,7 +461,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 disabled={isSubmitting || !isFormValid} 
                                 className="w-full py-6 text-2xl font-black shadow-2xl rounded-2xl tracking-tighter transition-transform active:scale-95"
                             >
-                                {isSubmitting ? <div className="flex items-center justify-center gap-3"><Spinner /> <span>Mengirim Data...</span></div> : 'KIRIM PENDAFTARAN'}
+                                {isSubmitting ? <div className="flex items-center justify-center gap-3"><Spinner /> <span>Mengirim Data...</span></div> : 'KIRIM PENDAFTARAN SEKARANG'}
                             </Button>
                         </div>
                     </form>
