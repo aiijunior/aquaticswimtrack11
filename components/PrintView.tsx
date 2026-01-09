@@ -1,4 +1,3 @@
-
 // FIX: Explicitly cast sessionEvents to TimedEvent[] to resolve mapping error over unknown.
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, Entry, Heat, Result, BrokenRecord, SwimRecord, EventEntry } from '../types';
@@ -341,4 +340,168 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
 };
 
 const EventResults: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], info: CompetitionInfo, records: SwimRecord[], brokenRecords: BrokenRecord[] }> = ({ events, swimmers, info, records, brokenRecords }) => {
-// ...
+    const data = useMemo(() => {
+        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        
+        return events.map(event => {
+            const validResults = [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time);
+            
+            const resultsWithDetails = [...event.results].sort((a,b) => {
+                if (a.time > 0 && b.time > 0) return a.time - b.time;
+                if (a.time > 0) return -1;
+                if (b.time > 0) return 1;
+                return b.time - a.time;
+            }).map(result => {
+                const swimmer = swimmersMap.get(result.swimmerId);
+                const rank = result.time > 0 ? validResults.findIndex(r => r.swimmerId === result.swimmerId) + 1 : 0;
+                const brokenRecordDetails = brokenRecords.filter(br => 
+                    br.newHolder.id === swimmer?.id && 
+                    br.newTime === result.time &&
+                    br.record.style === event.style &&
+                    br.record.distance === event.distance &&
+                    br.record.gender === event.gender &&
+                    (br.record.category ?? null) === (event.category ?? null)
+                );
+                return { ...result, rank, swimmer, brokenRecordDetails };
+            });
+
+            return { ...event, detailedResults: resultsWithDetails };
+        });
+    }, [events, swimmers, brokenRecords]);
+
+    return (
+        <main className="space-y-10">
+            {data.map(event => {
+                const porprovRecord = records.find(r => r.type.toUpperCase() === RecordType.PORPROV.toUpperCase() && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
+                const nasionalRecord = records.find(r => r.type.toUpperCase() === RecordType.NASIONAL.toUpperCase() && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
+
+                return (
+                    <section key={event.id} className="print-event-section page-break-inside-avoid">
+                        <h4 className="text-lg font-bold bg-gray-100 p-2 border-b-2 border-gray-400">
+                           {`Nomor Acara ${event.globalEventNumber}: ${formatEventName(event)}`}
+                        </h4>
+                        <div className="text-[10px] text-gray-600 my-2 px-2 border-l-2 border-gray-300">
+                            <PrintRecordRow record={porprovRecord} type={RecordType.PORPROV} />
+                            <PrintRecordRow record={nasionalRecord} type={RecordType.NASIONAL} />
+                        </div>
+                        <table className="w-full text-left text-sm mt-2">
+                             <thead>
+                                 <tr className="border-b border-gray-300">
+                                     <th className="p-1 w-12 text-center">Rank</th>
+                                     <th className="p-1">Nama Peserta</th>
+                                     <th className="p-1">Klub/Tim</th>
+                                     <th className="p-1 text-right">Waktu</th>
+                                     <th className="p-1 text-center w-12">Medali</th>
+                                 </tr>
+                             </thead>
+                             <tbody>
+                                 {event.detailedResults.map(result => (
+                                     <tr key={result.swimmerId} className="border-b border-gray-100 last:border-0">
+                                         <td className="p-1 text-center font-bold">{result.rank > 0 ? result.rank : formatTime(result.time)}</td>
+                                         <td className="p-1">{result.swimmer?.name || 'Unknown'}</td>
+                                         <td className="p-1 text-xs">{result.swimmer?.club || 'N/A'}</td>
+                                         <td className="p-1 text-right font-mono">
+                                            {formatTime(result.time)}
+                                            {result.brokenRecordDetails.map(br => (
+                                                <span key={br.record.id} className="ml-1 text-[8px] border border-red-500 text-red-500 px-1 rounded uppercase font-bold">
+                                                    BR
+                                                </span>
+                                            ))}
+                                         </td>
+                                         <td className="p-1 text-center"><Medal rank={result.rank} /></td>
+                                     </tr>
+                                 ))}
+                             </tbody>
+                        </table>
+                    </section>
+                );
+            })}
+        </main>
+    );
+};
+
+export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competitionInfo, isLoading }) => {
+    const [reportType, setReportType] = useState<'schedule' | 'program' | 'results'>('schedule');
+    const [records, setRecords] = useState<SwimRecord[]>([]);
+    const { addNotification } = useNotification();
+
+    useEffect(() => {
+        getRecords().then(setRecords);
+    }, []);
+
+    const scheduledEvents = useMemo(() => {
+        return [...events]
+            .filter(e => (e.sessionNumber || 0) > 0)
+            .sort((a, b) => {
+                const sessionDiff = (a.sessionNumber || 0) - (b.sessionNumber || 0);
+                if (sessionDiff !== 0) return sessionDiff;
+                return (a.heatOrder || 0) - (b.heatOrder || 0);
+            })
+            .map((e, i) => ({ ...e, globalEventNumber: i + 1 }));
+    }, [events]);
+
+    const brokenRecords = useMemo(() => {
+        const list: BrokenRecord[] = [];
+        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+
+        scheduledEvents.forEach(event => {
+            if (event.results && event.results.length > 0) {
+                const winner = [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time)[0];
+                if (winner) {
+                    const swimmer = swimmersMap.get(winner.swimmerId);
+                    if (swimmer) {
+                        [RecordType.PORPROV, RecordType.NASIONAL].forEach(type => {
+                            const record = records.find(r => r.type === type && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.relayLegs ?? null) === (event.relayLegs ?? null) && (r.category ?? null) === (event.category ?? null));
+                            if (record && winner.time < record.time) {
+                                list.push({ record, newEventName: formatEventName(event), newHolder: swimmer, newTime: winner.time });
+                            }
+                        });
+                    }
+                }
+            }
+        });
+        return list;
+    }, [scheduledEvents, swimmers, records]);
+
+    const handlePrint = () => {
+        window.print();
+    };
+
+    if (isLoading) return <div className="flex justify-center p-10"><Spinner /></div>;
+    if (!competitionInfo) return <div className="text-center p-10">Data kompetisi tidak ditemukan.</div>;
+
+    const reportTitles = {
+        schedule: 'JADWAL NOMOR LOMBA (ORDER OF EVENTS)',
+        program: 'BUKU PROGRAM (MEET PROGRAM)',
+        results: 'HASIL LOMBA (MEET RESULTS)'
+    };
+
+    return (
+        <div className="print-view-container">
+            <div className="no-print mb-8">
+                <Card>
+                    <h2 className="text-xl font-bold mb-4">Pilih Laporan Cetak</h2>
+                    <div className="flex flex-wrap gap-2 mb-6">
+                        <Button variant={reportType === 'schedule' ? 'primary' : 'secondary'} onClick={() => setReportType('schedule')}>Jadwal Lomba</Button>
+                        <Button variant={reportType === 'program' ? 'primary' : 'secondary'} onClick={() => setReportType('program')}>Buku Program</Button>
+                        <Button variant={reportType === 'results' ? 'primary' : 'secondary'} onClick={() => setReportType('results')}>Hasil Lomba</Button>
+                    </div>
+                    <div className="flex justify-between items-center pt-4 border-t border-border">
+                        <p className="text-sm text-text-secondary italic">Gunakan printer browser (Ctrl+P) untuk menyimpan sebagai PDF atau cetak fisik.</p>
+                        <Button onClick={handlePrint}>Cetak Laporan</Button>
+                    </div>
+                </Card>
+            </div>
+
+            <div className="print-only bg-white text-black p-4 min-h-screen">
+                <ReportHeader info={competitionInfo} title={reportTitles[reportType]} />
+                
+                {reportType === 'schedule' && <ScheduleOfEvents events={scheduledEvents} />}
+                {reportType === 'program' && <ProgramBook events={scheduledEvents} swimmers={swimmers} info={competitionInfo} records={records} />}
+                {reportType === 'results' && <EventResults events={scheduledEvents} swimmers={swimmers} info={competitionInfo} records={records} brokenRecords={brokenRecords} />}
+
+                <ReportFooter info={competitionInfo} />
+            </div>
+        </div>
+    );
+};

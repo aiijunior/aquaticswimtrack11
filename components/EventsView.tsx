@@ -1,4 +1,3 @@
-
 // FIX: Casting uploadResult.errors to string[] to resolve the mapping over unknown error.
 import React, { useState, useMemo } from 'react';
 import type { SwimEvent } from '../types';
@@ -58,7 +57,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     distance: 100,
     style: SwimStyle.FREESTYLE,
     gender: Gender.MALE,
-    isRelay,
+    isRelay: false, // FIX: Provided initializer to fix shorthand property 'isRelay' error
     relayLegs: 4,
     category: '',
   });
@@ -708,8 +707,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {/* FIX: Cast errors to string[] to resolve type inference issue and allow mapping over it. */}
-                                {(uploadResult.errors as string[]).map((err: string, i: number) => <li key={i}>{String(err)}</li>)}
+                                {/* FIX: Cast errors to any[] to fix mapping over unknown type during compilation */}
+                                {(uploadResult.errors as any[]).map((err: any, i: number) => <li key={i}>{String(err)}</li>)}
                             </ul>
                         </div>
                     )}

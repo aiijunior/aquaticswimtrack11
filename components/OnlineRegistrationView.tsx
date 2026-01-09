@@ -1,16 +1,14 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, FormattableEvent } from '../types';
-import { getEventsForRegistration, processOnlineRegistration, findSwimmerByName, processParticipantUpload } from '../services/databaseService';
+import { getEventsForRegistration, processOnlineRegistration } from '../services/databaseService';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Spinner } from './ui/Spinner';
-import { formatEventName, toTitleCase, formatTime, translateSwimStyle, AGE_GROUP_OPTIONS } from '../constants';
-import { SwimStyle, Gender } from '../types';
-
-declare var XLSX: any;
+import { formatEventName, toTitleCase, translateSwimStyle, AGE_GROUP_OPTIONS } from '../constants';
+import { SwimStyle } from '../types';
 
 interface OnlineRegistrationViewProps {
     competitionInfo: CompetitionInfo | null;
@@ -20,13 +18,6 @@ interface OnlineRegistrationViewProps {
 
 type RegistrationTime = { min: string; sec: string; ms: string };
 type SelectedEvents = Record<string, { selected: boolean; time: RegistrationTime }>;
-
-interface OnlineRegistrationResponse {
-    success: boolean;
-    message: string;
-    swimmer: Swimmer | null;
-    previouslyRegisteredEvents?: FormattableEvent[];
-}
 
 const parseTimeToMs = (time: RegistrationTime): number => {
     const minutes = parseInt(time.min, 10) || 0;
@@ -77,11 +68,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState<React.ReactNode | string>('');
-    
-    // Accordion state
     const [openAccordion, setOpenAccordion] = useState<SwimStyle | null>(null);
 
-    // Dynamic Age Groups Logic
     const ageOptions = useMemo(() => {
         if (competitionInfo?.ageGroups) {
             return competitionInfo.ageGroups.split('\n').map(s => s.trim()).filter(Boolean);
@@ -98,30 +86,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         };
         fetchEvents();
     }, []);
-    
-    const [timeLeft, setTimeLeft] = useState('');
-    
-    useEffect(() => {
-        if (!competitionInfo?.registrationDeadline) return;
-        const deadline = new Date(competitionInfo.registrationDeadline);
-        const updateCountdown = () => {
-            const now = new Date();
-            const difference = deadline.getTime() - now.getTime();
-            if (difference <= 0) {
-                setTimeLeft('Batas waktu berakhir.');
-                return;
-            }
-            const days = Math.floor(difference / (86400000));
-            const hours = Math.floor((difference % 86400000) / 3600000);
-            const minutes = Math.floor((difference % 3600000) / 60000);
-            setTimeLeft(`${days} hari ${hours} jam ${minutes} menit`);
-        };
-        updateCountdown();
-        const id = setInterval(updateCountdown, 60000);
-        return () => clearInterval(id);
-    }, [competitionInfo]);
 
-    // Calculate how many events the user is allowed to pick based on payment
+    // --- LOGIKA KUOTA PEMBAYARAN ---
     const maxAllowedEvents = useMemo(() => {
         if (competitionInfo?.isFree) return 999;
         const amount = parseInt(formData.paymentAmount) || 0;
@@ -167,9 +133,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     const handleEventSelectionChange = (eventId: string) => {
         const isCurrentlySelected = !!selectedEvents[eventId]?.selected;
         
-        // Prevent selecting more if quota is full
+        // PENCEGAHAN: Jika kuota penuh dan ingin menambah pilihan baru
         if (!isCurrentlySelected && selectedEventCount >= maxAllowedEvents && !competitionInfo?.isFree) {
-            alert(`Kuota pemilihan nomor sudah penuh (Maksimal ${maxAllowedEvents} nomor berdasarkan nominal transfer Anda).`);
+            alert(`Kuota pemilihan nomor sudah habis. Nominal transfer Rp ${parseInt(formData.paymentAmount).toLocaleString('id-ID')} hanya cukup untuk ${maxAllowedEvents} nomor lomba.`);
             return;
         }
 
@@ -214,16 +180,20 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             paymentAmount: parseInt(formData.paymentAmount) || 0
         };
 
-        const result = await processOnlineRegistration(swimmerPayload, registrationsToSubmit);
-        setIsSubmitting(false);
-
-        if (result.success) {
-            setSuccessMessage(`Pendaftaran untuk ${formData.name} berhasil!`);
-            onRegistrationSuccess();
-            setFormData({ name: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', club: '', ageGroup: '', paymentProof: null, paymentAmount: '' });
-            setSelectedEvents({});
-        } else {
-            setError(result.message);
+        try {
+            const result = await processOnlineRegistration(swimmerPayload, registrationsToSubmit);
+            setIsSubmitting(false);
+            if (result.success) {
+                setSuccessMessage(`Pendaftaran untuk ${formData.name} berhasil dikirim!`);
+                onRegistrationSuccess();
+                setFormData({ name: '', birthYear: new Date().getFullYear() - 10, gender: 'Male', club: '', ageGroup: '', paymentProof: null, paymentAmount: '' });
+                setSelectedEvents({});
+            } else {
+                setError(result.message);
+            }
+        } catch (err: any) {
+            setError(err.message || 'Terjadi kesalahan server.');
+            setIsSubmitting(false);
         }
     };
 
@@ -250,10 +220,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 <header className="text-center py-6">
                     {competitionInfo?.eventLogo && <img src={competitionInfo.eventLogo} alt="Logo" className="mx-auto h-20 mb-4" />}
                     <h1 className="text-3xl font-extrabold text-primary tracking-tight">{competitionInfo?.eventName.split('\n')[0]}</h1>
-                    <h3 className="text-xl font-bold mt-2 opacity-80 uppercase tracking-widest">Pendaftaran Online</h3>
+                    <h3 className="text-xl font-bold mt-2 opacity-80 uppercase tracking-widest">Formulir Pendaftaran</h3>
                 </header>
-
-                {timeLeft && <Card className="text-center mb-4 border-primary/20"><p className="font-bold text-primary">Sisa Waktu Pendaftaran: {timeLeft}</p></Card>}
 
                 {regType === 'CHOICE' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
@@ -263,7 +231,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                         </Card>
                         <Card className="cursor-pointer hover:border-primary p-8 text-center transition-all hover:scale-105 group" onClick={() => setRegType('TEAM')}>
                             <UserGroupIcon /><h3 className="text-2xl font-bold mt-4 group-hover:text-primary transition-colors">Pendaftaran Kolektif</h3>
-                            <p className="text-text-secondary mt-2 text-sm italic">Gunakan Excel untuk mendaftarkan banyak atlet sekaligus</p>
+                            <p className="text-text-secondary mt-2 text-sm italic">Gunakan Excel untuk mendaftarkan tim besar</p>
                         </Card>
                     </div>
                 )}
@@ -281,8 +249,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 Profil Atlet
                             </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Input label="Nama Lengkap" id="name" name="name" value={formData.name} onChange={handleFormChange} placeholder="Masukkan nama sesuai akta" required />
-                                <Input label="Nama Tim / Klub" id="club" name="club" value={formData.club} onChange={handleFormChange} placeholder="Masukkan nama klub" required />
+                                <Input label="Nama Lengkap" id="name" name="name" value={formData.name} onChange={handleFormChange} placeholder="Sesuai Akta Kelahiran" required />
+                                <Input label="Nama Tim / Klub" id="club" name="club" value={formData.club} onChange={handleFormChange} placeholder="Contoh: Sidoarjo Swim Club" required />
                                 <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={formData.birthYear} onChange={handleFormChange} required />
                                 <Select label="Jenis Kelamin" id="gender" name="gender" value={formData.gender} onChange={handleFormChange}>
                                     <option value="Male">Laki-laki</option>
@@ -295,58 +263,54 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                             </div>
                         </Card>
 
-                        {/* LANGKAH 2: PEMBAYARAN & BUKTI */}
+                        {/* LANGKAH 2: PEMBAYARAN (DIPINDAHKAN KE SINI) */}
                         <Card className="shadow-xl border-l-4 border-l-primary">
                             <h2 className="text-xl font-black mb-4 flex items-center gap-2">
                                 <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
-                                Pembayaran & Bukti Transfer
+                                Informasi Pembayaran & Unggah Bukti
                             </h2>
                             
                             {competitionInfo?.isFree ? (
                                 <div className="bg-green-100 p-4 rounded-md text-green-800 font-bold border border-green-200">
-                                    ✓ Kompetisi ini Gratis. Tidak diperlukan bukti pembayaran.
+                                    ✓ Kompetisi ini Gratis. Lanjutkan ke langkah berikutnya.
                                 </div>
                             ) : (
                                 <div className="space-y-6">
                                     <div className="bg-surface p-4 rounded-lg border border-primary/20 shadow-inner">
-                                        <p className="text-xs text-text-secondary uppercase font-bold tracking-widest mb-1">Tujuan Transfer</p>
+                                        <p className="text-xs text-text-secondary uppercase font-bold tracking-widest mb-1">Rekening Tujuan</p>
                                         <p className="text-2xl font-black text-text-primary tracking-tighter">{competitionInfo?.accountNumber || '-'}</p>
-                                        <p className="text-sm font-bold uppercase text-primary">{competitionInfo?.recipientName || '-'}</p>
+                                        <p className="text-sm font-bold uppercase text-primary mb-3">{competitionInfo?.recipientName || '-'}</p>
                                         
-                                        <div className="mt-4 pt-4 border-t border-border flex justify-between items-end">
-                                            <div>
-                                                <p className="text-[10px] text-text-secondary font-bold uppercase">Biaya Pendaftaran</p>
-                                                <p className="text-xl font-black text-text-primary">Rp {(competitionInfo?.feePerEvent || 0).toLocaleString('id-ID')}<span className="text-xs font-normal text-text-secondary"> / nomor</span></p>
-                                            </div>
+                                        <div className="pt-3 border-t border-border flex justify-between items-center">
+                                            <span className="text-xs font-bold text-text-secondary uppercase">Biaya Pendaftaran</span>
+                                            <span className="text-lg font-black text-text-primary">Rp {(competitionInfo?.feePerEvent || 0).toLocaleString('id-ID')} <span className="text-[10px] font-normal text-text-secondary">/ nomor</span></span>
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-2">
-                                            <label className="block text-sm font-bold text-text-secondary uppercase">Unggah Bukti Bayar</label>
-                                            <div className="relative border-2 border-dashed border-border rounded-xl p-4 bg-background/50 hover:bg-primary/5 transition-all">
+                                            <label className="block text-sm font-bold text-text-secondary uppercase">Lampirkan Bukti Bayar</label>
+                                            <div className="relative border-2 border-dashed border-border rounded-xl p-4 bg-background/50 hover:bg-primary/5 transition-all text-center">
                                                 <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required />
-                                                <div className="text-center">
-                                                    {formData.paymentProof ? (
-                                                        <div className="flex flex-col items-center">
-                                                            <span className="text-green-500 text-4xl mb-2">✓</span>
-                                                            <p className="text-xs font-black text-green-600">Bukti Terpilih</p>
-                                                            <p className="text-[10px] text-text-secondary mt-1">Klik untuk mengganti file</p>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="py-2">
-                                                            <svg className="mx-auto h-10 w-10 text-text-secondary opacity-50" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                                                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                            </svg>
-                                                            <p className="mt-2 text-xs font-bold text-text-secondary">Klik / Seret Gambar Disini</p>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                {formData.paymentProof ? (
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-green-500 text-3xl mb-1">✓</span>
+                                                        <p className="text-xs font-black text-green-600">File Berhasil Dipilih</p>
+                                                        <p className="text-[10px] text-text-secondary mt-1 italic">Klik untuk ganti</p>
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <svg className="mx-auto h-8 w-8 text-text-secondary opacity-50 mb-2" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                        </svg>
+                                                        <p className="text-[10px] font-bold text-text-secondary uppercase">Klik Untuk Unggah Gambar</p>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="space-y-4">
                                             <Input 
-                                                label="Jumlah Transfer (Rp)" 
+                                                label="Nominal Yang Ditransfer (Rp)" 
                                                 id="paymentAmount" 
                                                 name="paymentAmount" 
                                                 type="number" 
@@ -355,10 +319,12 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                                 placeholder="Contoh: 150000"
                                                 required 
                                             />
-                                            {maxAllowedEvents > 0 && maxAllowedEvents < 999 && (
-                                                <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg animate-in fade-in zoom-in">
-                                                    <p className="text-[10px] text-primary font-black uppercase">Hasil Verifikasi Nominal:</p>
-                                                    <p className="text-lg font-black text-primary">Kuota {maxAllowedEvents} Nomor Lomba</p>
+                                            {parseInt(formData.paymentAmount) > 0 && (
+                                                <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg animate-in zoom-in duration-300">
+                                                    <p className="text-[10px] text-primary font-black uppercase mb-1">Sistem Menghitung:</p>
+                                                    <p className="text-md font-black text-primary tracking-tight">
+                                                        Anda dapat memilih <span className="text-xl underline">{maxAllowedEvents}</span> Nomor Lomba
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>
@@ -369,31 +335,31 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
                         {/* LANGKAH 3: PILIH NOMOR LOMBA */}
                         <Card className="shadow-xl">
-                            <div className="flex justify-between items-center mb-4">
+                            <div className="flex justify-between items-end mb-4 border-b border-border pb-4">
                                 <h2 className="text-xl font-black flex items-center gap-2">
                                     <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
                                     Pilih Nomor Lomba
                                 </h2>
                                 {!competitionInfo?.isFree && formData.paymentAmount && (
                                     <div className="text-right">
-                                        <p className="text-[10px] font-bold text-text-secondary uppercase">Sisa Kuota Pilihan</p>
-                                        <p className={`text-xl font-black ${maxAllowedEvents - selectedEventCount === 0 ? 'text-red-500' : 'text-primary'}`}>
-                                            {maxAllowedEvents - selectedEventCount} <span className="text-xs font-normal">nomor lagi</span>
+                                        <p className="text-[10px] font-bold text-text-secondary uppercase">Status Kuota</p>
+                                        <p className={`text-xl font-black ${selectedEventCount >= maxAllowedEvents ? 'text-red-500' : 'text-primary'}`}>
+                                            {selectedEventCount} / {maxAllowedEvents} <span className="text-xs font-normal">nomor terpilih</span>
                                         </p>
                                     </div>
                                 )}
                             </div>
 
                             {!formData.ageGroup ? (
-                                <div className="text-center py-10 bg-yellow-50 rounded-lg border border-yellow-200">
-                                    <p className="text-yellow-700 font-bold">Harap selesaikan Langkah 1 (Pilih KU) terlebih dahulu.</p>
+                                <div className="text-center py-8 bg-yellow-50 rounded-lg border border-yellow-200">
+                                    <p className="text-yellow-700 font-bold">⚠️ Harap pilih Kelompok Umur di Langkah 1</p>
                                 </div>
                             ) : !isPaymentStepValid ? (
-                                <div className="text-center py-10 bg-red-50 rounded-lg border border-red-200">
-                                    <p className="text-red-700 font-bold">Harap selesaikan Langkah 2 (Unggah Bukti & Input Nominal) terlebih dahulu.</p>
+                                <div className="text-center py-8 bg-red-50 rounded-lg border border-red-200">
+                                    <p className="text-red-700 font-bold">⚠️ Harap lengkapi Bukti Bayar & Nominal di Langkah 2</p>
                                 </div>
                             ) : (
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                     {Object.entries(groupedAvailableEvents).map(([style, eventsInStyle]: any) => (
                                         <div key={style} className="border border-border rounded-xl overflow-hidden shadow-sm">
                                             <button type="button" onClick={() => handleAccordionToggle(style)} className="w-full flex justify-between p-4 bg-surface hover:bg-primary/5 transition-colors">
@@ -402,36 +368,43 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                             </button>
                                             {openAccordion === style && (
                                                 <div className="p-4 space-y-4 bg-background/30 border-t border-border">
-                                                    {eventsInStyle.map((event: SwimEvent) => (
-                                                        <div key={event.id} className="flex flex-col border-b border-border last:border-0 pb-4 last:pb-0">
-                                                            <div className="flex items-center">
-                                                                <input 
-                                                                    type="checkbox" 
-                                                                    id={`check-${event.id}`}
-                                                                    checked={selectedEvents[event.id]?.selected || false} 
-                                                                    onChange={() => handleEventSelectionChange(event.id)} 
-                                                                    className="h-6 w-6 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer disabled:opacity-20" 
-                                                                />
-                                                                <label htmlFor={`check-${event.id}`} className={`ml-3 font-bold text-text-primary cursor-pointer flex-grow ${selectedEvents[event.id]?.selected ? 'text-primary' : ''}`}>
-                                                                    {formatEventName(event)}
-                                                                </label>
-                                                            </div>
-                                                            {selectedEvents[event.id]?.selected && (
-                                                                <div className="mt-4 ml-9 bg-surface p-3 rounded-lg border border-primary/20 grid grid-cols-3 gap-3 animate-in slide-in-from-left-2">
-                                                                    <div className="col-span-3 mb-1"><p className="text-[10px] font-black uppercase text-text-secondary">Waktu Unggulan (Seed Time)</p></div>
-                                                                    <Input label="Menit" type="number" min="0" value={selectedEvents[event.id].time.min} onChange={e => handleTimeChange(event.id, 'min', e.target.value)} />
-                                                                    <Input label="Detik" type="number" min="0" max="59" value={selectedEvents[event.id].time.sec} onChange={e => handleTimeChange(event.id, 'sec', e.target.value)} />
-                                                                    <Input label="ss/100" type="number" min="0" max="99" value={selectedEvents[event.id].time.ms} onChange={e => handleTimeChange(event.id, 'ms', e.target.value)} />
+                                                    {eventsInStyle.map((event: SwimEvent) => {
+                                                        const isSelected = !!selectedEvents[event.id]?.selected;
+                                                        const isLocked = !isSelected && selectedEventCount >= maxAllowedEvents && !competitionInfo?.isFree;
+                                                        
+                                                        return (
+                                                            <div key={event.id} className={`flex flex-col border-b border-border last:border-0 pb-4 last:pb-0 ${isLocked ? 'opacity-40 grayscale' : ''}`}>
+                                                                <div className="flex items-center">
+                                                                    <input 
+                                                                        type="checkbox" 
+                                                                        id={`check-${event.id}`}
+                                                                        checked={isSelected} 
+                                                                        onChange={() => handleEventSelectionChange(event.id)} 
+                                                                        disabled={isLocked}
+                                                                        className="h-6 w-6 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" 
+                                                                    />
+                                                                    <label htmlFor={`check-${event.id}`} className={`ml-3 font-bold text-text-primary cursor-pointer flex-grow ${isSelected ? 'text-primary' : ''}`}>
+                                                                        {formatEventName(event)}
+                                                                        {isLocked && <span className="ml-2 text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded font-black">KUOTA HABIS</span>}
+                                                                    </label>
                                                                 </div>
-                                                            )}
-                                                        </div>
-                                                    ))}
+                                                                {isSelected && (
+                                                                    <div className="mt-4 ml-9 bg-surface p-4 rounded-xl border border-primary/20 grid grid-cols-3 gap-3 animate-in slide-in-from-left-2">
+                                                                        <div className="col-span-3 mb-1"><p className="text-[10px] font-black uppercase text-text-secondary italic">Input Waktu Unggulan (Seed Time)</p></div>
+                                                                        <Input label="Menit" type="number" min="0" value={selectedEvents[event.id].time.min} onChange={e => handleTimeChange(event.id, 'min', e.target.value)} />
+                                                                        <Input label="Detik" type="number" min="0" max="59" value={selectedEvents[event.id].time.sec} onChange={e => handleTimeChange(event.id, 'sec', e.target.value)} />
+                                                                        <Input label="ss/100" type="number" min="0" max="99" value={selectedEvents[event.id].time.ms} onChange={e => handleTimeChange(event.id, 'ms', e.target.value)} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </div>
                                     ))}
                                     {Object.keys(groupedAvailableEvents).length === 0 && (
-                                        <p className="text-center py-10 text-text-secondary italic">Tidak ada nomor lomba yang tersedia untuk kategori dan jenis kelamin ini.</p>
+                                        <p className="text-center py-10 text-text-secondary italic">Mohon maaf, tidak ada nomor lomba yang tersedia untuk kategori ini.</p>
                                     )}
                                 </div>
                             )}
@@ -443,14 +416,10 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                             <Button 
                                 type="submit" 
                                 disabled={isSubmitting || !isFormValid} 
-                                className="w-full py-6 text-2xl font-black shadow-2xl rounded-2xl tracking-tighter"
+                                className="w-full py-6 text-2xl font-black shadow-2xl rounded-2xl tracking-tighter transition-transform active:scale-95"
                             >
-                                {isSubmitting ? <div className="flex items-center justify-center gap-3"><Spinner /> <span>Mendaftarkan...</span></div> : 'KIRIM DATA PENDAFTARAN'}
+                                {isSubmitting ? <div className="flex items-center justify-center gap-3"><Spinner /> <span>Mengirim Data...</span></div> : 'KIRIM PENDAFTARAN'}
                             </Button>
-                            <div className="mt-4 flex flex-col items-center gap-1 text-text-secondary">
-                                <p className="text-[10px] uppercase font-bold">Ringkasan Pendaftaran:</p>
-                                <p className="text-xs font-medium">Atlet: <span className="font-bold text-text-primary">{formData.name || '-'}</span> | Nomor Dipilih: <span className="font-bold text-text-primary">{selectedEventCount}</span></p>
-                            </div>
                         </div>
                     </form>
                 )}
@@ -460,11 +429,10 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                         <div className="bg-green-100 h-24 w-24 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-green-500 shadow-xl">
                             <span className="text-green-500 text-6xl font-bold">✓</span>
                         </div>
-                        <h2 className="text-3xl font-black text-text-primary mb-2 italic tracking-tighter">PENDAFTARAN BERHASIL!</h2>
+                        <h2 className="text-3xl font-black text-text-primary mb-2 italic tracking-tighter">BERHASIL!</h2>
                         <p className="text-lg text-text-secondary font-medium leading-relaxed">{successMessage}</p>
-                        <p className="mt-4 text-sm bg-background p-3 rounded-xl border border-border text-text-secondary italic">Panitia akan melakukan verifikasi bukti transfer Anda. Harap simpan bukti pembayaran fisik jika sewaktu-waktu diperlukan.</p>
                         <div className="mt-10 flex flex-col gap-4">
-                            <Button onClick={() => { setSuccessMessage(''); setSelectedEvents({}); }} className="py-4 font-black text-lg">DAFTARKAN ATLET LAIN</Button>
+                            <Button onClick={() => { setSuccessMessage(''); setRegType('CHOICE'); }} className="py-4 font-black text-lg">DAFTARKAN ATLET LAIN</Button>
                             <Button variant="secondary" onClick={onBackToLogin}>KEMBALI KE BERANDA</Button>
                         </div>
                     </Card>
