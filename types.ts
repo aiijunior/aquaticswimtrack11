@@ -1,3 +1,4 @@
+
 // We are removing the import of SupabaseUser to break a circular dependency.
 // import type { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -31,10 +32,14 @@ export interface CompetitionInfo {
     eventLogo: string | null;
     sponsorLogo: string | null;
     isRegistrationOpen?: boolean;
-    // FIX: Corrected typo from numberOfLlanes to numberOfLanes
     numberOfLanes?: number;
     registrationDeadline?: string | null;
-    ageGroups?: string | null; // New field for storing flexible categories
+    ageGroups?: string | null;
+    // Payment related fields
+    isFree?: boolean;
+    recipientName?: string | null;
+    accountNumber?: string | null;
+    feePerEvent?: number;
 }
 
 export interface Swimmer {
@@ -44,6 +49,9 @@ export interface Swimmer {
   gender: 'Male' | 'Female';
   club: string;
   ageGroup?: string | null;
+  // Payment data for individual registration
+  paymentProof?: string | null;
+  paymentAmount?: number | null;
 }
 
 export interface Result {
@@ -85,10 +93,6 @@ export enum View {
   ONLINE_REGISTRATION,
 }
 
-// --- User Management Types ---
-// User type now represents the Supabase user object, with our custom role data merged in.
-// We define it explicitly to avoid a circular type dependency with @supabase/supabase-js,
-// which was causing TS to fail resolving Supabase client types.
 export interface User {
   id: string;
   role: 'SUPER_ADMIN' | 'ADMIN';
@@ -97,13 +101,8 @@ export interface User {
   user_metadata: { [key: string]: any };
   aud: string;
   created_at: string;
-  // Other Supabase User properties can be added here if needed by the app.
-  // The user object created in authService will have all properties from the
-  // original Supabase user, so this definition is for type safety within our app code.
 }
 
-
-// --- Helper Types for Heat Generation ---
 export interface Entry {
     swimmerId: string;
     seedTime: number;
@@ -118,19 +117,18 @@ export interface Heat {
     assignments: LaneAssignment[];
 }
 
-// --- Record Keeping Types ---
 export enum RecordType {
   PORPROV = 'PORPROV',
   NASIONAL = 'Nasional',
 }
 
 export interface SwimRecord {
-  id: string; // e.g., 'PORPROV_MALE_50_FREESTYLE'
+  id: string;
   type: RecordType;
   gender: Gender;
   distance: number;
   style: SwimStyle;
-  time: number; // in ms
+  time: number;
   holderName: string;
   yearSet: number;
   locationSet?: string;

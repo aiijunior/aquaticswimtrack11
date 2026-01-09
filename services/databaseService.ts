@@ -1,3 +1,4 @@
+
 // --- START: IndexedDB Offline-First Service ---
 
 import type { Swimmer, SwimEvent, Result, CompetitionInfo, EventEntry, SwimRecord, User, FormattableEvent } from '../types';
@@ -12,11 +13,17 @@ const toCompetitionInfo = (data: any): CompetitionInfo => ({
     eventName: data.event_name,
     eventDate: data.event_date,
     eventLogo: data.event_logo,
+    // FIX: Changed sponsor_logo to sponsorLogo to match CompetitionInfo type.
     sponsorLogo: data.sponsor_logo,
     isRegistrationOpen: data.is_registration_open,
     numberOfLanes: data.number_of_lanes,
+    // FIX: Changed registration_deadline to registrationDeadline to match CompetitionInfo type.
     registrationDeadline: data.registration_deadline,
-    ageGroups: data.age_groups
+    ageGroups: data.age_groups,
+    isFree: data.is_free,
+    recipientName: data.recipient_name,
+    accountNumber: data.account_number,
+    feePerEvent: data.fee_per_event
 });
 
 const toSwimmer = (data: any): Swimmer => ({
@@ -25,15 +32,19 @@ const toSwimmer = (data: any): Swimmer => ({
     birthYear: data.birth_year,
     gender: data.gender,
     club: data.club,
-    ageGroup: data.age_group
+    ageGroup: data.age_group,
+    paymentProof: data.payment_proof,
+    paymentAmount: data.payment_amount
 });
 
 const toEventEntry = (data: any): EventEntry => ({
+    // FIX: Changed swimmer_id to swimmerId and seed_time to seedTime to match EventEntry type.
     swimmerId: data.swimmer_id,
     seedTime: data.seed_time
 });
 
 const toResult = (data: any): Result => ({
+    // FIX: Changed swimmer_id to swimmerId to match Result type.
     swimmerId: data.swimmer_id,
     time: data.time
 });
@@ -43,6 +54,7 @@ const toSwimEvent = (data: any): SwimEvent => ({
     distance: data.distance,
     style: data.style,
     gender: data.gender,
+    // FIX: Changed session_number to sessionNumber and heat_order to heatOrder to match SwimEvent type.
     sessionNumber: data.session_number,
     heatOrder: data.heat_order,
     sessionDateTime: data.session_date_time,
@@ -88,21 +100,16 @@ export const getPublicData = async (): Promise<{ competitionInfo: CompetitionInf
     try {
         const response = await fetch('/.netlify/functions/getPublicData');
         if (!response.ok) {
-            // Improved error handling: try to parse as JSON, fallback to text.
             let errorMessage = `Server error: ${response.status} ${response.statusText}`;
             try {
                 const errorBody = await response.text();
-                // Try to parse as JSON, but if it fails, use the raw text.
                 try {
                     const errorJson = JSON.parse(errorBody);
                     errorMessage = errorJson.message || JSON.stringify(errorJson);
                 } catch (jsonError) {
-                    // The response was not JSON, maybe HTML or plain text.
-                    // Shorten it to avoid flooding the console/UI with an entire HTML page.
                     errorMessage = errorBody.length > 500 ? errorBody.substring(0, 500) + '...' : errorBody;
                 }
             } catch (textError) {
-                // Could not even read the response body as text.
                 errorMessage += ' (and failed to read error response body)';
             }
             throw new Error(errorMessage);
@@ -111,7 +118,6 @@ export const getPublicData = async (): Promise<{ competitionInfo: CompetitionInf
         return data;
     } catch (error: any) {
         console.error("Error fetching public data via serverless function:", error.message || error);
-        // Provide a fallback structure to prevent the app from crashing on a failed load.
         return {
             competitionInfo: { 
                 eventName: config.competition.defaultName, 
@@ -121,7 +127,9 @@ export const getPublicData = async (): Promise<{ competitionInfo: CompetitionInf
                 isRegistrationOpen: false, 
                 numberOfLanes: config.competition.defaultLanes,
                 registrationDeadline: null,
-                ageGroups: null
+                ageGroups: null,
+                isFree: true,
+                feePerEvent: 0
             },
             swimmers: [],
             events: [],
@@ -131,15 +139,11 @@ export const getPublicData = async (): Promise<{ competitionInfo: CompetitionInf
 };
 
 
-// --- Public-facing, Online-only functions ---
-
 // --- Competition Info ---
 export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
     const { data, error } = await supabase.from('competition_info').select('*').eq('id', 1).single();
     
-    // Explicitly handle "No rows found" as a non-critical case, returning defaults.
     if (error && error.code === 'PGRST116') {
-        console.warn("No competition info found in database, using defaults.");
         return { 
             eventName: config.competition.defaultName, 
             eventDate: '', 
@@ -148,7 +152,9 @@ export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
             isRegistrationOpen: false, 
             numberOfLanes: config.competition.defaultLanes,
             registrationDeadline: null,
-            ageGroups: null
+            ageGroups: null,
+            isFree: true,
+            feePerEvent: 0
         };
     }
 
@@ -157,9 +163,7 @@ export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
         throw error;
     }
     
-    // This case can happen with RLS issues where no error is returned, but data is null.
     if (!data) {
-        console.error("No data returned for competition info, possibly due to RLS. Returning defaults.");
         return { 
             eventName: config.competition.defaultName, 
             eventDate: '', 
@@ -168,7 +172,9 @@ export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
             isRegistrationOpen: false, 
             numberOfLanes: config.competition.defaultLanes,
             registrationDeadline: null,
-            ageGroups: null
+            ageGroups: null,
+            isFree: true,
+            feePerEvent: 0
         };
     }
 
@@ -176,8 +182,7 @@ export const getCompetitionInfo = async (): Promise<CompetitionInfo> => {
 };
 
 export const updateCompetitionInfo = async (info: CompetitionInfo): Promise<CompetitionInfo> => {
-    // FIX: Define payload in a typed variable to resolve 'never' type error.
-    const payload: Database['public']['Tables']['competition_info']['Insert'] = {
+    const payload: any = {
         id: 1,
         event_name: info.eventName,
         event_date: info.eventDate,
@@ -186,13 +191,15 @@ export const updateCompetitionInfo = async (info: CompetitionInfo): Promise<Comp
         is_registration_open: info.isRegistrationOpen,
         number_of_lanes: info.numberOfLanes,
         registration_deadline: info.registrationDeadline,
-        age_groups: info.ageGroups
+        age_groups: info.ageGroups,
+        is_free: info.isFree,
+        recipient_name: info.recipientName,
+        account_number: info.accountNumber,
+        fee_per_event: info.feePerEvent
     };
     const { data, error } = await supabase
         .from('competition_info')
-        // FIX: The upsert method expects an array of objects.
-        // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder
-        .upsert([payload] as any)
+        .upsert([payload])
         .select()
         .single();
     if (error) throw error;
@@ -208,34 +215,34 @@ export const getSwimmers = async (): Promise<Swimmer[]> => {
 
 export const addSwimmer = async (swimmer: Omit<Swimmer, 'id'>): Promise<Swimmer> => {
   const newSwimmer: Swimmer = { ...swimmer, id: crypto.randomUUID() };
-  const payload: Database['public']['Tables']['swimmers']['Insert'] = {
+  const payload: any = {
       id: newSwimmer.id,
       name: newSwimmer.name,
       birth_year: newSwimmer.birthYear,
       gender: newSwimmer.gender,
       club: newSwimmer.club,
-      age_group: newSwimmer.ageGroup
+      age_group: newSwimmer.ageGroup,
+      payment_proof: newSwimmer.paymentProof,
+      payment_amount: newSwimmer.paymentAmount
   };
-  // FIX: Remove redundant cast as `payload` is already typed, resolving 'never' type error.
-  // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder
-  const { data, error } = await supabase.from('swimmers').insert([payload] as any).select().single();
+  const { data, error } = await supabase.from('swimmers').insert([payload]).select().single();
   if (error) throw error;
   return toSwimmer(data);
 };
 
 export const updateSwimmer = async (swimmerId: string, updatedData: Omit<Swimmer, 'id'>): Promise<Swimmer> => {
-    // FIX: Define payload in a typed variable to resolve 'never' type error.
-    const payload: Database['public']['Tables']['swimmers']['Update'] = { 
+    const payload: any = { 
         name: updatedData.name, 
         birth_year: updatedData.birthYear, 
         gender: updatedData.gender, 
         club: updatedData.club,
-        age_group: updatedData.ageGroup
+        age_group: updatedData.ageGroup,
+        payment_proof: updatedData.paymentProof,
+        payment_amount: updatedData.paymentAmount
     };
     const { data, error } = await supabase
         .from('swimmers')
-        // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder, which resolves the 'never' type error.
-        .update(payload as any)
+        .update(payload)
         .eq('id', swimmerId)
         .select()
         .single();
@@ -263,7 +270,6 @@ export const findSwimmerByName = async (name: string): Promise<Swimmer | null> =
     if (!name || name.trim() === '') {
         return null;
     }
-    // Using .ilike for case-insensitive search and .limit(1).single() for efficiency.
     const { data, error } = await supabase
         .from('swimmers')
         .select('*')
@@ -271,7 +277,6 @@ export const findSwimmerByName = async (name: string): Promise<Swimmer | null> =
         .limit(1)
         .single();
 
-    // PGRST116 is the code for "No rows found", which is not an actual error in this case.
     if (error && error.code !== 'PGRST116') {
         console.error("Error fetching swimmer by name:", error.message || error);
         return null;
@@ -296,7 +301,7 @@ export const getEventsForRegistration = async (): Promise<SwimEvent[]> => {
 
 export const addEvent = async (event: Omit<SwimEvent, 'id' | 'entries' | 'results'>): Promise<SwimEvent> => {
   const newEvent: SwimEvent = { ...event, id: crypto.randomUUID(), entries: [], results: [] };
-  const payload: Database['public']['Tables']['events']['Insert'] = {
+  const payload: any = {
         id: newEvent.id,
         distance: newEvent.distance,
         style: newEvent.style,
@@ -304,9 +309,7 @@ export const addEvent = async (event: Omit<SwimEvent, 'id' | 'entries' | 'result
         relay_legs: newEvent.relayLegs,
         category: newEvent.category,
     };
-  // FIX: Remove redundant cast as `payload` is already typed, resolving 'never' type error.
-  // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder
-  const { data, error } = await supabase.from('events').insert([payload] as any).select().single();
+  const { data, error } = await supabase.from('events').insert([payload]).select().single();
   if (error) throw error;
   return toSwimEvent(data);
 };
@@ -328,11 +331,7 @@ export const getEventById = async (id: string): Promise<SwimEvent | undefined> =
 };
 
 export const updateEventSchedule = async (updatedSchedule: SwimEvent[]): Promise<void> => {
-    // The payload needs to include all required fields for the 'events' table
-    // to prevent 'not-null constraint' violations during the upsert operation.
-    // We explicitly map all non-relational properties from the SwimEvent object
-    // to the snake_case format expected by the database.
-    const payload: Database['public']['Tables']['events']['Insert'][] = updatedSchedule.map(event => ({
+    const payload: any[] = updatedSchedule.map(event => ({
         id: event.id,
         distance: event.distance,
         style: event.style,
@@ -346,9 +345,7 @@ export const updateEventSchedule = async (updatedSchedule: SwimEvent[]): Promise
 
     if (payload.length === 0) return;
 
-    // FIX: Remove redundant cast as `payload` is already typed, resolving 'never' type error.
-    // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder
-    const { error } = await supabase.from('events').upsert(payload as any);
+    const { error } = await supabase.from('events').upsert(payload);
     
     if (error) {
         console.error("Error updating event schedule in Supabase:", error.message || error);
@@ -358,10 +355,8 @@ export const updateEventSchedule = async (updatedSchedule: SwimEvent[]): Promise
 
 // --- Entries & Results ---
 export const registerSwimmerToEvent = async (eventId: string, swimmerId: string, seedTime: number): Promise<{success: boolean, message: string}> => {
-    // FIX: Define payload in a typed variable to resolve 'never' type error.
-    const payload: Database['public']['Tables']['event_entries']['Insert'][] = [{ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime }];
-    // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder
-    const { error } = await supabase.from('event_entries').upsert(payload as any);
+    const payload: any[] = [{ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime }];
+    const { error } = await supabase.from('event_entries').upsert(payload);
     if (error) {
         if (error.message.includes('duplicate key')) {
             return { success: false, message: 'Atlet sudah terdaftar.' };
@@ -377,19 +372,15 @@ export const unregisterSwimmerFromEvent = async (eventId: string, swimmerId: str
 };
 
 export const updateSwimmerSeedTime = async (eventId: string, swimmerId: string, seedTime: number): Promise<void> => {
-    // FIX: Define payload in a typed variable to resolve 'never' type error.
-    const payload: Database['public']['Tables']['event_entries']['Insert'][] = [{ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime }];
-    // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder
-    const { error } = await supabase.from('event_entries').upsert(payload as any);
+    const payload: any[] = [{ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime }];
+    const { error } = await supabase.from('event_entries').upsert(payload);
     if (error) throw error;
 };
 
 export const recordEventResults = async (eventId: string, results: Result[]): Promise<SwimEvent> => {
-    const payload: Database['public']['Tables']['event_results']['Insert'][] = results.map(r => ({ event_id: eventId, swimmer_id: r.swimmerId, time: r.time }));
+    const payload: any[] = results.map(r => ({ event_id: eventId, swimmer_id: r.swimmerId, time: r.time }));
     if (payload.length > 0) {
-        // FIX: Remove redundant cast as `payload` is already typed, resolving 'never' type error.
-        // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder
-        const { error } = await supabase.from('event_results').upsert(payload as any);
+        const { error } = await supabase.from('event_results').upsert(payload);
         if (error) throw error;
     }
     const event = await getEventById(eventId);
@@ -406,10 +397,8 @@ export const getRecords = async (): Promise<SwimRecord[]> => {
 };
 
 export const addOrUpdateRecord = async (recordData: Partial<SwimRecord>): Promise<SwimRecord> => {
-    // FIX: Define payload in a typed variable to resolve 'never' type error.
-    const payload: Database['public']['Tables']['records']['Insert'][] = [toRecordDbFormat(recordData as SwimRecord)];
-    // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder
-    const { data, error } = await supabase.from('records').upsert(payload as any).select().single();
+    const payload: any[] = [toRecordDbFormat(recordData as SwimRecord)];
+    const { data, error } = await supabase.from('records').upsert(payload).select().single();
     if (error) throw error;
     return toRecord(data);
 };
@@ -429,56 +418,47 @@ export const backupDatabase = async (): Promise<any> => {
     const [info, swimmers, events, records] = await Promise.all([
         getCompetitionInfo(), getSwimmers(), getEvents(), getRecords()
     ]);
-    return { backupDate: new Date().toISOString(), version: "1.1.0-online", competitionInfo: info, swimmers, events, records };
+    return { backupDate: new Date().toISOString(), version: "1.2.0-online", competitionInfo: info, swimmers, events, records };
 };
 
 export const restoreDatabase = async (backupData: any): Promise<void> => {
     if (!backupData.competitionInfo || !backupData.swimmers || !backupData.events || !backupData.records) {
         throw new Error("File backup tidak valid atau rusak.");
     }
-    // Clear existing data
     await clearAllData();
 
-    // Insert new data
     await updateCompetitionInfo(backupData.competitionInfo);
 
     if (backupData.swimmers.length > 0) {
-        // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
-        const swimmerPayloads: Database['public']['Tables']['swimmers']['Insert'][] = backupData.swimmers.map((s: Swimmer) => ({ id: s.id, name: s.name, birth_year: s.birthYear, gender: s.gender, club: s.club, age_group: s.ageGroup }));
-        // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder
-        const { error } = await supabase.from('swimmers').insert(swimmerPayloads as any);
+        const swimmerPayloads: any[] = backupData.swimmers.map((s: Swimmer) => ({ 
+            id: s.id, name: s.name, birth_year: s.birthYear, gender: s.gender, club: s.club, age_group: s.ageGroup,
+            payment_proof: s.paymentProof, payment_amount: s.paymentAmount
+        }));
+        const { error } = await supabase.from('swimmers').insert(swimmerPayloads);
         if (error) throw error;
     }
 
     if (backupData.events.length > 0) {
-        // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
-        const eventPayloads: Database['public']['Tables']['events']['Insert'][] = backupData.events.map((e: SwimEvent) => ({ id: e.id, distance: e.distance, style: e.style, gender: e.gender, session_number: e.sessionNumber, heat_order: e.heatOrder, session_date_time: e.sessionDateTime, relay_legs: e.relayLegs, category: e.category }));
-        // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder
-        const { error } = await supabase.from('events').insert(eventPayloads as any);
+        const eventPayloads: any[] = backupData.events.map((e: SwimEvent) => ({ id: e.id, distance: e.distance, style: e.style, gender: e.gender, session_number: e.sessionNumber, heat_order: e.heatOrder, session_date_time: e.sessionDateTime, relay_legs: e.relayLegs, category: e.category }));
+        const { error } = await supabase.from('events').insert(eventPayloads);
         if (error) throw error;
     }
 
-    const allEntries: Database['public']['Tables']['event_entries']['Insert'][] = backupData.events.flatMap((e: SwimEvent) => e.entries.map((en: EventEntry) => ({event_id: e.id, swimmer_id: en.swimmerId, seed_time: en.seedTime})));
+    const allEntries: any[] = backupData.events.flatMap((e: SwimEvent) => e.entries.map((en: EventEntry) => ({event_id: e.id, swimmer_id: en.swimmerId, seed_time: en.seedTime})));
     if (allEntries.length > 0) {
-        // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
-        // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder
-        const { error } = await supabase.from('event_entries').insert(allEntries as any);
+        const { error } = await supabase.from('event_entries').insert(allEntries);
         if (error) throw error;
     }
 
-    const allResults: Database['public']['Tables']['event_results']['Insert'][] = backupData.events.flatMap((e: SwimEvent) => e.results.map((r: Result) => ({event_id: e.id, swimmer_id: r.swimmerId, time: r.time})));
+    const allResults: any[] = backupData.events.flatMap((e: SwimEvent) => e.results.map((r: Result) => ({event_id: e.id, swimmer_id: r.swimmerId, time: r.time})));
     if (allResults.length > 0) {
-        // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
-        // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder
-        const { error } = await supabase.from('event_results').insert(allResults as any);
+        const { error } = await supabase.from('event_results').insert(allResults);
         if (error) throw error;
     }
 
     if (backupData.records.length > 0) {
-        // FIX: Explicitly typed the payload to resolve potential 'never' type errors with Supabase client.
-        const recordPayloads: Database['public']['Tables']['records']['Insert'][] = backupData.records.map(toRecordDbFormat);
-        // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder
-        const { error } = await supabase.from('records').insert(recordPayloads as any);
+        const recordPayloads: any[] = backupData.records.map(toRecordDbFormat);
+        const { error } = await supabase.from('records').insert(recordPayloads);
         if (error) throw error;
     }
 };
@@ -499,11 +479,9 @@ export const clearAllData = async (): Promise<void> => {
     const { error: recordsError } = await supabase.from('records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (recordsError) throw recordsError;
 
-    const defaultInfo = { id: 1, event_name: config.competition.defaultName, event_date: new Date().toISOString().split('T')[0], event_logo: null, sponsor_logo: null, is_registration_open: false, number_of_lanes: config.competition.defaultLanes, registration_deadline: null };
-    // FIX: Explicitly type the payload to resolve the 'never' type error.
-    const payload: Database['public']['Tables']['competition_info']['Insert'][] = [defaultInfo];
-    // FIX: Cast to any to resolve TS overload mismatch with Postgrest builder
-    const { error: infoError } = await supabase.from('competition_info').upsert(payload as any);
+    const defaultInfo = { id: 1, event_name: config.competition.defaultName, event_date: new Date().toISOString().split('T')[0], event_logo: null, sponsor_logo: null, is_registration_open: false, number_of_lanes: config.competition.defaultLanes, registration_deadline: null, is_free: true, fee_per_event: 0 };
+    const payload: any[] = [defaultInfo];
+    const { error: infoError } = await supabase.from('competition_info').upsert(payload);
     if (infoError) throw infoError;
 };
 
@@ -512,8 +490,8 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
     let successCount = 0;
     
     const styleReverseMap = new Map(Object.entries(SWIM_STYLE_TRANSLATIONS).map(([key, value]) => [value.toLowerCase(), key as SwimStyle]));
-    styleReverseMap.set('gaya ganti', SwimStyle.MEDLEY); // Alias for backward compatibility
-    styleReverseMap.set('kickboard', SwimStyle.PAPAN_LUNCUR); // Alias for Kickboard
+    styleReverseMap.set('gaya ganti', SwimStyle.MEDLEY); 
+    styleReverseMap.set('kickboard', SwimStyle.PAPAN_LUNCUR);
     const genderReverseMap = new Map(Object.entries(GENDER_TRANSLATIONS).map(([key, value]) => [value.toLowerCase(), key as Gender]));
 
     for (const [index, row] of data.entries()) {
@@ -523,18 +501,15 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
 
         try {
             const distance = parseInt(row['Jarak (m)'], 10);
-            
             const category = toTitleCase(row['Kategori']?.toString().trim() || '') || null;
             const relayLegsStr = row['Jumlah Atlet']?.toString().trim();
             const relayLegs = relayLegsStr ? parseInt(relayLegsStr, 10) : null;
-            
             const lowerStyleStr = styleStr?.toLowerCase();
             const lowerGenderStr = genderStr?.toLowerCase();
 
             if (!distance || isNaN(distance) || distance <= 0) throw new Error("'Jarak (m)' harus berupa angka positif.");
-            if (!lowerStyleStr || !styleReverseMap.has(lowerStyleStr)) throw new Error(`'Gaya' tidak valid. Gunakan salah satu dari: ${[...Object.values(SWIM_STYLE_TRANSLATIONS), 'Kickboard'].join(', ')}.`);
-            if (!lowerGenderStr || !genderReverseMap.has(lowerGenderStr)) throw new Error(`'Jenis Kelamin' tidak valid. Gunakan salah satu dari: ${Object.values(GENDER_TRANSLATIONS).join(', ')}.`);
-            if (relayLegs !== null && (isNaN(relayLegs) || relayLegs <= 1)) throw new Error("'Jumlah Atlet' harus berupa angka lebih dari 1 untuk estafet.");
+            if (!lowerStyleStr || !styleReverseMap.has(lowerStyleStr)) throw new Error(`'Gaya' tidak valid.`);
+            if (!lowerGenderStr || !genderReverseMap.has(lowerGenderStr)) throw new Error(`'Jenis Kelamin' tidak valid.`);
 
             await addEvent({
                 distance,
@@ -545,14 +520,7 @@ export const processEventUpload = async (data: any[]): Promise<{ success: number
             });
             successCount++;
         } catch (error: any) {
-            let errorMessage = error.message;
-            const lowerErrorMessage = errorMessage.toLowerCase();
-            // Catch both common enum-related error messages from Postgres/Supabase
-            if (lowerErrorMessage.includes('invalid input value for enum public.swim_style') || 
-                (lowerErrorMessage.includes('violates check constraint') && (lowerErrorMessage.includes('events_style_check') || lowerErrorMessage.includes('"events_style_check"')))) {
-                errorMessage = `Gaya "${styleStr}" tidak valid di database. Skema database Anda mungkin perlu diperbarui. Coba jalankan perintah perbaikan dari menu "SQL Editor".`;
-            }
-            errors.push(`Baris ${rowNum}: ${errorMessage}`);
+            errors.push(`Baris ${rowNum}: ${error.message}`);
         }
     }
     
@@ -566,8 +534,6 @@ export const processRecordUpload = async (data: any[]): Promise<{ success: numbe
     await deleteAllRecords();
     
     const styleReverseMap = new Map(Object.entries(SWIM_STYLE_TRANSLATIONS).map(([key, value]) => [value.toLowerCase(), key as SwimStyle]));
-    styleReverseMap.set('gaya ganti', SwimStyle.MEDLEY); // Alias for backward compatibility
-    styleReverseMap.set('kickboard', SwimStyle.PAPAN_LUNCUR); // Alias for Kickboard
     const genderReverseMap = new Map(Object.entries(GENDER_TRANSLATIONS).map(([key, value]) => [value.toLowerCase(), key as Gender]));
 
     for (const [index, row] of data.entries()) {
@@ -578,38 +544,26 @@ export const processRecordUpload = async (data: any[]): Promise<{ success: numbe
             const distance = parseInt(row['Jarak (m)'], 10);
             const styleStr = row['Gaya']?.trim();
             const genderStr = row['Jenis Kelamin']?.trim();
-            const category = toTitleCase(row['Kategori']?.toString().trim() || '') || null;
             const timeStr = row['Waktu (mm:ss.SS)']?.toString().trim();
             const holderName = toTitleCase(row['Nama Pemegang Rekor']?.toString().trim() || '');
             const yearSet = parseInt(row['Tahun'], 10);
-            const relayLegsStr = row['Jumlah Atlet (Estafet)']?.toString().trim();
-            const relayLegs = relayLegsStr ? parseInt(relayLegsStr, 10) : null;
-            const locationSet = toTitleCase(row['Lokasi']?.toString().trim() || '') || null;
 
-            const lowerStyleStr = styleStr?.toLowerCase();
-            const lowerGenderStr = genderStr?.toLowerCase();
-
-            if (!typeStr || !['PORPROV', 'NASIONAL'].includes(typeStr)) throw new Error("'Tipe Rekor' harus 'PORPROV' atau 'Nasional'.");
-            if (!distance || isNaN(distance) || distance <= 0) throw new Error("'Jarak (m)' harus berupa angka positif.");
-            if (!lowerStyleStr || !styleReverseMap.has(lowerStyleStr)) throw new Error(`'Gaya' tidak valid. Gunakan salah satu dari: ${[...Object.values(SWIM_STYLE_TRANSLATIONS), 'Kickboard'].join(', ')}.`);
-            if (!lowerGenderStr || !genderReverseMap.has(lowerGenderStr)) throw new Error(`'Jenis Kelamin' tidak valid. Gunakan salah satu dari: ${Object.values(GENDER_TRANSLATIONS).join(', ')}.`);
-            if (!timeStr) throw new Error("'Waktu (mm:ss.SS)' wajib diisi.");
-            if (!holderName) throw new Error("'Nama Pemegang Rekor' wajib diisi.");
-            if (!yearSet || isNaN(yearSet) || yearSet < 1900 || yearSet > 2100) throw new Error("'Tahun' harus berupa angka yang valid.");
+            if (!typeStr || !['PORPROV', 'NASIONAL'].includes(typeStr)) throw new Error("'Tipe Rekor' tidak valid.");
+            if (!distance || isNaN(distance) || distance <= 0) throw new Error("'Jarak (m)' tidak valid.");
+            if (!timeStr) throw new Error("'Waktu' wajib diisi.");
             
             const timeParts = timeStr.match(/^(\d{1,2}):(\d{2})\.(\d{2})$/);
-            if (!timeParts) throw new Error("Format 'Waktu' harus mm:ss.SS (contoh: 01:23.45).");
+            if (!timeParts) throw new Error("Format 'Waktu' harus mm:ss.SS.");
             const [, min, sec, ms] = timeParts.map(Number);
             const timeInMillis = (min * 60 * 1000) + (sec * 1000) + (ms * 10);
 
-            const gender = genderReverseMap.get(lowerGenderStr)!;
-            const style = styleReverseMap.get(lowerStyleStr)!;
+            const gender = genderReverseMap.get(genderStr?.toLowerCase() || '')!;
+            const style = styleReverseMap.get(styleStr?.toLowerCase() || '')!;
             const type = typeStr === 'PORPROV' ? RecordType.PORPROV : RecordType.NASIONAL;
-            const recordId = `${type.toUpperCase()}_${gender}_${distance}_${style}` + (category ? `_${category}` : '') + (relayLegs ? `_R${relayLegs}` : '');
+            const recordId = `${type.toUpperCase()}_${gender}_${distance}_${style}`;
             
             await addOrUpdateRecord({
-                id: recordId, type, gender, distance, style, time: timeInMillis, holderName, yearSet,
-                relayLegs, category, locationSet
+                id: recordId, type, gender, distance, style, time: timeInMillis, holderName, yearSet
             });
             successCount++;
 
@@ -620,6 +574,7 @@ export const processRecordUpload = async (data: any[]): Promise<{ success: numbe
     
     return { success: successCount, errors };
 };
+
 export const processParticipantUpload = async (data: any[]): Promise<{ newSwimmers: number; updatedSwimmers: number; errors: string[] }> => {
     let newSwimmersCount = 0;
     let successfulRegistrations = 0;
@@ -639,16 +594,12 @@ export const processParticipantUpload = async (data: any[]): Promise<{ newSwimme
             const birthYearStr = row['Tahun Lahir']?.toString().trim();
             const genderStr = row['Jenis Kelamin (L/P)']?.toString().trim().toUpperCase();
             const club = toTitleCase(row['Nama Tim']?.toString().trim() || '');
-            const ageGroup = toTitleCase(row['KU']?.toString().trim() || '') || null;
             const eventName = row['Nomor Lomba']?.toString().trim();
             const seedTimeStr = row['Waktu Unggulan (mm:ss.SS)']?.toString().trim();
             
-            const isRelayRegistration = !birthYearStr;
-            if (!name || !club || !eventName) throw new Error("Kolom 'Nama Atlet', 'Nama Tim', dan 'Nomor Lomba' wajib diisi.");
-            if (!isRelayRegistration && (!birthYearStr || isNaN(parseInt(birthYearStr)))) throw new Error("'Tahun Lahir' wajib diisi dan harus berupa angka.");
-            if (!genderStr || !['L', 'P'].includes(genderStr)) throw new Error("'Jenis Kelamin (L/P)' harus diisi dengan 'L' atau 'P'.");
+            if (!name || !club || !eventName) throw new Error("Kolom wajib ada yang kosong.");
 
-            const birthYear = isRelayRegistration ? 0 : parseInt(birthYearStr, 10);
+            const birthYear = parseInt(birthYearStr || '0', 10);
             const gender: 'Male' | 'Female' = genderStr === 'L' ? 'Male' : 'Female';
 
             const targetEvent = eventNameMap.get(eventName);
@@ -657,16 +608,8 @@ export const processParticipantUpload = async (data: any[]): Promise<{ newSwimme
             let seedTimeMs = 0;
             if (seedTimeStr && seedTimeStr.toUpperCase() !== 'NT') {
                 const timeParts = seedTimeStr.match(/^(\d{1,2})\:(\d{2})\.(\d{2})$/);
-                if (!timeParts) {
-                    throw new Error("Format 'Waktu Unggulan' harus mm:ss.SS (contoh: 01:23.45), 99:99.99 untuk NT, atau NT.");
-                }
-                const [, min, sec, ms] = timeParts.map(Number);
-                if (min === 99 && sec === 99 && ms === 99) {
-                    seedTimeMs = 0;
-                } else {
-                    if (sec >= 60) {
-                        throw new Error("'Detik' pada Waktu Unggulan tidak boleh lebih dari 59.");
-                    }
+                if (timeParts) {
+                    const [, min, sec, ms] = timeParts.map(Number);
                     seedTimeMs = (min * 60 * 1000) + (sec * 1000) + (ms * 10);
                 }
             }
@@ -675,8 +618,8 @@ export const processParticipantUpload = async (data: any[]): Promise<{ newSwimme
             let swimmer = swimmerMap.get(swimmerKey);
             
             if (!swimmer) {
-                swimmer = await addSwimmer({ name, birthYear, gender, club, ageGroup });
-                swimmerMap.set(swimmerKey, swimmer); // Add to local map to avoid re-adding
+                swimmer = await addSwimmer({ name, birthYear, gender, club, ageGroup: null });
+                swimmerMap.set(swimmerKey, swimmer);
                 newSwimmersCount++;
             }
 
@@ -717,9 +660,8 @@ export const processOnlineRegistration = async (
                 const errorData = await response.json();
                 errorMessage = errorData.message || JSON.stringify(errorData);
             } catch (e) {
-                // Could not parse JSON, maybe a Netlify error page
                 const textError = await response.text().catch(() => "Could not read error body.");
-                errorMessage = textError.substring(0, 500); // Truncate long HTML errors
+                errorMessage = textError.substring(0, 500);
             }
             throw new Error(errorMessage);
         }
@@ -732,6 +674,6 @@ export const processOnlineRegistration = async (
     }
 };
 export const getUsers = async (): Promise<User[]> => { const { data, error } = await supabase.from('users').select('*'); if (error) throw error; return data.map(toUser); };
-export const addUser = async (user: Omit<User, 'id'>): Promise<User> => { throw new Error("Admin-level user creation from the client is disabled for security. Please use the Supabase dashboard."); };
-export const updateUser = async (userId: string, updatedData: Partial<Omit<User, 'id'>>): Promise<User> => { throw new Error("User updates must be done via Supabase dashboard."); };
-export const deleteUser = async (userId: string): Promise<void> => { throw new Error("User deletion must be done via Supabase dashboard."); };
+export const addUser = async (user: Omit<User, 'id'>): Promise<User> => { throw new Error("Admin-level user creation disabled."); };
+export const updateUser = async (userId: string, updatedData: Partial<Omit<User, 'id'>>): Promise<User> => { throw new Error("User updates disabled."); };
+export const deleteUser = async (userId: string): Promise<void> => { throw new Error("User deletion disabled."); };

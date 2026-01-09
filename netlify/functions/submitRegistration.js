@@ -1,12 +1,10 @@
+
 import { createClient } from '@supabase/supabase-js';
 
-// These must be set as environment variables in your Netlify deployment settings.
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 let supabaseAdmin;
-
-// Initialize the admin client only if the credentials are provided
 if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
   supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 }
@@ -17,59 +15,36 @@ export const handler = async (event) => {
     }
 
     if (!supabaseAdmin) {
-        return { 
-            statusCode: 500, 
-            body: JSON.stringify({ 
-                success: false, 
-                message: "Konfigurasi database di server bermasalah. Hubungi administrator.",
-                swimmer: null
-            }) 
-        };
+        return { statusCode: 500, body: JSON.stringify({ success: false, message: "Database config error." }) };
     }
 
     try {
         const { swimmerData, registrations } = JSON.parse(event.body);
         
         if (!swimmerData || !registrations || !swimmerData.name || !swimmerData.club) {
-            return { statusCode: 400, body: JSON.stringify({ success: false, message: 'Data pendaftaran tidak valid.', swimmer: null }) };
+            return { statusCode: 400, body: JSON.stringify({ success: false, message: 'Data tidak lengkap.' }) };
         }
         
-        // 1. Find or create the swimmer and find existing registrations
         const { data: existingSwimmers, error: searchError } = await supabaseAdmin
             .from('swimmers')
-            .select('id, name, birth_year, gender, club, age_group')
+            .select('id')
             .ilike('name', swimmerData.name.trim())
-            .ilike('club', swimmerData.club.trim())
             .eq('birth_year', swimmerData.birthYear)
-            .eq('gender', swimmerData.gender);
+            .eq('gender', swimmerData.gender)
+            .limit(1);
             
         if (searchError) throw searchError;
         
         let swimmer;
-        let previouslyRegisteredEvents = [];
-
         if (existingSwimmers && existingSwimmers.length > 0) {
             swimmer = existingSwimmers[0];
-
-            // Fetch previously registered events
-            const { data: existingEntries, error: entriesFetchError } = await supabaseAdmin
-                .from('event_entries')
-                .select('event_id')
-                .eq('swimmer_id', swimmer.id);
-                
-            if (entriesFetchError) throw entriesFetchError;
-            
-            if (existingEntries && existingEntries.length > 0) {
-                const eventIds = existingEntries.map(e => e.event_id);
-                const { data: eventsData, error: eventsFetchError } = await supabaseAdmin
-                    .from('events')
-                    .select('id, distance, style, gender, relay_legs, category')
-                    .in('id', eventIds);
-                    
-                if (eventsFetchError) throw eventsFetchError;
-                
-                previouslyRegisteredEvents = eventsData || [];
-            }
+            // Update swimmer info including payment data
+            await supabaseAdmin.from('swimmers').update({
+                club: swimmerData.club,
+                age_group: swimmerData.ageGroup,
+                payment_proof: swimmerData.paymentProof,
+                payment_amount: swimmerData.paymentAmount
+            }).eq('id', swimmer.id);
         } else {
             const { data: newSwimmer, error: addError } = await supabaseAdmin
                 .from('swimmers')
@@ -78,15 +53,16 @@ export const handler = async (event) => {
                     birth_year: swimmerData.birthYear,
                     gender: swimmerData.gender,
                     club: swimmerData.club,
-                    age_group: swimmerData.ageGroup
+                    age_group: swimmerData.ageGroup,
+                    payment_proof: swimmerData.paymentProof,
+                    payment_amount: swimmerData.paymentAmount
                 })
-                .select('id, name, birth_year, gender, club, age_group')
+                .select('id')
                 .single();
             if (addError) throw addError;
             swimmer = newSwimmer;
         }
 
-        // 2. Insert new event entries
         const entriesToInsert = registrations.map(reg => ({
             event_id: reg.eventId,
             swimmer_id: swimmer.id,
@@ -95,34 +71,18 @@ export const handler = async (event) => {
         
         if (entriesToInsert.length > 0) {
             const { error: entriesError } = await supabaseAdmin.from('event_entries').upsert(entriesToInsert);
-            
-            if (entriesError) {
-                 if (entriesError.message.includes('duplicate key value violates unique constraint')) {
-                     return { 
-                        statusCode: 409, 
-                        body: JSON.stringify({ success: false, message: 'Gagal: Salah satu pendaftaran duplikat. Perenang mungkin sudah terdaftar di nomor lomba tersebut.', swimmer: null }) 
-                    };
-                }
-                throw entriesError;
-            }
+            if (entriesError) throw entriesError;
         }
 
         return {
             statusCode: 200,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                success: true, 
-                message: 'Pendaftaran berhasil diterima.', 
-                swimmer,
-                previouslyRegisteredEvents
-            }),
+            body: JSON.stringify({ success: true, swimmer }),
         };
 
     } catch (error) {
-        console.error("Error in submitRegistration function:", error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ success: false, message: `Terjadi kesalahan server: ${error.message}`, swimmer: null })
+            body: JSON.stringify({ success: false, message: error.message })
         };
     }
 };

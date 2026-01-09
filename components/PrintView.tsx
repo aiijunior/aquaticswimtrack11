@@ -57,8 +57,8 @@ const estimateHeatDuration = (distance: number): number => {
     if (distance <= 100) return 3 * 60 * 1000; // 3 menit
     if (distance <= 200) return 5 * 60 * 1000; // 5 menit
     if (distance <= 400) return 7 * 60 * 1000; // 7 menit
-    if (distance <= 800) return 11 * 60 * 1000; // 11 menit (dari rentang 11-12)
-    if (distance <= 1500) return 24 * 60 * 1000; // 24 menit (dari rentang 23-25)
+    if (distance <= 800) return 11 * 60 * 1000; // 11 menit
+    if (distance <= 1500) return 24 * 60 * 1000; // 24 menit
     return 5 * 60 * 1000; // Default
 };
 
@@ -115,7 +115,9 @@ const PrintRecordRow: React.FC<{ record: SwimRecord | undefined; type: string; }
     );
 };
 
-// --- Interfaces for ProgramBook with timing ---
+// Define a type for events that have the global numbering attached
+type ScheduledEvent = SwimEvent & { globalEventNumber: number };
+
 interface TimedHeat extends Heat {
     estimatedHeatStartTime?: number;
 }
@@ -125,15 +127,11 @@ interface TimedEvent extends ScheduledEvent {
     heatsWithTimes?: TimedHeat[];
 }
 
-// Define a type for events that have the global numbering attached
-type ScheduledEvent = SwimEvent & { globalEventNumber: number };
-
 const ScheduleOfEvents: React.FC<{ events: ScheduledEvent[] }> = ({ events }) => {
     const processedData = useMemo(() => {
-        // Use the passed `events` which already have `globalEventNumber` and are sorted.
-        // We just need to group them by date.
-        const eventsToProcess = events as ScheduledEvent[];
-        const groupedByDate = eventsToProcess.reduce((acc, event) => {
+        const eventsToProcess = events;
+        // FIX: Added explicit type to reduce accumulator and current value.
+        const groupedByDate = eventsToProcess.reduce((acc: Record<string, ScheduledEvent[]>, event: ScheduledEvent) => {
             const dateStr = event.sessionDateTime 
                 ? new Date(event.sessionDateTime).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
                 : 'Tanggal Belum Ditentukan';
@@ -141,10 +139,10 @@ const ScheduleOfEvents: React.FC<{ events: ScheduledEvent[] }> = ({ events }) =>
             if (!acc[dateStr]) acc[dateStr] = [];
             acc[dateStr].push(event);
             return acc;
-        }, {} as Record<string, ScheduledEvent[]>);
+        }, {});
 
         return Object.entries(groupedByDate).map(([date, dateEvents]) => {
-            const groupedBySession = dateEvents.reduce((acc, event) => {
+            const groupedBySession = dateEvents.reduce((acc: Record<string, ScheduledEvent[]>, event: ScheduledEvent) => {
                 const sessionName = `Sesi ${romanize(event.sessionNumber || 0)}`;
                 if (!acc[sessionName]) acc[sessionName] = [];
                 acc[sessionName].push(event);
@@ -204,22 +202,15 @@ const ProgramBook: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], inf
                 acc[sessionName] = [];
             }
             
-            // FIX: Use 'any' cast to resolve stubborn unknown type inference issue on event entries during mapping.
-            const eventEntries: Entry[] = ((event.entries as any) || []).map((entry: any) => {
+            // FIX: Explicitly typed entries to avoid 'unknown' mapping error.
+            const eventEntries: Entry[] = (event.entries as EventEntry[] || []).map((entry: EventEntry) => {
                 const swimmer = swimmersMap.get(entry.swimmerId);
                 return swimmer ? { ...entry, swimmer } : null;
             }).filter((e): e is Entry => e !== null);
 
-            // Only push if there are entries or if we want to show empty events
-            if (eventEntries.length > 0) {
-                 acc[sessionName].push({ ...event, detailedEntries: eventEntries });
-            } else {
-                 // To ensure event numbering consistency, always include the event shell.
-                 acc[sessionName].push({ ...event, detailedEntries: [] });
-            }
-            
+            acc[sessionName].push({ ...event, detailedEntries: eventEntries });
             return acc;
-        }, {} as Record<string, TimedEvent[]>);
+        }, {});
 
         Object.values(sessionsData).forEach((sessionEvents: TimedEvent[]) => {
             if (sessionEvents.length === 0) return;
@@ -408,31 +399,24 @@ const EventResults: React.FC<{ events: ScheduledEvent[], swimmers: Swimmer[], in
                                 </colgroup>
                                 <thead><tr><th className="text-center">Peringkat</th><th>Nama Atlet</th><th>KU</th><th>Tahun</th><th>Nama Tim</th><th className="text-right">Waktu</th><th className="text-center">Medali</th></tr></thead>
                                 <tbody>
-                                    {event.sortedResults.map(res => {
-                                        let rankClass = '';
-                                        if (res.rank === 1) rankClass = 'print-gold-medal';
-                                        else if (res.rank === 2) rankClass = 'print-silver-medal';
-                                        else if (res.rank === 3) rankClass = 'print-bronze-medal';
-
-                                        return (
-                                            <tr key={res.swimmerId} className={rankClass}>
-                                                <td className="text-center font-bold">{res.rank > 0 ? res.rank : formatTime(res.time)}</td>
-                                                <td>{res.swimmer?.name || 'N/A'}</td>
-                                                <td>{event.relayLegs ? '-' : res.swimmer?.ageGroup || '-'}</td>
-                                                <td>{event.relayLegs ? '-' : res.swimmer?.birthYear || ''}</td>
-                                                <td>{res.swimmer?.club || 'N/A'}</td>
-                                                <td className="text-right font-mono">
-                                                    {formatTime(res.time)}
-                                                    {res.recordsBroken.map(br => (
-                                                        <span key={br.record.id} className={`record-badge ${br.record.type.toLowerCase()}`}>
-                                                            {br.record.type}
-                                                        </span>
-                                                    ))}
-                                                </td>
-                                                <td className="text-center"><Medal rank={res.rank} /></td>
-                                            </tr>
-                                        );
-                                    })}
+                                    {event.sortedResults.map(res => (
+                                        <tr key={res.swimmerId}>
+                                            <td className="text-center font-bold">{res.rank > 0 ? res.rank : formatTime(res.time)}</td>
+                                            <td>{res.swimmer?.name || 'N/A'}</td>
+                                            <td>{event.relayLegs ? '-' : res.swimmer?.ageGroup || '-'}</td>
+                                            <td>{event.relayLegs ? '-' : res.swimmer?.birthYear || ''}</td>
+                                            <td>{res.swimmer?.club || 'N/A'}</td>
+                                            <td className="text-right font-mono">
+                                                {formatTime(res.time)}
+                                                {res.recordsBroken.map(br => (
+                                                    <span key={br.record.id} className={`record-badge ${br.record.type.toLowerCase()}`}>
+                                                        {br.record.type}
+                                                    </span>
+                                                ))}
+                                            </td>
+                                            <td className="text-center"><Medal rank={res.rank} /></td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         ) : (
@@ -475,13 +459,13 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
                 });
         });
 
-        return Object.entries(clubMedals).sort(([clubA, a]: [string, { gold: number, silver: number, bronze: number }], [clubB, b]: [string, { gold: number, silver: number, bronze: number }]) => 
+        return Object.entries(clubMedals).sort(([clubA, a], [clubB, b]) => 
             b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || clubA.localeCompare(clubB)
         );
     }, [events, swimmers]);
 
     const grandTotal = useMemo(() => {
-        return data.reduce((acc: { gold: number, silver: number, bronze: number }, [, medals]: [string, { gold: number, silver: number, bronze: number }]) => {
+        return data.reduce((acc, [, medals]) => {
             acc.gold += medals.gold;
             acc.silver += medals.silver;
             acc.bronze += medals.bronze;
@@ -527,165 +511,83 @@ const ClubMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[], i
     );
 };
 
-// --- NEW COMPONENT: ClubMedalStandingsWithAthletes ---
-const ClubMedalStandingsWithAthletes: React.FC<{ events: SwimEvent[], swimmers: Swimmer[] }> = ({ events, swimmers }) => {
-    type MedalCounts = { gold: number, silver: number, bronze: number };
-    type Win = { eventName: string, rank: number, time: number };
-    type AthleteWins = { swimmer: Swimmer, wins: Win[] };
-    type ClubData = { medals: MedalCounts, athletes: Record<string, AthleteWins> };
+export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competitionInfo, isLoading }) => {
+    const [reportType, setReportType] = useState<'PROGRAM_BOOK' | 'RESULTS' | 'MEDALS' | 'SCHEDULE'>('PROGRAM_BOOK');
+    const [records, setRecords] = useState<SwimRecord[]>([]);
+    const { addNotification } = useNotification();
 
-    const data = useMemo(() => {
-        const clubData: Record<string, ClubData> = {};
-        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
+    useEffect(() => {
+        getRecords().then(setRecords);
+    }, []);
 
-        swimmers.forEach((s: Swimmer) => {
-            if (!clubData[s.club]) {
-                clubData[s.club] = { medals: { gold: 0, silver: 0, bronze: 0 }, athletes: {} };
+    const scheduledEvents = useMemo(() => {
+        return [...events]
+            .filter(e => (e.sessionNumber || 0) > 0)
+            .sort((a, b) => (a.sessionNumber || 0) - (b.sessionNumber || 0) || (a.heatOrder || 0) - (b.heatOrder || 0))
+            .map((e, i) => ({ ...e, globalEventNumber: i + 1 }));
+    }, [events]);
+
+    const brokenRecords = useMemo(() => {
+        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        const broken: BrokenRecord[] = [];
+        scheduledEvents.forEach(event => {
+            if (event.results && event.results.length > 0) {
+                const winner = [...event.results].filter(r => r.time > 0).sort((a,b) => a.time - b.time)[0];
+                if (winner) {
+                    const swimmer = swimmersMap.get(winner.swimmerId);
+                    if (swimmer) {
+                         [RecordType.PORPROV, RecordType.NASIONAL].forEach(type => {
+                            const record = records.find(r => r.type === type && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.category ?? null) === (event.category ?? null));
+                            if (record && winner.time < record.time) {
+                                broken.push({ record, newEventName: formatEventName(event), newHolder: swimmer, newTime: winner.time });
+                            }
+                        });
+                    }
+                }
             }
         });
+        return broken;
+    }, [scheduledEvents, swimmers, records]);
 
-        (events as SwimEvent[]).forEach((event: SwimEvent) => {
-            if (!event.results) return;
-            [...event.results]
-                .filter((r: Result) => r.time > 0)
-                .sort((a: Result, b: Result) => a.time - b.time)
-                .slice(0, 3)
-                .forEach((result: Result, i: number) => {
-                    const rank = i + 1;
-                    const swimmer = swimmersMap.get(result.swimmerId);
-                    if (swimmer) {
-                        const club = clubData[swimmer.club];
-                        if (rank === 1) club.medals.gold++;
-                        else if (rank === 2) club.medals.silver++;
-                        else if (rank === 3) club.medals.bronze++;
+    const handlePrint = () => window.print();
 
-                        if (!club.athletes[swimmer.id]) {
-                            club.athletes[swimmer.id] = { swimmer, wins: [] };
-                        }
-                        club.athletes[swimmer.id].wins.push({ eventName: formatEventName(event), rank, time: result.time });
-                    }
-                });
-        });
-
-        return Object.entries(clubData)
-            .sort(([clubA, a]: [string, ClubData], [clubB, b]: [string, ClubData]) => 
-                b.medals.gold - a.medals.gold || b.medals.silver - a.medals.silver || b.medals.bronze - a.medals.bronze || clubA.localeCompare(clubB)
-            );
-    }, [events, swimmers]);
-
-    if (data.length === 0) return <p className="text-center text-text-secondary py-10">Tidak ada data medali untuk ditampilkan.</p>;
+    if (isLoading) return <div className="flex justify-center p-20"><Spinner /></div>;
+    if (!competitionInfo) return null;
 
     return (
-        <main className="space-y-8">
-            {data.map(([clubName, clubData]) => {
-                const athletesWithWins = Object.values(clubData.athletes).filter((a: AthleteWins) => a.wins.length > 0);
-                if (athletesWithWins.length === 0) return null;
+        <div className="print-view-container">
+            <div className="no-print space-y-6 mb-8">
+                <h1 className="text-3xl font-bold">Menu Laporan & Cetak</h1>
+                <Card>
+                    <div className="flex flex-wrap gap-4">
+                        <Button variant={reportType === 'SCHEDULE' ? 'primary' : 'secondary'} onClick={() => setReportType('SCHEDULE')}>Jadwal Acara</Button>
+                        <Button variant={reportType === 'PROGRAM_BOOK' ? 'primary' : 'secondary'} onClick={() => setReportType('PROGRAM_BOOK')}>Buku Acara (Program Book)</Button>
+                        <Button variant={reportType === 'RESULTS' ? 'primary' : 'secondary'} onClick={() => setReportType('RESULTS')}>Hasil Lomba</Button>
+                        <Button variant={reportType === 'MEDALS' ? 'primary' : 'secondary'} onClick={() => setReportType('MEDALS')}>Klasemen Medali</Button>
+                    </div>
+                    <div className="mt-6">
+                        <Button onClick={handlePrint} className="flex items-center space-x-2">
+                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm7-14a2 2 0 10-4 0v4a2 2 0 104 0V3z" /></svg>
+                             <span>Cetak Laporan</span>
+                        </Button>
+                    </div>
+                </Card>
+            </div>
 
-                return (
-                    <section key={clubName} className="print-event-section">
-                        <h3 className="text-2xl font-bold my-4 bg-gray-200 text-black p-2 rounded-md">
-                            {clubName} - (🥇{clubData.medals.gold} 🥈{clubData.medals.silver} 🥉{clubData.medals.bronze})
-                        </h3>
-                        <table className="w-full text-left text-sm">
-                            <thead>
-                                <tr>
-                                    <th style={{width: '25%'}}>Nama Atlet</th>
-                                    <th>Nomor Lomba yang Dimenangkan</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {athletesWithWins.map(({ swimmer, wins }) => (
-                                    <tr key={swimmer.id}>
-                                        <td className="font-semibold align-top">{swimmer.name}</td>
-                                        <td>
-                                            <ul className="space-y-1">
-                                                {wins.sort((a,b)=> a.rank - b.rank).map((win, i) => (
-                                                    <li key={i}><Medal rank={win.rank} /> {win.eventName} - <span className="font-mono">{formatTime(win.time)}</span></li>
-                                                ))}
-                                            </ul>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </section>
-                );
-            })}
-        </main>
-    );
-};
+            <div className="printable-content bg-white p-8 text-black min-h-screen shadow-lg rounded-lg max-w-[210mm] mx-auto">
+                <ReportHeader info={competitionInfo} title={
+                    reportType === 'SCHEDULE' ? 'Jadwal Acara' :
+                    reportType === 'PROGRAM_BOOK' ? 'Buku Acara (Program Book)' :
+                    reportType === 'RESULTS' ? 'Hasil Lomba' : 'Klasemen Medali Tim'
+                } />
+                
+                {reportType === 'SCHEDULE' && <ScheduleOfEvents events={scheduledEvents} />}
+                {reportType === 'PROGRAM_BOOK' && <ProgramBook events={scheduledEvents} swimmers={swimmers} info={competitionInfo} records={records} />}
+                {reportType === 'RESULTS' && <EventResults events={scheduledEvents} swimmers={swimmers} info={competitionInfo} records={records} brokenRecords={brokenRecords} />}
+                {reportType === 'MEDALS' && <ClubMedalStandings events={scheduledEvents} swimmers={swimmers} info={competitionInfo} />}
 
-
-// --- NEW COMPONENT: IndividualMedalStandings ---
-const IndividualMedalStandings: React.FC<{ events: SwimEvent[], swimmers: Swimmer[] }> = ({ events, swimmers }) => {
-    const { maleStandings, femaleStandings } = useMemo(() => {
-        const individualMedals: Record<string, { swimmer: Swimmer, gold: number, silver: number, bronze: number }> = {};
-        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-
-        (events as SwimEvent[]).forEach((event: SwimEvent) => {
-            if (event.results && event.results.length > 0 && event.gender !== Gender.MIXED) {
-                [...event.results]
-                    .filter((r: Result) => r.time > 0)
-                    .sort((a: Result, b: Result) => a.time - b.time)
-                    .slice(0, 3)
-                    .forEach((result: Result, i: number) => {
-                        const rank = i + 1;
-                        const swimmer = swimmersMap.get(result.swimmerId);
-                        if (swimmer) {
-                            if (!individualMedals[swimmer.id]) {
-                                individualMedals[swimmer.id] = { swimmer, gold: 0, silver: 0, bronze: 0 };
-                            }
-                            if (rank === 1) individualMedals[swimmer.id].gold++;
-                            else if (rank === 2) individualMedals[swimmer.id].silver++;
-                            else if (rank === 3) individualMedals[swimmer.id].bronze++;
-                        }
-                    });
-            }
-        });
-
-        const sortedStandings = Object.values(individualMedals)
-            .sort((a, b) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze || a.swimmer.name.localeCompare(b.swimmer.name));
-        
-        const maleStandings = sortedStandings.filter(s => s.swimmer.gender === 'Male');
-        const femaleStandings = sortedStandings.filter(s => s.swimmer.gender === 'Female');
-
-        return { maleStandings, femaleStandings };
-    }, [events, swimmers]);
-
-    const renderTable = (data: typeof maleStandings, title: string) => (
-        <div className="print-event-section">
-            <h3 className="text-2xl font-bold mb-4 text-center">{title}</h3>
-            {data.length > 0 ? (
-                <table className="w-full text-left">
-                    <colgroup><col style={{width: '8%'}} /><col style={{width: '32%'}} /><col style={{width: '30%'}} /><col style={{width: '10%'}} /><col style={{width: '10%'}} /><col style={{width: '10%'}} /></colgroup>
-                    <thead><tr><th className="text-center">#</th><th>Nama Atlet</th><th>Nama Tim</th><th className="text-center">🥇</th><th className="text-center">🥈</th><th className="text-center">🥉</th></tr></thead>
-                    <tbody>
-                        {data.map((entry, i) => (
-                            <tr key={entry.swimmer.id}>
-                                <td className="text-center font-bold">{i + 1}</td>
-                                <td className="font-semibold">{entry.swimmer.name}</td>
-                                <td>{entry.swimmer.club}</td>
-                                <td className="text-center">{entry.gold}</td>
-                                <td className="text-center">{entry.silver}</td>
-                                <td className="text-center">{entry.bronze}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            ) : <p className="text-center text-text-secondary py-6">Tidak ada medali yang diraih.</p>}
+                <ReportFooter info={competitionInfo} />
+            </div>
         </div>
     );
-
-    return (
-        <main className="space-y-12">
-            {renderTable(maleStandings, "Rekap Medali Atlet (Putra)")}
-            <br/>
-            {renderTable(femaleStandings, "Rekap Medali Atlet (Putri)")}
-            <p className="text-center text-xs text-gray-500 pt-4">Klasemen perorangan tidak termasuk medali dari nomor lomba campuran.</p>
-        </main>
-    );
 };
-
-// --- NEW COMPONENT: IndividualMedalStandingsByCategory ---
-const IndividualMedalStandingsByCategory: React.FC<{ events: SwimEvent[], swimmers: Swimmer[] }> = ({ events, swimmers }) => {
-    type Standing = { swimmer: Swimmer, gold: number, silver: number,

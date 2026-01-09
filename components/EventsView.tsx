@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import type { SwimEvent } from '../types';
 import { SwimStyle, Gender } from '../types';
@@ -624,7 +625,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                     <br/><br/>
                     Tindakan ini akan <strong className="text-red-500">menghapus permanen</strong> semua nomor lomba beserta data pendaftaran and hasil yang terkait.
                     <br />
-                    Tindakan ini <strong className="font-bold">TIDAK DAPAT DIBATALKAN</strong>.
+                    Tindakan ini <strong className="font-bold">TIDAK DAPAT BATALKAN</strong>.
                 </p>
                 <div className="flex justify-end space-x-4">
                     <Button variant="secondary" onClick={() => setIsDeleteAllModalOpen(false)}>Batal</Button>
@@ -707,8 +708,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {/* FIX: Use 'any' cast to resolve stubborn unknown type inference issue during JSX iteration. */}
-                                {(uploadResult.errors as any).map((err: any, i: number) => <li key={i}>{String(err)}</li>)}
+                                {/* FIX: Cast errors to string[] to resolve type inference issue during JSX iteration. */}
+                                {(uploadResult.errors as string[]).map((err: string, i: number) => <li key={i}>{String(err)}</li>)}
                             </ul>
                         </div>
                     )}

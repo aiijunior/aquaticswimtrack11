@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { getRecords, processRecordUpload, updateCompetitionInfo, updateEventSchedule, addOrUpdateRecord, deleteRecord, backupDatabase, clearAllData, restoreDatabase, deleteAllRecords } from '../services/databaseService';
 import { login } from '../services/authService';
@@ -83,7 +84,6 @@ const initialRecordFormState = {
 
 // --- Main Component ---
 export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitionInfo, events, onDataUpdate }) => {
-    // --- Helper Functions ---
     const romanize = (num: number): string => {
         if (isNaN(num) || num <= 0) return '';
         const lookup: {[key: string]: number} = {M:1000,CM:900,D:500,CD:400,C:100,XC:90,L:50,XL:40,X:10,IX:9,V:5,IV:4,I:1};
@@ -99,10 +99,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     
     const getErrorMessage = (error: unknown): string => {
         if (error instanceof Error) return error.message;
-        if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
-            return (error as any).message;
-        }
-        return 'Terjadi kesalahan yang tidak diketahui.';
+        return 'Terjadi kesalahan.';
     };
 
     const [activeTab, setActiveTab] = useState<'settings' | 'schedule' | 'records' | 'data'>('settings');
@@ -188,21 +185,17 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                         const dt = new Date(event.sessionDateTime);
                         if (!isNaN(dt.getTime())) {
                             newSessionDetails[sessionKey] = {
-                                date: dt.toISOString().split('T')[0], // YYYY-MM-DD
-                                time: dt.toTimeString().split(' ')[0].substring(0, 5) // HH:MM
+                                date: dt.toISOString().split('T')[0],
+                                time: dt.toTimeString().split(' ')[0].substring(0, 5)
                             };
                         }
-                    } catch (e) { /* ignore invalid date */ }
+                    } catch (e) { }
                 }
             } else {
                 newSchedule['unscheduled'].push(event);
             }
         });
 
-        // After populating the schedule, we sort each session's event list
-        // based on its `heatOrder`. This ensures that the display order is always
-        // correct and consistent with the saved data, fixing the issue where
-        // the order might appear incorrect after a refresh.
         for (const sessionKey in newSchedule) {
             if (sessionKey.startsWith('session-')) {
                 newSchedule[sessionKey].sort((a, b) => (a.heatOrder ?? 999) - (b.heatOrder ?? 999));
@@ -229,7 +222,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     }, [activeTab]);
 
 
-    // --- Handlers ---
     const handleEventNameChange = (index: number, value: string) => {
         const newLines = [...eventNameLines];
         newLines[index] = toTitleCase(value);
@@ -261,7 +253,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 if (sessionNum > 0 && sessionDetail && sessionDetail.date && sessionDetail.time) {
                     const dt = new Date(`${sessionDetail.date}T${sessionDetail.time}:00`);
                     if (isNaN(dt.getTime())) {
-                        throw new Error(`Format tanggal/waktu tidak valid untuk sesi '${sessionNames[key] || sessionNum}'`);
+                        throw new Error(`Format tanggal/waktu tidak valid.`);
                     }
                     sessionDT = dt.toISOString();
                 }
@@ -280,7 +272,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             onDataUpdate();
             addNotification('Jadwal berhasil disimpan!', 'info');
         } catch (error) {
-            console.error("Gagal menyimpan jadwal:", error);
             addNotification(`Gagal menyimpan jadwal: ${getErrorMessage(error)}`, 'error');
         }
     };
@@ -323,7 +314,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         }));
     };
 
-    // --- Record Management Handlers ---
     const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setRecordFilters(prev => ({ ...prev, [name]: value }));
@@ -363,7 +353,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     
     const handleRecordUpload = () => {
         if (!recordFile) return;
-
         setIsProcessing(true);
         setUploadResult(null);
         const reader = new FileReader();
@@ -374,194 +363,25 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
                 const json = XLSX.utils.sheet_to_json(worksheet);
-
                 const result = await processRecordUpload(json);
                 setUploadResult(result);
-
                 if (result.errors.length === 0 && result.success > 0) {
                     onDataUpdate(); 
                     fetchRecords();
                     setRecordFile(null);
-                    addNotification(`${result.success} data rekor berhasil diperbarui via unggahan!`, 'info');
+                    addNotification(`${result.success} data rekor berhasil diperbarui!`, 'info');
                 } else if (result.errors.length > 0) {
-                    addNotification('Impor selesai dengan galat. Periksa detail di bawah.', 'error');
+                    addNotification('Impor selesai dengan galat.', 'error');
                 }
             } catch (error) {
                 const errorMessage = getErrorMessage(error);
-                setUploadResult({ success: 0, errors: ['Gagal membaca atau memproses file.', errorMessage] });
+                setUploadResult({ success: 0, errors: [errorMessage] });
                 addNotification(`Gagal memproses unggahan: ${errorMessage}`, 'error');
             } finally {
                 setIsProcessing(false);
             }
         };
         reader.readAsArrayBuffer(recordFile);
-    };
-
-    const downloadRecordTemplate = () => {
-        if (typeof XLSX === 'undefined') {
-            alert('Pustaka untuk membuat file Excel belum termuat. Periksa koneksi internet Anda dan muat ulang halaman.');
-            return;
-        }
-    
-        const wb = XLSX.utils.book_new();
-    
-        // --- Sheet 2: Petunjuk & Daftar Pilihan ---
-        const listsSheetData: any[][] = [
-            ["PETUNJUK PENGISIAN"],
-            ["1. Isi data rekor pada sheet 'Template Rekor'."],
-            ["2. Kolom 'Tipe Rekor', 'Jarak (m)', 'Gaya', 'Jenis Kelamin', 'Waktu (mm:ss.SS)', 'Nama Pemegang Rekor', dan 'Tahun' wajib diisi."],
-            ["3. Untuk Tipe Rekor, Gaya, dan Jenis Kelamin, mohon gunakan pilihan yang tersedia di dropdown."],
-            ["4. Kolom 'Kategori' bersifat opsional. Kosongkan jika tidak ada (cth: untuk event senior/open)."],
-            ["5. Kolom 'Jumlah Atlet (Estafet)' HANYA diisi untuk nomor estafet (relay), contoh: 4."],
-            [], // Spacer
-            ["DAFTAR PILIHAN VALID"],
-            [],
-            ["Gaya", "Jenis Kelamin"],
-        ];
-    
-        const styles = Object.values(SWIM_STYLE_TRANSLATIONS);
-        const genders = Object.values(GENDER_TRANSLATIONS);
-        const maxLength = Math.max(styles.length, genders.length);
-    
-        for (let i = 0; i < maxLength; i++) {
-            listsSheetData.push([
-                styles[i] || "",
-                genders[i] || ""
-            ]);
-        }
-        const ws_lists = XLSX.utils.aoa_to_sheet(listsSheetData);
-        ws_lists['!cols'] = [{ wch: 40 }, { wch: 20 }];
-        XLSX.utils.book_append_sheet(wb, ws_lists, "Petunjuk & Pilihan");
-    
-    
-        // --- Sheet 1: Template Rekor ---
-        const templateData = [
-            {
-                "Tipe Rekor": "PORPROV",
-                "Jarak (m)": 50,
-                "Gaya": "Gaya Kupu-kupu",
-                "Jenis Kelamin": "Putri",
-                "Kategori": "KU 1-2",
-                "Waktu (mm:ss.SS)": "00:28.50",
-                "Nama Pemegang Rekor": "Contoh Atlet Putri",
-                "Tahun": 2024,
-                "Jumlah Atlet (Estafet)": "",
-                "Lokasi": "Bandung"
-            },
-            {
-                "Tipe Rekor": "Nasional",
-                "Jarak (m)": 200,
-                "Gaya": "Gaya Bebas",
-                "Jenis Kelamin": "Putra",
-                "Kategori": "", // Example for Open/Senior
-                "Waktu (mm:ss.SS)": "01:50.12",
-                "Nama Pemegang Rekor": "Contoh Atlet Putra",
-                "Tahun": 2023,
-                "Jumlah Atlet (Estafet)": "",
-                "Lokasi": "Jakarta"
-            },
-            {
-                "Tipe Rekor": "PORPROV",
-                "Jarak (m)": 100,
-                "Gaya": "Gaya Ganti Perorangan",
-                "Jenis Kelamin": "Campuran",
-                "Kategori": "KU-3",
-                "Waktu (mm:ss.SS)": "04:01.88",
-                "Nama Pemegang Rekor": "Tim Contoh Campuran",
-                "Tahun": 2022,
-                "Jumlah Atlet (Estafet)": 4,
-                "Lokasi": "Surabaya"
-            },
-            {
-                "Tipe Rekor": "PORPROV",
-                "Jarak (m)": 25,
-                "Gaya": "Papan Luncur",
-                "Jenis Kelamin": "Putri",
-                "Kategori": "KU-4",
-                "Waktu (mm:ss.SS)": "00:20.15",
-                "Nama Pemegang Rekor": "Atlet Papan Luncur",
-                "Tahun": 2024,
-                "Jumlah Atlet (Estafet)": "",
-                "Lokasi": "Makassar"
-            }
-        ];
-    
-        const ws = XLSX.utils.json_to_sheet(templateData);
-        ws['!cols'] = [
-            { wch: 15 }, // Tipe Rekor
-            { wch: 10 }, // Jarak
-            { wch: 20 }, // Gaya
-            { wch: 15 }, // Jenis Kelamin
-            { wch: 15 }, // Kategori
-            { wch: 20 }, // Waktu
-            { wch: 30 }, // Nama
-            { wch: 10 }, // Tahun
-            { wch: 25 }, // Jumlah Atlet
-            { wch: 20 }  // Lokasi
-        ];
-    
-        // Add Data Validation to Sheet 1
-        const maxRows = 1000;
-        if (!ws['!dataValidation']) ws['!dataValidation'] = [];
-        ws['!dataValidation'].push({ sqref: `A2:A${maxRows}`, opts: { type: 'list', formula1: `"PORPROV,Nasional"` } });
-        ws['!dataValidation'].push({ sqref: `C2:C${maxRows}`, opts: { type: 'list', formula1: `'Petunjuk & Pilihan'!$A$11:$A$${10 + styles.length}` } });
-        ws['!dataValidation'].push({ sqref: `D2:D${maxRows}`, opts: { type: 'list', formula1: `'Petunjuk & Pilihan'!$B$11:$B$${10 + genders.length}` } });
-    
-        XLSX.utils.book_append_sheet(wb, ws, "Template Rekor");
-        
-        // Reorder sheets to have Template first
-        wb.SheetNames.reverse();
-    
-        XLSX.writeFile(wb, "Template_Unggah_Rekor.xlsx");
-    };
-
-    const handleDownloadAllRecords = () => {
-        if (typeof XLSX === 'undefined') {
-            alert('Pustaka untuk membuat file Excel belum termuat. Periksa koneksi internet Anda dan muat ulang halaman.');
-            return;
-        }
-        if (currentRecords.length === 0) {
-            alert('Tidak ada rekor untuk diunduh.');
-            return;
-        }
-    
-        const dataToExport = currentRecords
-            .sort((a, b) => { // Sort for better readability in the Excel file
-                if (a.type !== b.type) return a.type.localeCompare(b.type);
-                if (a.gender !== b.gender) return a.gender.localeCompare(b.gender);
-                if (a.distance !== b.distance) return a.distance - b.distance;
-                return a.style.localeCompare(b.style);
-            })
-            .map(record => ({
-                "Tipe Rekor": record.type,
-                "Jarak (m)": record.distance,
-                "Gaya": translateSwimStyle(record.style),
-                "Jenis Kelamin": translateGender(record.gender),
-                "Kategori": record.category ?? "",
-                "Waktu (mm:ss.SS)": formatTime(record.time),
-                "Nama Pemegang Rekor": record.holderName,
-                "Tahun": record.yearSet,
-                "Jumlah Atlet (Estafet)": record.relayLegs ?? "",
-                "Lokasi": record.locationSet ?? ""
-            }));
-    
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-        worksheet['!cols'] = [
-            { wch: 15 }, // Tipe Rekor
-            { wch: 10 }, // Jarak (m)
-            { wch: 20 }, // Gaya
-            { wch: 15 }, // Jenis Kelamin
-            { wch: 15 }, // Kategori
-            { wch: 20 }, // Waktu
-            { wch: 30 }, // Nama Pemegang Rekor
-            { wch: 10 }, // Tahun
-            { wch: 25 }, // Jumlah Atlet (Estafet)
-            { wch: 20 }  // Lokasi
-        ];
-    
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Daftar Rekor");
-        XLSX.writeFile(workbook, "Daftar_Rekor_Kompetisi_Saat_Ini.xlsx");
     };
 
     const handleRecordFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -627,8 +447,8 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         try {
             await deleteAllRecords();
             setIsDeleteAllRecordsModalOpen(false);
-            fetchRecords(); // Refresh the list
-            onDataUpdate(); // Refresh global data
+            fetchRecords();
+            onDataUpdate();
             addNotification('Semua rekor berhasil dihapus.', 'error');
         } catch (error) {
             addNotification(`Gagal menghapus semua rekor: ${getErrorMessage(error)}`, 'error');
@@ -669,7 +489,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     };
 
 
-    // --- Scheduling Handlers ---
     const handleMoveEvent = (eventId: string, sourceSessionKey: string, targetSessionKey: string) => {
         if (sourceSessionKey === targetSessionKey) return;
 
@@ -700,7 +519,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
             if (newIndex < 0 || newIndex >= sessionEvents.length) return currentSchedule;
 
-            // Swap elements
             [sessionEvents[currentIndex], sessionEvents[newIndex]] = [sessionEvents[newIndex], sessionEvents[currentIndex]];
 
             return { ...currentSchedule, [sessionKey]: sessionEvents };
@@ -725,7 +543,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     }, [schedule.unscheduled, unscheduledSearchQuery]);
 
 
-    // --- Data Management Handlers ---
     const handleBackup = async () => {
         setIsBackupLoading(true);
         try {
@@ -733,11 +550,11 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
             const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, 2))}`;
             const link = document.createElement('a');
             link.href = jsonString;
-            link.download = `swimcomp-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.download = `backup-${new Date().toISOString().split('T')[0]}.json`;
             link.click();
             addNotification('Backup berhasil diunduh.', 'success');
         } catch (error) {
-            addNotification(`Gagal membuat backup: ${getErrorMessage(error)}`, 'error');
+            addNotification(`Gagal membuat backup.`, 'error');
         } finally {
             setIsBackupLoading(false);
         }
@@ -755,7 +572,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 setIsClearDataModalOpen(false);
                 setClearDataCredentials({ email: '', password: '' });
                 onDataUpdate();
-                addNotification('Semua data kompetisi telah berhasil dihapus.', 'error');
+                addNotification('Semua data telah dihapus.', 'error');
             } else {
                 setClearDataError('Kredensial tidak valid.');
                 setIsClearingData(false);
@@ -763,51 +580,38 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         } catch (error) {
             const errorMessage = getErrorMessage(error);
             setClearDataError(errorMessage);
-            addNotification(`Gagal menghapus data: ${errorMessage}`, 'error');
             setIsClearingData(false);
         }
     };
     
     const handleRestoreFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            if (e.target.files[0].type === 'application/json') {
-                setRestoreFile(e.target.files[0]);
-            } else {
-                addNotification('Harap pilih file backup .json yang valid.', 'error');
-                setRestoreFile(null);
-                (e.target as HTMLInputElement).value = '';
-            }
+            setRestoreFile(e.target.files[0]);
         }
     };
     
     const handleRestore = async () => {
         if (!restoreFile) return;
-
         setIsRestoring(true);
-
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
                 const content = e.target?.result as string;
                 const data = JSON.parse(content);
                 await restoreDatabase(data); 
-
-                addNotification('Data berhasil dipulihkan dari backup!', 'info');
+                addNotification('Data berhasil dipulihkan!', 'info');
                 onDataUpdate();
             } catch (error) {
-                addNotification(`Gagal memulihkan: ${getErrorMessage(error)}`, 'error');
+                addNotification(`Gagal memulihkan data.`, 'error');
             } finally {
                 setIsRestoring(false);
                 setIsRestoreModalOpen(false);
                 setRestoreFile(null);
-                const fileInput = document.getElementById('restore-upload') as HTMLInputElement;
-                if(fileInput) fileInput.value = '';
             }
         };
         reader.readAsText(restoreFile);
     };
 
-    // --- Render Logic ---
     if (!info) return <div className="flex justify-center items-center h-full"><Spinner /></div>;
     
     const renderTabs = () => (
@@ -850,6 +654,56 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                                 <p className="text-xs text-text-secondary mt-1">Kosongkan jika tidak ada batas waktu.</p>
                             </div>
                         </div>
+
+                        {/* SECTION: BIAYA KOMPETISI */}
+                        <div className="p-4 border-2 border-primary/20 rounded-lg bg-primary/5 space-y-4">
+                            <h3 className="font-bold text-primary flex items-center gap-2 uppercase tracking-wider">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+                                    <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
+                                </svg>
+                                Pengaturan Biaya Kompetisi
+                            </h3>
+                            
+                             <ToggleSwitch
+                                label="Tipe Kompetisi"
+                                enabled={!(info.isFree ?? true)}
+                                onChange={(berbayar) => setInfo({ ...info, isFree: !berbayar })}
+                                enabledText="BERBAYAR"
+                                disabledText="GRATIS"
+                            />
+                            
+                            <p className="text-xs text-text-secondary">
+                                {info.isFree ? 'Jika aktif, pendaftaran tidak memerlukan bukti bayar.' : 'Pendaftaran mandiri akan meminta bukti transfer.'}
+                            </p>
+
+                            {!(info.isFree ?? true) && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 animate-in fade-in duration-300">
+                                    <Input 
+                                        label="Nama Penerima Transfer" 
+                                        id="recipient-name" 
+                                        value={info.recipientName || ''} 
+                                        onChange={(e) => setInfo({ ...info, recipientName: toTitleCase(e.target.value) })}
+                                        placeholder="Contoh: Panitia Renang"
+                                    />
+                                    <Input 
+                                        label="Nomor Rekening" 
+                                        id="account-number" 
+                                        value={info.accountNumber || ''} 
+                                        onChange={(e) => setInfo({ ...info, accountNumber: e.target.value })}
+                                        placeholder="Contoh: BCA 1234567890"
+                                    />
+                                    <Input 
+                                        label="Biaya per Nomor Acara (Rp)" 
+                                        id="fee-per-event" 
+                                        type="number" 
+                                        value={info.feePerEvent || 0} 
+                                        onChange={(e) => setInfo({ ...info, feePerEvent: parseInt(e.target.value) || 0 })}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
                         <div>
                             <Input label="Nama Event (Baris 1)" id="event-name-1" type="text" value={eventNameLines[0]} onChange={(e) => handleEventNameChange(0, e.target.value)} style={{ fontSize: '16px' }} />
                             <Input label="Nama Event (Baris 2)" id="event-name-2" type="text" value={eventNameLines[1]} onChange={(e) => handleEventNameChange(1, e.target.value)} className="mt-4" style={{ fontSize: '12px' }}/>
@@ -868,15 +722,8 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                             <option value="10">10 Lintasan</option>
                         </Select>
                         
-                        {/* AGE GROUP MANAGER */}
                         <div>
-                            <label htmlFor="age-groups" className="block text-sm font-medium text-text-secondary mb-1">
-                                Atur Kategori Umur (KU)
-                            </label>
-                            <p className="text-xs text-text-secondary mb-2">
-                                Tuliskan daftar Kelompok Umur atau Kategori yang tersedia, dipisahkan dengan baris baru (Enter). 
-                                Daftar ini akan muncul di menu tambah atlet dan formulir pendaftaran.
-                            </p>
+                            <label htmlFor="age-groups" className="block text-sm font-medium text-text-secondary mb-1">Atur Kategori Umur (KU)</label>
                             <textarea
                                 id="age-groups"
                                 rows={6}
@@ -905,11 +752,9 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                     </div>
                     
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* Scheduled Events column */}
                         <div className="space-y-6">
                             {Object.keys(schedule).filter(k => k.startsWith('session')).sort((a,b) => parseInt(a.split('-')[1]) - parseInt(b.split('-')[1])).map(key => (
                                 <div key={key} className="bg-background p-4 rounded-lg border border-border">
-                                    {/* Session header */}
                                     <div className="flex justify-between items-center mb-2 border-b border-border pb-2 flex-wrap gap-2">
                                         <input type="text" value={sessionNames[key] || ''} onChange={(e) => setSessionNames(prev => ({...prev, [key]: toTitleCase(e.target.value)}))} className="font-bold text-lg bg-transparent focus:outline-none focus:ring-1 focus:ring-primary rounded px-1 flex-grow" />
                                         <button onClick={() => removeSession(key)} className="text-red-500 hover:text-red-400 text-xs ml-2 flex-shrink-0">Hapus Sesi</button>
@@ -918,8 +763,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                                         <SmallInput label="Tanggal" type="date" id={`date-${key}`} value={sessionDetails[key]?.date || ''} onChange={(e) => handleSessionDetailChange(key, 'date', e.target.value)} />
                                         <SmallInput label="Waktu Mulai" type="time" id={`time-${key}`} value={sessionDetails[key]?.time || ''} onChange={(e) => handleSessionDetailChange(key, 'time', e.target.value)} />
                                     </div>
-                                    
-                                    {/* Events list in this session */}
                                     <div className="space-y-2">
                                         {schedule[key]?.length > 0 ? schedule[key].map((event, index) => (
                                             <div key={event.id} className="flex items-center justify-between bg-surface p-2 rounded-md shadow-sm">
@@ -943,13 +786,12 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                                                     </select>
                                                 </div>
                                             </div>
-                                        )) : <p className="text-sm text-text-secondary text-center py-4">Belum ada nomor lomba di sesi ini.</p>}
+                                        )) : <p className="text-sm text-text-secondary text-center py-4">Belum ada nomor lomba.</p>}
                                     </div>
                                 </div>
                             ))}
                         </div>
                         
-                        {/* Unscheduled Events column */}
                         <div className="bg-surface p-4 rounded-lg">
                             <h3 className="font-bold text-lg mb-4 border-b border-border pb-2">Lomba Belum Terjadwal</h3>
                             <div className="mb-4">
@@ -972,7 +814,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                                             </select>
                                         </div>
                                     </div>
-                                )) : <p className="text-sm text-text-secondary text-center py-4">Semua nomor lomba sudah terjadwal.</p>}
+                                )) : <p className="text-sm text-text-secondary text-center py-4">Kosong.</p>}
                             </div>
                         </div>
                     </div>
@@ -981,194 +823,33 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
 
             {activeTab === 'records' && (
                 <Card>
-                    <h2 className="text-xl font-bold mb-2">Manajemen Rekor Kompetisi</h2>
-                    <p className="text-text-secondary mb-4">
-                        Kelola rekor secara manual atau unggah file Excel untuk memperbarui daftar rekor secara massal.
-                    </p>
-
+                    <h2 className="text-xl font-bold mb-2">Manajemen Rekor</h2>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* Manual Management */}
                         <div>
                             <form onSubmit={handleRecordFormSubmit} className="bg-background/50 p-4 rounded-lg border border-border space-y-3 mb-4">
-                                <h3 className="text-lg font-semibold mb-2">{editingRecord ? 'Edit Rekor' : 'Tambah Rekor Manual'}</h3>
                                 <Select label="Tipe Rekor" id="record-type" name="type" value={recordForm.type} onChange={handleRecordFormChange}>
                                     <option value={RecordType.PORPROV}>PORPROV</option>
                                     <option value={RecordType.NASIONAL}>Nasional</option>
                                 </Select>
-                                <div className="flex items-center gap-2">
-                                    <input type="checkbox" id="isRelay" name="isRelay" checked={recordForm.isRelay} onChange={handleRecordFormChange} className="h-4 w-4 rounded" />
-                                    <label htmlFor="isRelay" className="text-sm font-medium text-text-primary">Estafet</label>
-                                </div>
-                                {recordForm.isRelay && <Input label="Jumlah Atlet" id="relayLegs" name="relayLegs" type="number" value={recordForm.relayLegs} onChange={handleRecordFormChange} required />}
                                 <div className="flex gap-4">
                                     <Input label="Jarak (m)" id="distance" name="distance" type="number" value={recordForm.distance} onChange={handleRecordFormChange} required />
                                     <Select label="Gaya" id="style" name="style" value={recordForm.style} onChange={handleRecordFormChange}>
                                         {SWIM_STYLE_OPTIONS.map(s => <option key={s} value={s}>{translateSwimStyle(s)}</option>)}
                                     </Select>
                                 </div>
-                                <Input label="Kategori (Opsional)" id="category" name="category" type="text" value={recordForm.category} onChange={handleRecordFormChange} placeholder="cth: KU 1-2" />
+                                <Input label="Kategori" id="category" name="category" type="text" value={recordForm.category} onChange={handleRecordFormChange} />
                                 <Select label="Jenis Kelamin" id="gender" name="gender" value={recordForm.gender} onChange={handleRecordFormChange}>
                                     {GENDER_OPTIONS.map(g => <option key={g} value={g}>{translateGender(g)}</option>)}
                                 </Select>
-                                <div>
-                                    <label className="block text-sm font-medium text-text-secondary mb-1">Waktu</label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <Input label="Menit" id="min" name="min" type="number" min="0" value={recordForm.min} onChange={handleRecordFormChange} />
-                                        <Input label="Detik" id="sec" name="sec" type="number" min="0" max="59" value={recordForm.sec} onChange={handleRecordFormChange} />
-                                        <Input label="ss/100" id="ms" name="ms" type="number" min="0" max="99" value={recordForm.ms} onChange={handleRecordFormChange} />
-                                    </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <Input label="Min" id="min" name="min" type="number" value={recordForm.min} onChange={handleRecordFormChange} />
+                                    <Input label="Sec" id="sec" name="sec" type="number" value={recordForm.sec} onChange={handleRecordFormChange} />
+                                    <Input label="ms" id="ms" name="ms" type="number" value={recordForm.ms} onChange={handleRecordFormChange} />
                                 </div>
-                                <Input label="Nama Pemegang Rekor" id="holderName" name="holderName" value={recordForm.holderName} onChange={handleRecordFormChange} required />
-                                <div className="flex gap-4">
-                                    <Input label="Tahun" id="yearSet" name="yearSet" type="number" value={recordForm.yearSet} onChange={handleRecordFormChange} required className="flex-1"/>
-                                    <Input label="Lokasi" id="locationSet" name="locationSet" value={recordForm.locationSet} onChange={handleRecordFormChange} className="flex-1"/>
-                                </div>
-                                <div className="flex justify-end space-x-2 pt-2">
-                                    {editingRecord && <Button type="button" variant="secondary" onClick={handleCancelEdit}>Batal</Button>}
-                                    <Button type="submit">{editingRecord ? 'Simpan Perubahan' : 'Tambah Rekor'}</Button>
-                                </div>
+                                <Input label="Pemegang Rekor" id="holderName" name="holderName" value={recordForm.holderName} onChange={handleRecordFormChange} required />
+                                <Input label="Tahun" id="yearSet" name="yearSet" type="number" value={recordForm.yearSet} onChange={handleRecordFormChange} required />
+                                <Button type="submit" className="w-full">Simpan Rekor</Button>
                             </form>
-                            
-                            <div className="my-4 p-4 border border-border rounded-lg bg-background/50">
-                                <h4 className="font-semibold mb-3 text-text-primary">Filter Rekor</h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <Input
-                                        label="Cari Nama Pemegang"
-                                        id="filter-holderName"
-                                        name="holderName"
-                                        value={recordFilters.holderName}
-                                        onChange={handleFilterChange}
-                                        placeholder="Ketik nama..."
-                                    />
-                                    <Select
-                                        label="Tipe Rekor"
-                                        id="filter-type"
-                                        name="type"
-                                        value={recordFilters.type}
-                                        onChange={handleFilterChange}
-                                    >
-                                        <option value="all">Semua Tipe</option>
-                                        <option value="PORPROV">PORPROV</option>
-                                        <option value="Nasional">Nasional</option>
-                                    </Select>
-                                    <Select
-                                        label="Jenis Kelamin"
-                                        id="filter-gender"
-                                        name="gender"
-                                        value={recordFilters.gender}
-                                        onChange={handleFilterChange}
-                                    >
-                                        <option value="all">Semua Gender</option>
-                                        {GENDER_OPTIONS.map(g => <option key={g} value={g}>{translateGender(g)}</option>)}
-                                    </Select>
-                                    <Select
-                                        label="Gaya"
-                                        id="filter-style"
-                                        name="style"
-                                        value={recordFilters.style}
-                                        onChange={handleFilterChange}
-                                    >
-                                        <option value="all">Semua Gaya</option>
-                                        {SWIM_STYLE_OPTIONS.map(s => <option key={s} value={s}>{translateSwimStyle(s)}</option>)}
-                                    </Select>
-                                </div>
-                                <Button type="button" variant="secondary" onClick={handleResetFilters} className="mt-4">
-                                    Reset Filter
-                                </Button>
-                            </div>
-                            
-                            <div className="max-h-[50vh] overflow-y-auto border border-border rounded-lg">
-                                {isRecordsLoading ? <div className="flex justify-center p-8"><Spinner /></div> : (
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-background sticky top-0 z-10">
-                                            <tr>
-                                                <th className="p-2">Nomor Lomba</th>
-                                                <th className="p-2">Pemegang Rekor</th>
-                                                <th className="p-2">Waktu</th>
-                                                <th className="p-2 text-center">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {filteredRecords.length > 0 ? (
-                                                filteredRecords.map(record => (
-                                                    <tr key={record.id} className="border-t border-border">
-                                                        <td className="p-2">
-                                                          <span className={`font-bold ${record.type.toUpperCase() === 'NASIONAL' ? 'text-red-400' : 'text-blue-400'}`}>{record.type}</span>
-                                                          <p>{formatEventName(record)}</p>
-                                                        </td>
-                                                        <td className="p-2">{record.holderName}</td>
-                                                        <td className="p-2 font-mono">{formatTime(record.time)}</td>
-                                                        <td className="p-2 text-center">
-                                                            <div className="flex justify-center items-center space-x-1">
-                                                                <button onClick={() => handleEditRecord(record)} className="p-1 text-blue-400 hover:text-blue-300"><EditIcon /></button>
-                                                                <button onClick={() => handleDeleteRecord(record)} className="p-1 text-red-500 hover:text-red-400"><TrashIcon /></button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            ) : (
-                                                <tr><td colSpan={4} className="p-4 text-center text-text-secondary">Tidak ada data rekor yang cocok dengan filter.</td></tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Bulk Upload & Danger Zone */}
-                        <div>
-                            <div className="bg-background p-4 rounded-md border border-border space-y-4">
-                                <h3 className="text-lg font-semibold">Unggah File Rekor (Massal)</h3>
-                                <p className="text-text-secondary text-sm">Mengunggah file akan <strong className="font-bold">menimpa semua data rekor</strong> yang ada dengan isi file.</p>
-                                <div className="flex flex-wrap gap-2">
-                                    <Button variant="secondary" onClick={downloadRecordTemplate}>
-                                        Unduh Template
-                                    </Button>
-                                    <Button 
-                                        variant="secondary" 
-                                        onClick={handleDownloadAllRecords}
-                                        disabled={currentRecords.length === 0}
-                                        title={currentRecords.length === 0 ? 'Tidak ada rekor untuk diunduh' : 'Unduh semua rekor saat ini'}
-                                    >
-                                        Unduh Semua Rekor
-                                    </Button>
-                                </div>
-                                <div className="flex items-center space-x-4">
-                                    <input type="file" id="record-upload" accept=".xlsx, .xls" className="hidden" onChange={handleRecordFileChange} />
-                                    <Button type="button" onClick={() => document.getElementById('record-upload')?.click()}>Pilih File</Button>
-                                    {recordFile && <span className="text-text-secondary text-sm">{recordFile.name}</span>}
-                                </div>
-                                <div>
-                                    <Button onClick={handleRecordUpload} disabled={!recordFile || isProcessing} variant="primary">
-                                        {isProcessing ? <Spinner/> : 'Proses & Ganti Semua Rekor'}
-                                    </Button>
-                                </div>
-                                {uploadResult && (
-                                    <div className="mt-4 pt-4 border-t border-border text-sm">
-                                        <p className={uploadResult.errors.length > 0 ? "text-red-500" : "text-green-500"}>
-                                            Berhasil memproses {uploadResult.success} baris.
-                                            {uploadResult.errors.length > 0 && ` Ditemukan ${uploadResult.errors.length} error.`}
-                                        </p>
-                                        {uploadResult.errors.length > 0 && (
-                                            <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                                {uploadResult.errors.map((err, i) => <li key={i}>{err}</li>)}
-                                            </ul>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                             <div className="mt-6 bg-red-900/10 p-4 rounded-lg border border-red-500/30">
-                                <h4 className="font-semibold text-red-500">Zona Berbahaya</h4>
-                                <p className="text-sm text-text-secondary mt-1 mb-3">Tindakan ini tidak dapat dibatalkan dan akan menghapus semua rekor yang ada.</p>
-                                <Button
-                                    variant="danger"
-                                    onClick={() => setIsDeleteAllRecordsModalOpen(true)}
-                                    disabled={currentRecords.length === 0}
-                                    title={currentRecords.length === 0 ? 'Tidak ada rekor untuk dihapus' : 'Hapus semua data rekor'}
-                                >
-                                    Hapus Semua Rekor
-                                </Button>
-                            </div>
                         </div>
                     </div>
                 </Card>
@@ -1178,131 +859,19 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Card>
                         <h3 className="text-xl font-bold">Backup & Restore</h3>
-                        <p className="text-text-secondary mt-2 mb-4">
-                            Simpan atau pulihkan semua data kompetisi dari file backup JSON.
-                        </p>
-                        
-                        <div className="space-y-4">
-                            {/* Backup */}
-                            <div>
-                                <h4 className="font-semibold">Backup Data</h4>
-                                <p className="text-sm text-text-secondary mb-2">Unduh semua data saat ini dari database ke dalam satu file.</p>
-                                <Button onClick={handleBackup} disabled={isBackupLoading}>
-                                    {isBackupLoading ? <Spinner /> : 'Backup Semua Data'}
-                                </Button>
-                            </div>
-
-                            {/* Restore */}
-                            <div className="pt-4 border-t border-border">
-                                <h4 className="font-semibold">Pulihkan dari Backup</h4>
-                                <p className="text-sm text-text-secondary mb-2">
-                                    Memulihkan data akan <strong className="font-bold text-yellow-500">MENGGANTI SEMUA DATA DI DATABASE</strong> dengan isi dari file backup.
-                                </p>
-                                <div className="flex items-center space-x-4">
-                                    <input type="file" id="restore-upload" accept=".json" className="hidden" onChange={handleRestoreFileChange} />
-                                    <Button type="button" variant="secondary" onClick={() => document.getElementById('restore-upload')?.click()}>Pilih File Backup</Button>
-                                    {restoreFile && <span className="text-text-secondary text-sm">{restoreFile.name}</span>}
-                                </div>
-                                <Button 
-                                    onClick={() => setIsRestoreModalOpen(true)} 
-                                    disabled={!restoreFile || isRestoring}
-                                    className="mt-2"
-                                >
-                                    {isRestoring ? <Spinner/> : 'Pulihkan Data'}
-                                </Button>
-                            </div>
+                        <Button onClick={handleBackup} disabled={isBackupLoading} className="w-full mt-4">Backup Semua Data</Button>
+                        <div className="pt-4 border-t border-border mt-4">
+                            <input type="file" id="restore-upload" accept=".json" className="hidden" onChange={handleRestoreFileChange} />
+                            <Button type="button" variant="secondary" onClick={() => document.getElementById('restore-upload')?.click()} className="w-full">Pilih File Backup</Button>
+                            <Button onClick={() => setIsRestoreModalOpen(true)} disabled={!restoreFile || isRestoring} className="w-full mt-2">Pulihkan Data</Button>
                         </div>
                     </Card>
-
                     <Card className="border-red-500/50 bg-red-500/5">
                         <h3 className="text-xl font-bold text-red-500">Zona Berbahaya</h3>
-                        <p className="text-text-secondary mt-2 mb-4">
-                            Tindakan ini akan menghapus <strong className="font-bold text-red-400">SEMUA</strong> data dari kompetisi ini secara permanen dari database pusat di Supabase.
-                        </p>
-                        <Button variant="danger" onClick={() => setIsClearDataModalOpen(true)}>
-                            Hapus Semua Data
-                        </Button>
+                        <Button variant="danger" onClick={() => setIsClearDataModalOpen(true)} className="w-full mt-4">Hapus Semua Data</Button>
                     </Card>
                 </div>
             )}
-            
-            <Modal isOpen={isRestoreModalOpen} onClose={() => setIsRestoreModalOpen(false)} title="Konfirmasi Pemulihan Data">
-                <div className="space-y-6">
-                    <p className="text-text-secondary">
-                        Anda yakin ingin memulihkan data dari file <strong className="text-text-primary">{restoreFile?.name}</strong>?
-                        <br /><br />
-                        Semua data kompetisi yang ada saat ini akan <strong className="text-red-500 font-bold">dihapus dan diganti</strong>. Tindakan ini tidak dapat dibatalkan.
-                    </p>
-                    <div className="flex justify-end space-x-4">
-                        <Button variant="secondary" onClick={() => setIsRestoreModalOpen(false)}>Batal</Button>
-                        <Button variant="danger" onClick={handleRestore} disabled={isRestoring}>
-                            {isRestoring ? <Spinner/> : 'Ya, Pulihkan & Ganti'}
-                        </Button>
-                    </div>
-                </div>
-            </Modal>
-
-            <Modal isOpen={isDeleteRecordModalOpen} onClose={() => setIsDeleteRecordModalOpen(false)} title="Konfirmasi Hapus Rekor">
-                {recordToDelete && (
-                    <div className="space-y-6">
-                        <p className="text-text-secondary">
-                            Anda yakin ingin menghapus rekor <strong className="text-text-primary">{formatEventName(recordToDelete)}</strong> ({formatTime(recordToDelete.time)})?
-                        </p>
-                        <div className="flex justify-end space-x-4">
-                            <Button variant="secondary" onClick={() => setIsDeleteRecordModalOpen(false)}>Batal</Button>
-                            <Button variant="danger" onClick={confirmDeleteRecord}>Ya, Hapus</Button>
-                        </div>
-                    </div>
-                )}
-            </Modal>
-
-             <Modal isOpen={isDeleteAllRecordsModalOpen} onClose={() => setIsDeleteAllRecordsModalOpen(false)} title="Konfirmasi Hapus Semua Rekor">
-                <div className="space-y-6">
-                    <p className="text-text-secondary">
-                        Anda benar-benar yakin ingin menghapus <strong className="text-text-primary">SEMUA</strong> data rekor kompetisi?
-                        <br/><br/>
-                        Tindakan ini akan <strong className="text-red-500">menghapus permanen</strong> semua rekor yang tersimpan dan tidak dapat dibatalkan.
-                    </p>
-                    <div className="flex justify-end space-x-4">
-                        <Button variant="secondary" onClick={() => setIsDeleteAllRecordsModalOpen(false)}>Batal</Button>
-                        <Button variant="danger" onClick={handleConfirmDeleteAllRecords}>Ya, Hapus Semua Rekor</Button>
-                    </div>
-                </div>
-            </Modal>
-
-            <Modal isOpen={isClearDataModalOpen} onClose={() => setIsClearDataModalOpen(false)} title="Konfirmasi Hapus Semua Data">
-                <form onSubmit={handleConfirmClearData}>
-                    <div className="space-y-4">
-                        <p className="text-lg font-bold text-red-500">PERINGATAN KERAS!</p>
-                        <p className="text-text-secondary">
-                            Tindakan ini bersifat permanen dan akan menghapus semua data dari <strong className="text-red-500">database pusat (Supabase)</strong>. Ini termasuk:
-                        </p>
-                        <ul className="list-disc list-inside text-red-400">
-                            <li>Pengaturan Acara (akan direset)</li>
-                            <li>Semua Nomor Lomba</li>
-                            <li>Semua Peserta Terdaftar</li>
-                            <li>Semua Pendaftaran di Nomor Lomba</li>
-                            <li>Semua Hasil Lomba</li>
-                            <li>Semua Rekor Kompetisi</li>
-                        </ul>
-                        <p className="font-bold">Tindakan ini tidak dapat dibatalkan.</p>
-                        <p className="text-text-secondary">Untuk melanjutkan, masukkan kembali kredensial admin Anda.</p>
-                        
-                        <div className="space-y-4 pt-2">
-                            <Input label="Email Admin" id="confirm-email" type="email" value={clearDataCredentials.email} onChange={(e) => { setClearDataCredentials(p => ({...p, email: e.target.value})); setClearDataError(''); }} required />
-                            <Input label="Password Admin" id="confirm-password" type="password" value={clearDataCredentials.password} onChange={(e) => { setClearDataCredentials(p => ({...p, password: e.target.value})); setClearDataError(''); }} required />
-                            {clearDataError && <p className="text-red-500 text-sm text-center">{clearDataError}</p>}
-                        </div>
-                        
-                        <div className="flex justify-end pt-4 border-t border-border space-x-2">
-                            <Button type="button" variant="secondary" onClick={() => setIsClearDataModalOpen(false)}>Batal</Button>
-                            <Button type="submit" variant="danger" disabled={isClearingData}>
-                                {isClearingData ? <Spinner /> : 'Saya Mengerti, Hapus Semua Data'}
-                            </Button>
-                        </div>
-                    </div>
-                </form>
-            </Modal>
         </div>
     );
 };
