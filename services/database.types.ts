@@ -12,6 +12,10 @@ export type Database = {
           number_of_lanes: number
           registration_deadline: string | null
           age_groups: string | null
+          is_free: boolean
+          recipient_name: string | null
+          account_number: string | null
+          fee_per_event: number
         }
         Insert: {
           id?: number
@@ -23,6 +27,10 @@ export type Database = {
           number_of_lanes?: number
           registration_deadline?: string | null
           age_groups?: string | null
+          is_free?: boolean
+          recipient_name?: string | null
+          account_number?: string | null
+          fee_per_event?: number
         }
         Update: {
           id?: number
@@ -34,6 +42,10 @@ export type Database = {
           number_of_lanes?: number
           registration_deadline?: string | null
           age_groups?: string | null
+          is_free?: boolean
+          recipient_name?: string | null
+          account_number?: string | null
+          fee_per_event?: number
         }
         Relationships: []
       }
@@ -189,6 +201,10 @@ export type Database = {
           gender: "Male" | "Female"
           club: string
           age_group: string | null
+          payment_proof: string | null
+          payment_amount: number | null
+          pic_name: string | null
+          pic_phone: string | null
         }
         Insert: {
           id?: string
@@ -197,14 +213,22 @@ export type Database = {
           gender: "Male" | "Female"
           club: string
           age_group?: string | null
+          payment_proof?: string | null
+          payment_amount?: number | null
+          pic_name?: string | null
+          pic_phone?: string | null
         }
         Update: {
           id?: string
           name?: string
           birth_year?: number
-          gender?: "Male" | "Female"
+          gender?: "Male" | "Female" | null
           club?: string
           age_group?: string | null
+          payment_proof?: string | null
+          payment_amount?: number | null
+          pic_name?: string | null
+          pic_phone?: string | null
         }
         Relationships: []
       }
@@ -224,6 +248,7 @@ export type Database = {
           role?: "SUPER_ADMIN" | "ADMIN"
           created_at?: string
         }
+        Relationships: []
       }
     }
     Views: {

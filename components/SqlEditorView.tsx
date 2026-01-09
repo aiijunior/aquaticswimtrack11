@@ -54,9 +54,11 @@ ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS recipient_name text
 ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS account_number text;
 ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS fee_per_event integer DEFAULT 0;
 
--- Menambahkan kolom bukti bayar ke tabel perenang
+-- Menambahkan kolom bukti bayar dan kontak PIC ke tabel perenang
 ALTER TABLE public.swimmers ADD COLUMN IF NOT EXISTS payment_proof text;
-ALTER TABLE public.swimmers ADD COLUMN IF NOT EXISTS payment_amount integer;`;
+ALTER TABLE public.swimmers ADD COLUMN IF NOT EXISTS payment_amount integer;
+ALTER TABLE public.swimmers ADD COLUMN IF NOT EXISTS pic_name text;
+ALTER TABLE public.swimmers ADD COLUMN IF NOT EXISTS pic_phone text;`;
 
     return (
         <div>
@@ -77,8 +79,8 @@ ALTER TABLE public.swimmers ADD COLUMN IF NOT EXISTS payment_amount integer;`;
             </Card>
 
             <Card>
-                <h2 className="text-2xl font-bold mb-4">Migrasi Biaya & Pembayaran</h2>
-                <p className="text-text-secondary">Salin perintah ini untuk mengaktifkan fitur biaya per nomor acara dan unggah bukti bayar:</p>
+                <h2 className="text-2xl font-bold mb-4">Migrasi Data Pembayaran & Kontak</h2>
+                <p className="text-text-secondary">Salin perintah ini untuk mengaktifkan fitur biaya, bukti bayar, dan informasi kontak penanggung jawab (PIC):</p>
                 <CodeBlock>{addPaymentFieldsQuery}</CodeBlock>
                 <div className="mt-6">
                     <Button onClick={() => window.open(supabaseSqlEditorUrl, '_blank')}>

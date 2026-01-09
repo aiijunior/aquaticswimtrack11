@@ -65,6 +65,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         gender: 'Male' as 'Male' | 'Female',
         club: '',
         ageGroup: '',
+        picPhone: '',
         paymentProof: null as string | null,
         paymentAmount: '' as string
     });
@@ -74,6 +75,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     const [teamFormData, setTeamFormData] = useState({
         clubName: '',
         picName: '',
+        picPhone: '',
         paymentProof: null as string | null,
         paymentAmount: '' as string
     });
@@ -119,6 +121,16 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         const amount = regType === 'INDIVIDUAL' ? formData.paymentAmount : teamFormData.paymentAmount;
         return proof !== null && parseInt(amount) >= (competitionInfo?.feePerEvent || 0);
     }, [formData, teamFormData, regType, competitionInfo]);
+
+    const isFormValid = useMemo(() => {
+        if (regType === 'INDIVIDUAL') {
+            const hasPersonalInfo = formData.name.trim() !== '' && formData.club.trim() !== '' && formData.ageGroup !== '' && formData.picPhone.trim() !== '';
+            const hasSelectedEvent = selectedEventCount > 0 && (competitionInfo?.isFree || selectedEventCount <= maxAllowedEvents);
+            return hasPersonalInfo && isPaymentStepValid && hasSelectedEvent;
+        } else {
+            return teamFormData.clubName.trim() !== '' && teamFormData.picName.trim() !== '' && teamFormData.picPhone.trim() !== '' && isPaymentStepValid && teamParticipants.length > 0;
+        }
+    }, [formData, teamFormData, regType, selectedEventCount, maxAllowedEvents, isPaymentStepValid, teamParticipants, competitionInfo]);
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -230,7 +242,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 
                 // Auto calculate amount
                 const totalEvents = processed.length;
-                const totalCost = totalEvents * (competitionInfo?.feePerEvent || 0);
+                const totalCost = competitionInfo?.isFree ? 0 : totalEvents * (competitionInfo?.feePerEvent || 0);
                 setTeamFormData(prev => ({ ...prev, paymentAmount: String(totalCost) }));
 
             } catch (err) {
@@ -262,8 +274,10 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                     gender: formData.gender,
                     club: formData.club,
                     ageGroup: formData.ageGroup,
-                    paymentProof: formData.paymentProof,
-                    paymentAmount: parseInt(formData.paymentAmount) || 0
+                    paymentProof: competitionInfo?.isFree ? null : formData.paymentProof,
+                    paymentAmount: competitionInfo?.isFree ? 0 : parseInt(formData.paymentAmount) || 0,
+                    picName: formData.name, // Self PIC
+                    picPhone: formData.picPhone
                 }, registrationsToSubmit);
 
                 if (result.success) {
@@ -279,8 +293,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 const result = await processCollectiveRegistration({
                     clubName: teamFormData.clubName,
                     picName: teamFormData.picName,
-                    paymentProof: teamFormData.paymentProof,
-                    paymentAmount: parseInt(teamFormData.paymentAmount) || 0
+                    picPhone: teamFormData.picPhone,
+                    paymentProof: competitionInfo?.isFree ? null : teamFormData.paymentProof,
+                    paymentAmount: competitionInfo?.isFree ? 0 : parseInt(teamFormData.paymentAmount) || 0
                 }, teamParticipants);
 
                 if (result.success) {
@@ -356,6 +371,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
     if (isDataLoading) return <div className="flex justify-center p-20"><Spinner /></div>;
 
+    const isFree = competitionInfo?.isFree ?? false;
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-sky-100 to-blue-200 dark:from-slate-800 dark:to-sky-900 flex flex-col items-center p-4">
             <div className="w-full max-w-4xl mx-auto">
@@ -363,6 +380,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                     {competitionInfo?.eventLogo && <img src={competitionInfo.eventLogo} alt="Logo" className="mx-auto h-20 mb-4" />}
                     <h1 className="text-3xl font-extrabold text-primary tracking-tight">{competitionInfo?.eventName.split('\n')[0]}</h1>
                     <h3 className="text-xl font-bold mt-2 opacity-80 uppercase tracking-widest">Pendaftaran Online</h3>
+                    {isFree && <span className="inline-block mt-2 bg-green-500 text-white px-4 py-1 rounded-full text-xs font-black animate-pulse">PENDAFTARAN GRATIS</span>}
                 </header>
 
                 {regType === 'CHOICE' && (
@@ -390,7 +408,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 <Card className="shadow-xl">
                                     <h2 className="text-xl font-black mb-4 flex items-center gap-2">
                                         <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
-                                        Profil Atlet
+                                        Profil Atlet & Kontak
                                     </h2>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <Input label="Nama Lengkap" id="name" name="name" value={formData.name} onChange={handleFormChange} placeholder="Sesuai Akta Kelahiran" required />
@@ -404,29 +422,33 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                             <option value="">-- Pilih KU --</option>
                                             {ageOptions.map(ku => <option key={ku} value={ku}>{ku}</option>)}
                                         </Select>
+                                        <Input label="Nomor HP/WA Aktif" id="picPhone" name="picPhone" type="tel" value={formData.picPhone} onChange={handleFormChange} placeholder="Contoh: 08123456789" required />
                                     </div>
+                                    <p className="text-[10px] text-text-secondary italic mt-2">* Nomor HP diperlukan untuk konfirmasi pendaftaran oleh panitia.</p>
                                 </Card>
 
-                                <Card className="shadow-xl border-l-4 border-l-primary">
-                                    <h2 className="text-xl font-black mb-4 flex items-center gap-2">
-                                        <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
-                                        Pembayaran & Bukti Transfer
-                                    </h2>
-                                    <PaymentSection 
-                                        info={competitionInfo} 
-                                        data={formData} 
-                                        onFileChange={handleFileChange} 
-                                        onAmountChange={handleFormChange} 
-                                    />
-                                </Card>
+                                {!isFree && (
+                                    <Card className="shadow-xl border-l-4 border-l-primary">
+                                        <h2 className="text-xl font-black mb-4 flex items-center gap-2">
+                                            <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
+                                            Pembayaran & Bukti Transfer
+                                        </h2>
+                                        <PaymentSection 
+                                            info={competitionInfo} 
+                                            data={formData} 
+                                            onFileChange={handleFileChange} 
+                                            onAmountChange={handleFormChange} 
+                                        />
+                                    </Card>
+                                )}
 
                                 <Card className="shadow-xl">
                                     <div className="flex justify-between items-center mb-6 border-b border-border pb-4">
                                         <h2 className="text-xl font-black flex items-center gap-2">
-                                            <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
+                                            <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">{isFree ? '2' : '3'}</span>
                                             Pilih Nomor Lomba
                                         </h2>
-                                        {!competitionInfo?.isFree && formData.paymentAmount && (
+                                        {!isFree && formData.paymentAmount && (
                                             <div className="text-right bg-primary/10 px-4 py-2 rounded-xl border border-primary/20">
                                                 <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Sisa Kuota Pilihan</p>
                                                 <p className={`text-2xl font-black ${maxAllowedEvents - selectedEventCount === 0 ? 'text-red-500' : 'text-primary'}`}>
@@ -456,7 +478,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                                         <div className="p-5 space-y-5 bg-background/30 border-t border-border">
                                                             {eventsInStyle.map((event: SwimEvent) => {
                                                                 const isSelected = !!selectedEvents[event.id]?.selected;
-                                                                const isLocked = !isSelected && selectedEventCount >= maxAllowedEvents && !competitionInfo?.isFree;
+                                                                const isLocked = !isSelected && selectedEventCount >= maxAllowedEvents && !isFree;
                                                                 
                                                                 return (
                                                                     <div key={event.id} className={`flex flex-col border-b border-border last:border-0 pb-5 last:pb-0 ${isLocked ? 'opacity-40 grayscale' : ''}`}>
@@ -499,7 +521,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 {selectedEventCount > 0 && (
                                     <Card className="shadow-2xl bg-gradient-to-br from-primary/10 to-transparent border-primary/30 border-2 rounded-3xl">
                                         <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
-                                            <span className="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-lg">4</span>
+                                            <span className="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-lg">{isFree ? '3' : '4'}</span>
                                             Ringkasan Pendaftaran
                                         </h2>
                                         <div className="space-y-3">
@@ -522,7 +544,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Total Bayar</p>
-                                                    <p className="text-3xl font-black text-primary underline decoration-primary/20 underline-offset-8">Rp {parseInt(formData.paymentAmount || '0').toLocaleString('id-ID')}</p>
+                                                    <p className="text-3xl font-black text-primary underline decoration-primary/20 underline-offset-8">
+                                                        {isFree ? 'GRATIS' : `Rp ${parseInt(formData.paymentAmount || '0').toLocaleString('id-ID')}`}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
@@ -535,12 +559,13 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                 <Card className="shadow-xl">
                                     <h2 className="text-xl font-black mb-4 flex items-center gap-2">
                                         <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
-                                        Unggah Berkas Pendaftaran (Excel)
+                                        Informasi Tim & Unggah Berkas (Excel)
                                     </h2>
                                     <div className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                             <Input label="Nama Klub / Tim" id="clubName" name="clubName" value={teamFormData.clubName} onChange={handleTeamFormChange} placeholder="Contoh: Millenium Aquatic" required />
                                             <Input label="Nama PIC / Penanggung Jawab" id="picName" name="picName" value={teamFormData.picName} onChange={handleTeamFormChange} placeholder="Nama Anda" required />
+                                            <Input label="Nomor HP/WA Aktif PIC" id="picPhone" name="picPhone" type="tel" value={teamFormData.picPhone} onChange={handleTeamFormChange} placeholder="Contoh: 08123456789" required />
                                         </div>
                                         
                                         <div className="bg-surface p-6 rounded-2xl border-2 border-dashed border-border text-center space-y-4">
@@ -594,23 +619,25 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                     </div>
                                 </Card>
 
-                                <Card className="shadow-xl border-l-4 border-l-primary">
-                                    <h2 className="text-xl font-black mb-4 flex items-center gap-2">
-                                        <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
-                                        Pembayaran & Bukti Transfer
-                                    </h2>
-                                    <PaymentSection 
-                                        info={competitionInfo} 
-                                        data={teamFormData} 
-                                        onFileChange={handleFileChange} 
-                                        onAmountChange={handleTeamFormChange} 
-                                    />
-                                </Card>
+                                {!isFree && (
+                                    <Card className="shadow-xl border-l-4 border-l-primary">
+                                        <h2 className="text-xl font-black mb-4 flex items-center gap-2">
+                                            <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
+                                            Pembayaran & Bukti Transfer
+                                        </h2>
+                                        <PaymentSection 
+                                            info={competitionInfo} 
+                                            data={teamFormData} 
+                                            onFileChange={handleFileChange} 
+                                            onAmountChange={handleTeamFormChange} 
+                                        />
+                                    </Card>
+                                )}
 
                                 {teamParticipants.length > 0 && (
                                     <Card className="shadow-2xl bg-gradient-to-br from-primary/10 to-transparent border-primary/30 border-2 rounded-3xl">
                                         <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
-                                            <span className="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-lg">3</span>
+                                            <span className="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-lg">{isFree ? '2' : '3'}</span>
                                             Ringkasan Kolektif
                                         </h2>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -624,7 +651,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                             </div>
                                             <div className="col-span-2 p-4 bg-surface rounded-2xl border border-primary/20 shadow-sm text-right">
                                                 <p className="text-[10px] font-black text-text-secondary uppercase">Total Wajib Bayar</p>
-                                                <p className="text-3xl font-black text-primary tracking-tighter">Rp {parseInt(teamFormData.paymentAmount || '0').toLocaleString('id-ID')}</p>
+                                                <p className="text-3xl font-black text-primary tracking-tighter">
+                                                    {isFree ? 'GRATIS' : `Rp ${parseInt(teamFormData.paymentAmount || '0').toLocaleString('id-ID')}`}
+                                                </p>
                                             </div>
                                         </div>
                                     </Card>
@@ -637,7 +666,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                         <div className="pt-6">
                             <Button 
                                 type="submit" 
-                                disabled={isSubmitting || !isPaymentStepValid || (regType === 'TEAM' && teamParticipants.length === 0) || (regType === 'INDIVIDUAL' && selectedEventCount === 0)} 
+                                disabled={isSubmitting || !isFormValid} 
                                 className="w-full py-8 text-3xl font-black shadow-2xl rounded-3xl tracking-tighter transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-30"
                             >
                                 {isSubmitting ? (
@@ -669,12 +698,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 };
 
 const PaymentSection: React.FC<{ info: any, data: any, onFileChange: any, onAmountChange: any }> = ({ info, data, onFileChange, onAmountChange }) => {
+    // Component already handles free competition with a check but we also hide the Card in the main render
     if (info?.isFree) {
-        return (
-            <div className="bg-green-100 p-4 rounded-md text-green-800 font-bold border border-green-200">
-                ✓ Kompetisi ini Gratis. Lanjutkan ke langkah berikutnya.
-            </div>
-        );
+        return null;
     }
     return (
         <div className="space-y-6">

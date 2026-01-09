@@ -37,13 +37,13 @@ export const handler = async (event) => {
                     club: teamData.clubName,
                     age_group: p.ageGroup || null,
                     payment_proof: teamData.paymentProof,
-                    payment_amount: 0 // Will be distributed or kept as PIC info
+                    payment_amount: 0, // Individual portion 0 for bulk
+                    pic_name: teamData.picName,
+                    pic_phone: teamData.picPhone
                 });
             }
         });
 
-        const swimmerEntries = [];
-        
         for (const [key, swimmerData] of uniqueSwimmersMap.entries()) {
             // Check if swimmer exists
             const { data: existing, error: findError } = await supabaseAdmin
@@ -59,10 +59,12 @@ export const handler = async (event) => {
             let swimmerId;
             if (existing && existing.length > 0) {
                 swimmerId = existing[0].id;
-                // Update info
+                // Update info with PIC contact
                 await supabaseAdmin.from('swimmers').update({
                     club: teamData.clubName,
-                    payment_proof: teamData.paymentProof
+                    payment_proof: teamData.paymentProof,
+                    pic_name: teamData.picName,
+                    pic_phone: teamData.picPhone
                 }).eq('id', swimmerId);
             } else {
                 const { data: created, error: createError } = await supabaseAdmin
@@ -82,16 +84,6 @@ export const handler = async (event) => {
             const key = `${p.name.trim().toLowerCase()}_${p.birthYear}_${p.gender}`;
             const swimmerId = uniqueSwimmersMap.get(key).realId;
             
-            // Map event name to ID
-            const { data: eventData, error: evError } = await supabaseAdmin
-                .from('events')
-                .select('id')
-                .ilike('category', p.ageGroup || '') // Categorized or not
-                // This part is tricky if multiple events match. In reality, the template is KU-specific.
-                .limit(1); // Simplified for this context
-
-            // Better way: frontend should provide EventIDs. 
-            // For now, assume p.eventId is provided by frontend processing.
             if (p.eventId) {
                 allEventEntries.push({
                     event_id: p.eventId,

@@ -49,9 +49,11 @@ export interface Swimmer {
   gender: 'Male' | 'Female';
   club: string;
   ageGroup?: string | null;
-  // Payment data for individual registration
+  // Payment and Contact data
   paymentProof?: string | null;
   paymentAmount?: number | null;
+  picName?: string | null;
+  picPhone?: string | null;
 }
 
 export interface Result {

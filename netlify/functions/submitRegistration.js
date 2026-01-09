@@ -38,12 +38,14 @@ export const handler = async (event) => {
         let swimmer;
         if (existingSwimmers && existingSwimmers.length > 0) {
             swimmer = existingSwimmers[0];
-            // Update swimmer info including payment data
+            // Update swimmer info including payment and contact data
             await supabaseAdmin.from('swimmers').update({
                 club: swimmerData.club,
                 age_group: swimmerData.ageGroup,
                 payment_proof: swimmerData.paymentProof,
-                payment_amount: swimmerData.paymentAmount
+                payment_amount: swimmerData.paymentAmount,
+                pic_name: swimmerData.picName,
+                pic_phone: swimmerData.picPhone
             }).eq('id', swimmer.id);
         } else {
             const { data: newSwimmer, error: addError } = await supabaseAdmin
@@ -55,7 +57,9 @@ export const handler = async (event) => {
                     club: swimmerData.club,
                     age_group: swimmerData.ageGroup,
                     payment_proof: swimmerData.paymentProof,
-                    payment_amount: swimmerData.paymentAmount
+                    payment_amount: swimmerData.paymentAmount,
+                    pic_name: swimmerData.picName,
+                    pic_phone: swimmerData.picPhone
                 })
                 .select('id')
                 .single();
