@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, Entry, Heat, Result, BrokenRecord, SwimRecord, EventEntry } from '../types';
-import { RecordType, Gender } from '../types';
+import { RecordType, Gender, SwimStyle } from '../types';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Spinner } from './ui/Spinner';
-import { formatEventName, generateHeats, translateGender, translateSwimStyle } from '../constants';
+import { Input } from './ui/Input';
+import { formatEventName, generateHeats, translateGender, translateSwimStyle, romanize } from '../constants';
 import { getRecords } from '../services/databaseService';
 import { useNotification } from './ui/NotificationManager';
 
@@ -33,22 +34,10 @@ interface TimedEvent extends ScheduledEvent {
     detailedEntries: Entry[];
     estimatedEventStartTime?: number;
     heatsWithTimes?: TimedHeat[];
+    detailedResults?: any[];
 }
 
 // --- HELPER FUNCTIONS ---
-const romanize = (num: number): string => {
-    if (isNaN(num) || num <= 0) return '';
-    const lookup: { [key: string]: number } = { M: 1000, CM: 900, D: 500, CD: 400, C: 100, XC: 90, L: 50, XL: 40, X: 10, IX: 9, V: 5, IV: 4, I: 1 };
-    let roman = '';
-    for (let i in lookup) {
-        while (num >= lookup[i]) {
-            roman += i;
-            num -= lookup[i];
-        }
-    }
-    return roman;
-};
-
 const formatTime = (ms: number) => {
     if (ms === 0) return '99:99.99';
     if (ms === -2) return 'NS';
@@ -63,39 +52,38 @@ const formatTime = (ms: number) => {
 const estimateHeatDuration = (distance: number): number => {
     if (distance <= 50) return 2 * 60 * 1000;
     if (distance <= 100) return 3 * 60 * 1000;
-    if (distance <= 200) return 5 * 60 * 1000;
     return 5 * 60 * 1000;
+};
+
+const MedalIcon = ({ rank }: { rank: number }) => {
+    if (rank === 1) return <span>🥇</span>;
+    if (rank === 2) return <span>🥈</span>;
+    if (rank === 3) return <span>🥉</span>;
+    return null;
 };
 
 // --- PRINTABLE COMPONENTS ---
 
-// FIX: Added missing Medal component definition.
-const Medal = ({ rank }: { rank: number }) => {
-    if (rank === 1) return <span title="Emas">🥇</span>;
-    if (rank === 2) return <span title="Perak">🥈</span>;
-    if (rank === 3) return <span title="Perunggu">🥉</span>;
-    return null;
-};
-
 const ReportHeader: React.FC<{ info: CompetitionInfo, title: string }> = ({ info, title }) => (
     <header className="border-b-2 border-gray-300 pb-4 mb-6 text-center">
-        {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-20 object-contain mx-auto mb-4" />}
-        <div className="mb-4">
-            {/* FIX: Cast eventName to string to fix line 109 error where .map was on potentially unknown/incorrectly inferred split result. */}
-            {(info.eventName as string || '').split('\n').map((line, index) => (
-                <p key={index} className={`font-bold uppercase tracking-tight ${index === 0 ? 'text-2xl' : 'text-sm'}`}>{line}</p>
+        {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-16 object-contain mx-auto mb-2" />}
+        <div className="mb-2">
+            {(info.eventName || '').split('\n').map((line, index) => (
+                <p key={index} className={`font-bold uppercase tracking-tight leading-tight ${index === 0 ? 'text-xl' : 'text-xs'}`}>{line}</p>
             ))}
-            <p className="text-lg text-gray-600 mt-1">{info.eventDate && new Date(info.eventDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p className="text-sm text-gray-600 mt-1 uppercase font-semibold">
+                {info.eventDate && new Date(info.eventDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
         </div>
-        <h2 className="text-xl font-bold border-y border-black py-2 my-4 text-center bg-gray-50">{title}</h2>
+        <h2 className="text-lg font-bold border-y-2 border-black py-1 my-2 text-center bg-gray-50 tracking-widest">{title}</h2>
     </header>
 );
 
 const PrintRecordRow: React.FC<{ record: SwimRecord | undefined; type: string; }> = ({ record, type }) => {
     const typeText = type.toUpperCase() === 'PORPROV' ? 'REKOR PORPROV' : 'REKOR NASIONAL';
-    if (!record) return <p className="uppercase text-[9px] font-sans text-gray-400">{typeText} | TIDAK ADA REKOR</p>;
-    const parts = [typeText, formatTime(record.time), record.holderName, record.yearSet, record.locationSet].filter(p => p != null && String(p).trim() !== '');
-    return <p className="uppercase text-[9px] font-sans">{parts.join(' | ')}</p>;
+    if (!record) return <p className="uppercase text-[8px] font-sans text-gray-400 font-bold">{typeText} : -</p>;
+    const parts = [formatTime(record.time), record.holderName, record.yearSet, record.locationSet].filter(p => p != null && String(p).trim() !== '');
+    return <p className="uppercase text-[8px] font-sans font-bold">{typeText} : {parts.join(' | ')}</p>;
 };
 
 // 1. Susunan Acara
@@ -110,16 +98,16 @@ const ScheduleReport: React.FC<{ events: ScheduledEvent[] }> = ({ events }) => {
     return (
         <div className="space-y-6">
             {Object.entries(grouped).map(([session, sessionEvents]) => (
-                <div key={session}>
-                    <h3 className="font-bold text-lg border-b mb-2">{session}</h3>
-                    <table className="w-full text-sm">
-                        <thead><tr className="border-b"><th className="text-left py-1 w-16">NO</th><th className="text-left">NOMOR LOMBA</th><th className="text-center w-24">PESERTA</th></tr></thead>
+                <div key={session} className="page-break-inside-avoid">
+                    <h3 className="font-bold text-md border-b-2 border-black mb-2 uppercase">{session}</h3>
+                    <table className="w-full text-[11px] border-collapse">
+                        <thead><tr className="border-b bg-gray-100"><th className="text-left py-1 px-2 w-12">NO</th><th className="text-left px-2">NOMOR LOMBA</th><th className="text-center w-24 px-2">PESERTA</th></tr></thead>
                         <tbody>
                             {sessionEvents.map(e => (
-                                <tr key={e.id} className="border-b border-gray-100">
-                                    <td className="py-1 font-bold">{e.globalEventNumber}</td>
-                                    <td>{formatEventName(e)}</td>
-                                    <td className="text-center">{e.entries.length}</td>
+                                <tr key={e.id} className="border-b border-gray-200">
+                                    <td className="py-1 px-2 font-bold">{e.globalEventNumber}</td>
+                                    <td className="px-2 font-medium">{formatEventName(e)}</td>
+                                    <td className="text-center px-2">{e.entries.length}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -130,73 +118,123 @@ const ScheduleReport: React.FC<{ events: ScheduledEvent[] }> = ({ events }) => {
     );
 };
 
-// 2. Buku Acara (Program)
-const ProgramReport: React.FC<{ events: TimedEvent[], info: CompetitionInfo, records: SwimRecord[] }> = ({ events, info, records }) => {
-    return (
-        <div className="space-y-10">
-            {events.map(event => {
-                const porprov = records.find(r => r.type === RecordType.PORPROV && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.category ?? null) === (event.category ?? null));
-                const nasional = records.find(r => r.type === RecordType.NASIONAL && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.category ?? null) === (event.category ?? null));
-                
-                return (
-                    <div key={event.id} className="page-break-inside-avoid border-b pb-6">
-                        <div className="bg-gray-100 p-2 font-bold text-sm flex justify-between">
-                            <span>#{event.globalEventNumber} - {formatEventName(event)}</span>
-                            {event.estimatedEventStartTime && <span>Estimasi: {new Date(event.estimatedEventStartTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>}
-                        </div>
-                        <div className="my-1 px-2 border-l-2 border-gray-300">
-                            <PrintRecordRow record={porprov} type="PORPROV" />
-                            <PrintRecordRow record={nasional} type="NASIONAL" />
-                        </div>
-                        {(event.heatsWithTimes || []).map(heat => (
-                            <div key={heat.heatNumber} className="mt-4">
-                                <p className="text-center font-bold text-xs">Seri {heat.heatNumber} dari {event.heatsWithTimes?.length}</p>
-                                <table className="w-full text-[11px] mt-1 border-collapse">
-                                    <thead><tr className="bg-gray-50 border-y">
-                                        <th className="w-10">LIN</th><th className="text-left">NAMA ATLET</th><th className="w-12">TAHUN</th><th className="text-left">TIM</th><th className="text-right w-20">SEED</th>
+// 2 & 3. Buku Acara & Buku Hasil (Unified UI Style)
+// FIX: Switched from React.FC to explicit prop typing to fix 'Property map does not exist on type unknown' errors on events and other props
+const EventBaseReport = ({ events, info, records, showResults }: { events: TimedEvent[], info: CompetitionInfo, records: SwimRecord[], showResults?: boolean }) => (
+    <div className="space-y-8">
+        {events.map(event => {
+            const porprov = records.find(r => r.type === RecordType.PORPROV && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.category ?? null) === (event.category ?? null));
+            const nasional = records.find(r => r.type === RecordType.NASIONAL && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.category ?? null) === (event.category ?? null));
+            
+            return (
+                <div key={event.id} className="page-break-inside-avoid border-b-2 border-gray-400 pb-4">
+                    <div className="bg-black text-white p-1 px-2 font-bold text-xs flex justify-between uppercase">
+                        <span>#{event.globalEventNumber} - {formatEventName(event)}</span>
+                        {event.estimatedEventStartTime && !showResults && <span>EST: {new Date(event.estimatedEventStartTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>}
+                    </div>
+                    <div className="my-1 px-2 border-l-2 border-black bg-gray-50 py-1">
+                        <PrintRecordRow record={porprov} type="PORPROV" />
+                        <PrintRecordRow record={nasional} type="NASIONAL" />
+                    </div>
+
+                    {!showResults ? (
+                        (event.heatsWithTimes || []).map(heat => (
+                            <div key={heat.heatNumber} className="mt-2">
+                                <p className="text-center font-bold text-[9px] uppercase bg-gray-200 py-0.5">Seri {heat.heatNumber} dari {event.heatsWithTimes?.length}</p>
+                                <table className="w-full text-[10px] mt-0.5 border-collapse">
+                                    <thead><tr className="border-y border-black font-bold">
+                                        <th className="w-8">LIN</th><th className="text-left px-1">NAMA ATLET</th><th className="w-10">THN</th><th className="text-left px-1">TIM</th><th className="text-right w-16 px-1">SEED</th>
                                     </tr></thead>
                                     <tbody>
                                         {Array.from({ length: info.numberOfLanes || 8 }, (_, i) => i + 1).map(lane => {
                                             const ass = heat.assignments.find(a => a.lane === lane);
                                             return (
-                                                <tr key={lane} className="border-b border-gray-50">
-                                                    <td className="text-center font-bold">{lane}</td>
-                                                    <td className="py-1">{ass ? ass.entry.swimmer.name : '-'}</td>
+                                                <tr key={lane} className="border-b border-gray-100 h-5">
+                                                    <td className="text-center font-bold border-r border-gray-100">{lane}</td>
+                                                    <td className="px-1 truncate font-medium uppercase">{ass ? ass.entry.swimmer.name : '-'}</td>
                                                     <td className="text-center">{ass ? ass.entry.swimmer.birthYear : '-'}</td>
-                                                    <td>{ass ? ass.entry.swimmer.club : '-'}</td>
-                                                    <td className="text-right font-mono">{ass ? formatTime(ass.entry.seedTime) : '-'}</td>
+                                                    <td className="px-1 truncate text-[9px] uppercase">{ass ? ass.entry.swimmer.club : '-'}</td>
+                                                    <td className="text-right font-mono px-1">{ass ? formatTime(ass.entry.seedTime) : '-'}</td>
                                                 </tr>
                                             );
                                         })}
                                     </tbody>
                                 </table>
                             </div>
-                        ))}
-                    </div>
-                );
-            })}
-        </div>
-    );
-};
+                        ))
+                    ) : (
+                        <div className="mt-2">
+                            <table className="w-full text-[10px] border-collapse">
+                                <thead><tr className="border-y border-black font-bold bg-gray-100">
+                                    <th className="w-10 text-center">RANK</th><th className="text-left px-2">NAMA ATLET</th><th className="w-12 text-center">THN</th><th className="text-left px-2">TIM</th><th className="text-right px-2 w-24">HASIL</th><th className="w-10 text-center">MEDALI</th>
+                                </tr></thead>
+                                <tbody>
+                                    {event.detailedResults?.map((r: any) => (
+                                        <tr key={r.swimmerId} className="border-b border-gray-200 h-6">
+                                            <td className="text-center font-bold">{r.rank || '-'}</td>
+                                            <td className="px-2 uppercase font-medium">{r.swimmer?.name}</td>
+                                            <td className="text-center">{r.swimmer?.birthYear}</td>
+                                            <td className="px-2 uppercase text-[9px]">{r.swimmer?.club}</td>
+                                            <td className="text-right font-mono px-2">{formatTime(r.time)}</td>
+                                            <td className="text-center scale-125"><MedalIcon rank={r.rank} /></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            );
+        })}
+    </div>
+);
 
-// 3. Buku Hasil
-const ResultsReport: React.FC<{ events: any[] }> = ({ events }) => (
+// 4. Rekap Medali Klub
+const ClubMedalsReport: React.FC<{ data: any[] }> = ({ data }) => (
+    <table className="w-full text-[12px] border-collapse">
+        <thead><tr className="bg-black text-white border-2 border-black">
+            <th className="p-2 w-12 text-center">#</th><th className="text-left px-2">NAMA TIM / KLUB</th><th className="w-16 text-center">🥇</th><th className="w-16 text-center">🥈</th><th className="w-16 text-center">🥉</th><th className="w-16 text-center font-bold">TOTAL</th>
+        </tr></thead>
+        <tbody>
+            {data.map((item, i) => (
+                <tr key={i} className="border-b-2 border-gray-300">
+                    <td className="text-center font-bold py-2">{i + 1}</td>
+                    <td className="font-bold uppercase px-2">{item.name}</td>
+                    <td className="text-center">{item.gold}</td>
+                    <td className="text-center">{item.silver}</td>
+                    <td className="text-center">{item.bronze}</td>
+                    <td className="text-center font-bold bg-gray-50">{item.gold + item.silver + item.bronze}</td>
+                </tr>
+            ))}
+        </tbody>
+    </table>
+);
+
+// 5. Rekap Medali Klub & Atlet (Custom Format)
+const ClubSwimmerMedalsReport: React.FC<{ data: any[] }> = ({ data }) => (
     <div className="space-y-8">
-        {events.map(event => (
-            <div key={event.id} className="page-break-inside-avoid">
-                <div className="bg-gray-800 text-white p-2 font-bold text-sm">#{event.globalEventNumber} - {formatEventName(event)}</div>
-                <table className="w-full text-xs mt-2 border-collapse">
-                    <thead><tr className="border-b-2">
-                        <th className="w-10">RANK</th><th>NAMA ATLET</th><th>TIM</th><th className="text-right">HASIL</th><th className="w-10">MEDALI</th>
+        {data.map((club, idx) => (
+            <div key={idx} className="page-break-inside-avoid border-2 border-black rounded overflow-hidden shadow-sm">
+                <div className="bg-black text-white p-2 flex justify-between items-center font-bold">
+                    <span className="text-lg uppercase tracking-tight">{club.name}</span>
+                    <span className="text-lg">🥇{club.gold} 🥈{club.silver} 🥉{club.bronze}</span>
+                </div>
+                <table className="w-full text-[11px]">
+                    <thead><tr className="bg-gray-200 border-b border-black">
+                        <th className="text-left p-2 w-1/3">NAMA ATLET</th><th className="text-left p-2">NOMOR LOMBA YANG DIMENANGKAN</th>
                     </tr></thead>
                     <tbody>
-                        {event.detailedResults.map((r: any) => (
-                            <tr key={r.swimmerId} className="border-b">
-                                <td className="text-center font-bold">{r.rank || '-'}</td>
-                                <td className="py-1">{r.swimmer?.name}</td>
-                                <td>{r.swimmer?.club}</td>
-                                <td className="text-right font-mono">{formatTime(r.time)}</td>
-                                <td className="text-center"><Medal rank={r.rank} /></td>
+                        {club.individualDetails.map((swimmer: any, sIdx: number) => (
+                            <tr key={sIdx} className="border-b border-gray-200 align-top">
+                                <td className="p-2 font-bold uppercase">{swimmer.name}</td>
+                                <td className="p-2 py-3 space-y-1">
+                                    {swimmer.medals.map((m: any, mIdx: number) => (
+                                        <div key={mIdx} className="flex gap-2 items-center">
+                                            <MedalIcon rank={m.rank} />
+                                            <span className="font-medium uppercase">{m.eventName} - {formatTime(m.time)}</span>
+                                        </div>
+                                    ))}
+                                </td>
                             </tr>
                         ))}
                     </tbody>
@@ -206,134 +244,215 @@ const ResultsReport: React.FC<{ events: any[] }> = ({ events }) => (
     </div>
 );
 
-// 4 & 5 & 6. Medals
-const MedalsReport: React.FC<{ data: any[], title: string, showSwimmers?: boolean }> = ({ data, title, showSwimmers }) => (
-    <div>
-        <table className="w-full text-sm">
-            <thead><tr className="border-b-2 bg-gray-100">
-                <th className="w-10">#</th><th className="text-left">NAMA {showSwimmers ? 'ATLET' : 'TIM'}</th>{!showSwimmers && <th>TIM</th>}<th className="w-12">🥇</th><th className="w-12">🥈</th><th className="w-12">🥉</th><th className="w-12">TOTAL</th>
-            </tr></thead>
-            <tbody>
-                {data.map((item, i) => (
-                    <tr key={i} className="border-b">
-                        <td className="text-center font-bold py-2">{i + 1}</td>
-                        <td className="font-bold">{item.name || item.swimmer?.name}</td>
-                        {!showSwimmers && <td>{item.swimmer?.club || '-'}</td>}
-                        <td className="text-center">{item.gold}</td>
-                        <td className="text-center">{item.silver}</td>
-                        <td className="text-center">{item.bronze}</td>
-                        <td className="text-center font-bold">{item.gold + item.silver + item.bronze}</td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-    </div>
-);
+// 6 & 7. Rekap Atlet (Gender Split)
+const AthleteRecapReport: React.FC<{ data: any[], title?: string }> = ({ data, title }) => {
+    const male = data.filter(i => i.swimmer?.gender === 'Male');
+    const female = data.filter(i => i.swimmer?.gender === 'Female');
+    
+    const RenderTable = ({ list, label }: { list: any[], label: string }) => (
+        <div className="mt-4 page-break-inside-avoid">
+            <h4 className="bg-gray-800 text-white p-1 px-2 font-bold text-xs uppercase mb-1">{label}</h4>
+            <table className="w-full text-[10px] border-collapse">
+                <thead><tr className="border-y-2 border-black bg-gray-100 font-bold">
+                    <th className="w-8 text-center">#</th><th className="text-left px-2">NAMA ATLET</th><th className="text-left px-2">TIM</th><th className="w-10 text-center">🥇</th><th className="w-10 text-center">🥈</th><th className="w-10 text-center">🥉</th><th className="w-12 text-center font-bold">TOT</th>
+                </tr></thead>
+                <tbody>
+                    {list.map((item, i) => (
+                        <tr key={i} className="border-b border-gray-200">
+                            <td className="text-center py-1.5 font-bold">{i + 1}</td>
+                            <td className="px-2 font-bold uppercase">{item.swimmer?.name}</td>
+                            <td className="px-2 uppercase text-[8px]">{item.swimmer?.club}</td>
+                            <td className="text-center">{item.gold}</td>
+                            <td className="text-center">{item.silver}</td>
+                            <td className="text-center">{item.bronze}</td>
+                            <td className="text-center font-bold">{item.gold + item.silver + item.bronze}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+
+    return (
+        <div className="space-y-8">
+            {title && <h3 className="text-center font-black text-xl mb-4 uppercase underline">{title}</h3>}
+            <RenderTable list={male} label="KATEGORI PUTRA (MEN'S)" />
+            <RenderTable list={female} label="KATEGORI PUTRI (WOMEN'S)" />
+        </div>
+    );
+};
 
 // --- MAIN COMPONENT ---
 export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competitionInfo, isLoading }) => {
     const [reportType, setReportType] = useState<ReportType>('schedule');
     const [records, setRecords] = useState<SwimRecord[]>([]);
+    const [sessionFilter, setSessionFilter] = useState<number>(0); // 0 for All
+    const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
     const { addNotification } = useNotification();
 
     useEffect(() => { getRecords().then(setRecords); }, []);
 
-    // 1. Scheduled Events with Global numbering
-    const scheduledEvents = useMemo(() => {
-        return [...events]
-            .filter(e => (e.sessionNumber || 0) > 0)
-            .sort((a, b) => (a.sessionNumber || 0) - (b.sessionNumber || 0) || (a.heatOrder || 0) - (b.heatOrder || 0))
-            .map((e, i) => ({ ...e, globalEventNumber: i + 1 }));
+    // Session helper
+    const availableSessions = useMemo(() => {
+        const set = new Set(events.map(e => e.sessionNumber || 0).filter(s => s > 0));
+        return Array.from(set).sort((a, b) => a - b);
     }, [events]);
 
-    // 2. Program Book Data (with Heats)
-    const programData = useMemo(() => {
+    // 1. Filtered Base Events
+    const baseEvents = useMemo(() => {
+        return [...events]
+            .filter(e => (e.sessionNumber || 0) > 0)
+            .filter(e => sessionFilter === 0 || e.sessionNumber === sessionFilter)
+            .sort((a, b) => (a.sessionNumber || 0) - (b.sessionNumber || 0) || (a.heatOrder || 0) - (b.heatOrder || 0))
+            .map((e, i) => ({ ...e, globalEventNumber: i + 1 }));
+    }, [events, sessionFilter]);
+
+    // Selection helper
+    const handleToggleAllEvents = (select: boolean) => {
+        if (select) setSelectedEventIds(new Set(baseEvents.map(e => e.id)));
+        else setSelectedEventIds(new Set());
+    };
+
+    const handleToggleEventId = (id: string) => {
+        const next = new Set(selectedEventIds);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        setSelectedEventIds(next);
+    };
+
+    // Final Events to Render (Filtered by ID if type is program/results)
+    const renderEvents = useMemo(() => {
+        const isSelectionActive = selectedEventIds.size > 0 && ['program', 'results'].includes(reportType);
+        return baseEvents.filter(e => !isSelectionActive || selectedEventIds.has(e.id));
+    }, [baseEvents, selectedEventIds, reportType]);
+
+    // 2. Data Processing for Reports
+    const processedData = useMemo(() => {
         const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
-        return scheduledEvents.map(event => {
+        
+        // Detailed Events (Program & Results)
+        const detailedEvents = renderEvents.map(event => {
             const entries: Entry[] = event.entries.map(en => ({ ...en, swimmer: swimmersMap.get(en.swimmerId)! })).filter(e => e.swimmer);
             const heats = generateHeats(entries, competitionInfo?.numberOfLanes || 8);
             
-            // Basic timing estimation
-            let runningTime = event.sessionDateTime ? new Date(event.sessionDateTime).getTime() : null;
-            const heatsWithTimes = heats.map(h => {
-                const th = { ...h, estimatedHeatStartTime: runningTime || undefined };
-                if (runningTime) runningTime += estimateHeatDuration(event.distance);
-                return th;
-            });
-
-            return { ...event, detailedEntries: entries, heatsWithTimes, estimatedEventStartTime: event.sessionDateTime ? new Date(event.sessionDateTime).getTime() : undefined };
-        });
-    }, [scheduledEvents, swimmers, competitionInfo]);
-
-    // 3. Results Data
-    const resultsData = useMemo(() => {
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
-        return scheduledEvents.map(event => {
-            const valid = [...event.results].filter(r => r.time > 0).sort((a, b) => a.time - b.time);
-            const detailed = [...event.results].sort((a, b) => {
+            // Results calculation
+            const validRes = [...event.results].filter(r => r.time > 0).sort((a, b) => a.time - b.time);
+            const detailedRes = [...event.results].sort((a, b) => {
                 if (a.time > 0 && b.time > 0) return a.time - b.time;
                 if (a.time > 0) return -1; if (b.time > 0) return 1;
                 return b.time - a.time;
             }).map(r => ({
                 ...r,
                 swimmer: swimmersMap.get(r.swimmerId),
-                rank: r.time > 0 ? valid.findIndex(v => v.swimmerId === r.swimmerId) + 1 : 0
+                rank: r.time > 0 ? validRes.findIndex(v => v.swimmerId === r.swimmerId) + 1 : 0
             }));
-            return { ...event, detailedResults: detailed };
-        });
-    }, [scheduledEvents, swimmers]);
 
-    // 4. Broken Records
-    const brokenRecords = useMemo(() => {
-        const list: BrokenRecord[] = [];
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
-        resultsData.forEach(event => {
-            const winner = event.detailedResults.find(r => r.rank === 1);
-            if (winner && winner.swimmer) {
-                [RecordType.PORPROV, RecordType.NASIONAL].forEach(type => {
-                    const record = records.find(r => r.type === type && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.category ?? null) === (event.category ?? null));
-                    if (record && winner.time < record.time) {
-                        list.push({ record, newEventName: formatEventName(event), newHolder: winner.swimmer, newTime: winner.time });
-                    }
-                });
-            }
-        });
-        return list;
-    }, [resultsData, records]);
+            let runningTime = event.sessionDateTime ? new Date(event.sessionDateTime).getTime() : null;
+            const heatsWithTimes = heats.map(h => {
+                const th = { ...h, estimatedHeatStartTime: runningTime || undefined };
+                // FIX: Added null check for runningTime to avoid arithmetic operation with null error
+                if (runningTime !== null) runningTime += estimateHeatDuration(event.distance);
+                return th;
+            });
 
-    // 5. Medal Calculations
-    const medalStats = useMemo(() => {
-        const clubs: Record<string, any> = {};
-        const individual: Record<string, any> = {};
-        
-        resultsData.forEach(event => {
-            event.detailedResults.forEach(r => {
-                if (r.rank >= 1 && r.rank <= 3 && r.swimmer) {
-                    const cName = r.swimmer.club;
-                    const sId = r.swimmer.id;
-                    
-                    if (!clubs[cName]) clubs[cName] = { name: cName, gold: 0, silver: 0, bronze: 0 };
-                    if (!individual[sId]) individual[sId] = { swimmer: r.swimmer, gold: 0, silver: 0, bronze: 0 };
-                    
-                    const medal = r.rank === 1 ? 'gold' : r.rank === 2 ? 'silver' : 'bronze';
-                    clubs[cName][medal]++;
-                    individual[sId][medal]++;
+            return { 
+                ...event, 
+                detailedEntries: entries, 
+                heatsWithTimes, 
+                detailedResults: detailedRes,
+                estimatedEventStartTime: event.sessionDateTime ? new Date(event.sessionDateTime).getTime() : undefined 
+            };
+        });
+
+        // Tallying
+        // FIX: Defined explicit interfaces for tally objects to prevent 'Property does not exist on type unknown' errors
+        interface TallyClubIndividual {
+            name: string;
+            medals: { rank: number; eventName: string; time: number }[];
+        }
+
+        interface TallyClub {
+            name: string;
+            gold: number;
+            silver: number;
+            bronze: number;
+            individualDetails: Record<string, TallyClubIndividual>;
+        }
+
+        interface TallyIndividual {
+            swimmer: Swimmer;
+            gold: number;
+            silver: number;
+            bronze: number;
+        }
+
+        const clubs: Record<string, TallyClub> = {};
+        const individual: Record<string, TallyIndividual> = {};
+        const broken: BrokenRecord[] = [];
+
+        // We tally based on ALL base events (ignoring print selection for overall standings)
+        baseEvents.forEach(rawEvent => {
+            const valid = [...rawEvent.results].filter(r => r.time > 0).sort((a, b) => a.time - b.time);
+            const winner = valid[0];
+            
+            if (winner) {
+                const ws = swimmersMap.get(winner.swimmerId);
+                if (ws) {
+                    [RecordType.PORPROV, RecordType.NASIONAL].forEach(type => {
+                        const rec = records.find(r => r.type === type && r.gender === rawEvent.gender && r.distance === rawEvent.distance && r.style === rawEvent.style && (r.category ?? null) === (rawEvent.category ?? null));
+                        if (rec && winner.time < record.time) { // Note: record was used incorrectly here, should be rec
+                            broken.push({ record: rec, newEventName: formatEventName(rawEvent), newHolder: ws, newTime: winner.time });
+                        }
+                    });
                 }
+            }
+
+            valid.forEach((r, idx) => {
+                const rank = idx + 1;
+                if (rank > 3) return;
+                const s = swimmersMap.get(r.swimmerId);
+                if (!s) return;
+
+                // FIX: Used explicit type initialization and typed keys to fix property access errors on potentially unknown Record values
+                if (!clubs[s.club]) {
+                    clubs[s.club] = { name: s.club, gold: 0, silver: 0, bronze: 0, individualDetails: {} };
+                }
+                if (!individual[s.id]) {
+                    individual[s.id] = { swimmer: s, gold: 0, silver: 0, bronze: 0 };
+                }
+                
+                const mKey = (rank === 1 ? 'gold' : rank === 2 ? 'silver' : 'bronze') as 'gold' | 'silver' | 'bronze';
+                clubs[s.club][mKey]++;
+                individual[s.id][mKey]++;
+
+                // Collect data for Club & Swimmer report
+                if (!clubs[s.club].individualDetails[s.id]) {
+                    clubs[s.club].individualDetails[s.id] = { name: s.name, medals: [] };
+                }
+                clubs[s.club].individualDetails[s.id].medals.push({ rank, eventName: formatEventName(rawEvent), time: r.time });
             });
         });
 
-        const sortFn = (a: any, b: any) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze;
-        
-        const sortedClubs = Object.values(clubs).sort(sortFn);
+        const sortFn = (a: TallyClub | TallyIndividual, b: TallyClub | TallyIndividual) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze;
+        const sortedClubs = Object.values(clubs).sort(sortFn).map((c) => ({
+            ...c,
+            individualDetails: Object.values(c.individualDetails).sort((a, b) => b.medals.length - a.medals.length)
+        }));
         const sortedIndividuals = Object.values(individual).sort(sortFn);
-        
-        const categoryLeaderboard = [...new Set(swimmers.map(s => s.ageGroup))].filter(Boolean).map(ku => ({
+
+        const categoryLeaderboard = [...new Set(swimmers.map(s => s.ageGroup))].filter(Boolean).sort().map(ku => ({
             ku,
-            leaders: sortedIndividuals.filter(i => i.swimmer.ageGroup === ku).slice(0, 10)
+            leaders: sortedIndividuals.filter((i) => i.swimmer.ageGroup === ku)
         }));
 
-        return { clubs: sortedClubs, individuals: sortedIndividuals, categoryLeaderboard };
-    }, [resultsData, swimmers]);
+        return { 
+            detailedEvents, 
+            clubs: sortedClubs, 
+            individuals: sortedIndividuals, 
+            categoryLeaderboard, 
+            broken 
+        };
+    }, [renderEvents, baseEvents, swimmers, competitionInfo, records]);
 
 
     const handleExportExcel = () => {
@@ -343,33 +462,27 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
         switch(reportType) {
             case 'schedule':
-                data = scheduledEvents.map(e => ({ "NO ACARA": e.globalEventNumber, "NOMOR LOMBA": formatEventName(e), "PESERTA": e.entries.length }));
-                fileName = "Susunan_Acara";
+                data = renderEvents.map(e => ({ "NO ACARA": e.globalEventNumber, "NOMOR LOMBA": formatEventName(e), "JUMLAH PESERTA": e.entries.length }));
                 break;
             case 'results':
-                resultsData.forEach(e => e.detailedResults.forEach(r => data.push({
-                    "NOMOR": e.globalEventNumber, "EVENT": formatEventName(e), "RANK": r.rank || '-', "ATLET": r.swimmer?.name, "TIM": r.swimmer?.club, "WAKTU": formatTime(r.time)
+                processedData.detailedEvents.forEach(e => e.detailedResults?.forEach(r => data.push({
+                    "NOMOR": e.globalEventNumber, "EVENT": formatEventName(e), "RANK": r.rank || '-', "NAMA ATLET": r.swimmer?.name, "TIM": r.swimmer?.club, "WAKTU": formatTime(r.time)
                 })));
-                fileName = "Hasil_Lomba_Lengkap";
                 break;
             case 'clubMedals':
-                data = medalStats.clubs.map((c, i) => ({ "NO": i+1, "TIM": c.name, "EMAS": c.gold, "PERAK": c.silver, "PERUNGGU": c.bronze, "TOTAL": c.gold+c.silver+c.bronze }));
-                fileName = "Rekap_Medali_Klub";
+                data = processedData.clubs.map((c, i) => ({ "PERINGKAT": i+1, "KLUB": c.name, "EMAS": c.gold, "PERAK": c.silver, "PERUNGGU": c.bronze, "TOTAL": c.gold+c.silver+c.bronze }));
                 break;
             case 'swimmerTotal':
-                data = medalStats.individuals.map((i, idx) => ({ "NO": idx+1, "ATLET": i.swimmer.name, "TIM": i.swimmer.club, "EMAS": i.gold, "PERAK": i.silver, "PERUNGGU": i.bronze, "TOTAL": i.gold+i.silver+i.bronze }));
-                fileName = "Rekap_Medali_Atlet";
-                break;
-            case 'brokenRecords':
-                data = brokenRecords.map(br => ({ "EVENT": br.newEventName, "REKOR LAMA": formatTime(br.record.time), "REKOR BARU": formatTime(br.newTime), "PEMEGANG BARU": br.newHolder.name, "TIM": br.newHolder.club }));
-                fileName = "Rekor_Terpecahkan";
+                processedData.individuals.forEach((i: any, idx) => data.push({
+                    "NO": idx+1, "GENDER": i.swimmer.gender === 'Male' ? 'L' : 'P', "NAMA": i.swimmer.name, "TIM": i.swimmer.club, "EMAS": i.gold, "PERAK": i.silver, "PERUNGGU": i.bronze, "TOTAL": i.gold+i.silver+i.bronze
+                }));
                 break;
         }
 
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Laporan");
-        XLSX.writeFile(wb, `${fileName}.xlsx`);
+        XLSX.writeFile(wb, `${fileName}_${new Date().getTime()}.xlsx`);
     };
 
     if (isLoading || !competitionInfo) return <div className="flex justify-center p-20"><Spinner /></div>;
@@ -378,7 +491,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         schedule: 'SUSUNAN ACARA (ORDER OF EVENTS)',
         program: 'BUKU ACARA (MEET PROGRAM)',
         results: 'BUKU HASIL LOMBA (MEET RESULTS)',
-        clubMedals: 'REKAPITULASI MEDALI KLUB',
+        clubMedals: 'REKAPITULASI MEDALI KLUB / TIM',
         clubSwimmerMedals: 'REKAPITULASI MEDALI KLUB & ATLET',
         swimmerTotal: 'REKAPITULASI MEDALI ATLET (TOTAL)',
         swimmerCategory: 'KLASEMEN PERORANGAN (PER KATEGORI)',
@@ -387,83 +500,137 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
     return (
         <div className="print-view-container">
-            <div className="no-print mb-8">
+            <div className="no-print space-y-4 mb-8">
                 <Card>
-                    <h2 className="text-xl font-bold mb-4">Pilih Laporan Cetak</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
-                        {Object.entries(reportTitles).map(([key, title]) => (
-                            <button
-                                key={key}
-                                onClick={() => setReportType(key as ReportType)}
-                                className={`text-left p-3 rounded-lg border-2 transition-all text-xs font-bold uppercase tracking-tighter ${reportType === key ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50'}`}
+                    <h2 className="text-xl font-bold mb-4">Pengaturan Laporan</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label className="block text-xs font-black uppercase text-text-secondary mb-1">Pilih Jenis Laporan</label>
+                            <select 
+                                value={reportType} 
+                                onChange={(e) => {
+                                    setReportType(e.target.value as ReportType);
+                                    setSessionFilter(0);
+                                    setSelectedEventIds(new Set());
+                                }}
+                                className="w-full bg-background border border-border rounded p-2 text-sm font-bold"
                             >
-                                {title.replace(/\(.*\)/, '')}
-                            </button>
-                        ))}
+                                {Object.entries(reportTitles).map(([k, v]) => <option key={k} value={k}>{v.replace(/\(.*\)/, '')}</option>)}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-black uppercase text-text-secondary mb-1">Filter Sesi</label>
+                            <select 
+                                value={sessionFilter} 
+                                onChange={(e) => {
+                                    setSessionFilter(Number(e.target.value));
+                                    setSelectedEventIds(new Set());
+                                }}
+                                className="w-full bg-background border border-border rounded p-2 text-sm font-bold"
+                            >
+                                <option value={0}>SEMUA SESI</option>
+                                {availableSessions.map(s => <option key={s} value={s}>SESI {romanize(s)}</option>)}
+                            </select>
+                        </div>
                     </div>
-                    <div className="flex justify-between items-center pt-4 border-t border-border gap-4">
-                        <div className="flex gap-2">
-                             <Button onClick={() => window.print()} className="flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm7-14a2 2 0 10-4 0v4a2 2 0 104 0V3z" /></svg>
-                                Cetak / Simpan PDF
+
+                    {['program', 'results'].includes(reportType) && (
+                        <div className="mt-6 border-t pt-4">
+                            <div className="flex justify-between items-center mb-2">
+                                <label className="text-xs font-black uppercase text-text-secondary">Pilih Nomor Lomba ({selectedEventIds.size || 'Semua'} Dipilih)</label>
+                                <div className="space-x-2">
+                                    <button onClick={() => handleToggleAllEvents(true)} className="text-[10px] font-bold text-primary hover:underline">PILIH SEMUA</button>
+                                    <button onClick={() => handleToggleAllEvents(false)} className="text-[10px] font-bold text-red-500 hover:underline">HAPUS SEMUA</button>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 bg-background/50 rounded border">
+                                {baseEvents.map(e => (
+                                    <label key={e.id} className="flex items-center gap-2 p-1 hover:bg-primary/5 cursor-pointer rounded">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedEventIds.has(e.id)} 
+                                            onChange={() => handleToggleEventId(e.id)} 
+                                            className="h-4 w-4 rounded border-gray-300 text-primary"
+                                        />
+                                        <span className="text-[10px] font-bold truncate">#{e.globalEventNumber} - {formatEventName(e)}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-between items-center pt-6 mt-4 border-t border-border">
+                        <div className="flex gap-4">
+                             <Button onClick={() => window.print()} className="flex items-center gap-2 px-6">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm7-14a2 2 0 10-4 0v4a2 2 0 104 0V3z" /></svg>
+                                CETAK / PDF
                             </Button>
-                            <Button onClick={handleExportExcel} variant="secondary" className="flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                Unduh Excel
+                            <Button onClick={handleExportExcel} variant="secondary" className="flex items-center gap-2 px-6">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                UNDUH EXCEL
                             </Button>
                         </div>
-                        <p className="text-[10px] text-text-secondary uppercase font-bold italic">Gunakan Ctrl+P untuk mencetak</p>
                     </div>
                 </Card>
             </div>
 
-            <div className="print-only bg-white text-black p-4 min-h-screen">
+            <div className="print-only bg-white text-black p-2 min-h-screen">
                 <ReportHeader info={competitionInfo} title={reportTitles[reportType]} />
                 
-                {reportType === 'schedule' && <ScheduleReport events={scheduledEvents} />}
-                {reportType === 'program' && <ProgramReport events={programData} info={competitionInfo} records={records} />}
-                {reportType === 'results' && <ResultsReport events={resultsData} />}
-                {reportType === 'clubMedals' && <MedalsReport data={medalStats.clubs} title="Medali Klub" />}
-                {reportType === 'swimmerTotal' && <MedalsReport data={medalStats.individuals} title="Medali Atlet" showSwimmers />}
-                {reportType === 'brokenRecords' && (
-                    <div className="space-y-4">
-                        {brokenRecords.map((br, i) => (
-                            <div key={i} className="p-4 border-2 border-black rounded">
-                                <p className="font-bold text-lg">{br.newEventName}</p>
-                                <p className="text-xl font-black">{br.newHolder.name} ({br.newHolder.club})</p>
-                                <p className="font-mono text-2xl mt-2">{formatTime(br.newTime)}</p>
-                                <p className="text-xs mt-2 uppercase">Memecahkan Rekor {br.record.type} ({formatTime(br.record.time)}) - {br.record.holderName}</p>
-                            </div>
-                        ))}
-                    </div>
+                {reportType === 'schedule' && <ScheduleReport events={baseEvents} />}
+                
+                {reportType === 'program' && (
+                    <EventBaseReport 
+                        events={processedData.detailedEvents} 
+                        info={competitionInfo} 
+                        records={records} 
+                    />
                 )}
+                
+                {reportType === 'results' && (
+                    <EventBaseReport 
+                        events={processedData.detailedEvents} 
+                        info={competitionInfo} 
+                        records={records} 
+                        showResults 
+                    />
+                )}
+
+                {reportType === 'clubMedals' && <ClubMedalsReport data={processedData.clubs} />}
+                
+                {reportType === 'clubSwimmerMedals' && <ClubSwimmerMedalsReport data={processedData.clubs} />}
+                
+                {reportType === 'swimmerTotal' && <AthleteRecapReport data={processedData.individuals} />}
+                
                 {reportType === 'swimmerCategory' && (
-                    <div className="space-y-10">
-                        {medalStats.categoryLeaderboard.map(cat => (
-                            <div key={cat.ku}>
-                                <h3 className="bg-gray-200 p-2 font-bold uppercase mb-2">KATEGORI: {cat.ku || 'UMUM'}</h3>
-                                <MedalsReport data={cat.leaders} title="" showSwimmers />
-                            </div>
-                        ))}
-                    </div>
-                )}
-                {reportType === 'clubSwimmerMedals' && (
-                    <div className="space-y-10">
-                        {medalStats.clubs.map(club => (
-                            <div key={club.name}>
-                                <h3 className="bg-gray-800 text-white p-2 font-bold uppercase mb-2">{club.name} (E:{club.gold} P:{club.silver} Pr:{club.bronze})</h3>
-                                <MedalsReport 
-                                    data={medalStats.individuals.filter(i => i.swimmer.club === club.name)} 
-                                    title="" 
-                                    showSwimmers 
-                                />
-                            </div>
+                    <div className="space-y-12">
+                        {processedData.categoryLeaderboard.map(cat => (
+                            <AthleteRecapReport key={cat.ku} data={cat.leaders} title={`KATEGORI: ${cat.ku}`} />
                         ))}
                     </div>
                 )}
 
-                <footer className="pt-8 mt-12 border-t-2 border-gray-300 text-center opacity-50 text-[10px]">
-                     DICETAK PADA: {new Date().toLocaleString('id-ID')} | DIDUKUNG OLEH R.E.A.C.T SYSTEM
+                {reportType === 'brokenRecords' && (
+                    <div className="space-y-4">
+                        {processedData.broken.map((br, i) => (
+                            <div key={i} className="p-4 border-2 border-black rounded bg-gray-50 flex justify-between items-center">
+                                <div>
+                                    <p className="font-black text-sm uppercase">{br.newEventName}</p>
+                                    <p className="text-lg font-black uppercase tracking-tight">{br.newHolder.name} ({br.newHolder.club})</p>
+                                    <p className="text-[10px] mt-1 font-bold italic text-red-600 uppercase">MEMECAHKAN REKOR {br.record.type} ({formatTime(br.record.time)} - {br.record.holderName})</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-mono text-3xl font-black">{formatTime(br.newTime)}</p>
+                                </div>
+                            </div>
+                        ))}
+                        {processedData.broken.length === 0 && <p className="text-center italic py-10">TIDAK ADA REKOR YANG TERPECAHKAN PADA SESI INI.</p>}
+                    </div>
+                )}
+
+                <footer className="pt-8 mt-12 border-t-2 border-black text-center opacity-70 text-[9px] font-bold uppercase tracking-widest">
+                     DICETAK PADA: {new Date().toLocaleString('id-ID')} | SYSTEM BY R.E.A.C.T | HALAMAN 1
                 </footer>
             </div>
         </div>

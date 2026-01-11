@@ -1,4 +1,3 @@
-// FIX: Casting uploadResult.errors to string[] to resolve the mapping over unknown error.
 import React, { useState, useMemo } from 'react';
 import type { SwimEvent } from '../types';
 import { SwimStyle, Gender } from '../types';
@@ -702,12 +701,14 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <p className="text-green-500 font-bold">Berhasil! {uploadResult.success} nomor lomba baru telah ditambahkan.</p>
                     )}
                     
-                    {(uploadResult.errors as string[]).length > 0 && (
+                    {uploadResult.errors && (uploadResult.errors as string[]).length > 0 && (
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {/* FIX: Safely access errors after confirming uploadResult is not null and cast to string[] */}
-                                {(uploadResult.errors as string[]).map((err: string, i: number) => <li key={i}>{err}</li>)}
+                                {/* FIX: Safely access errors after confirming uploadResult is not null and explicitly cast to string array to avoid 'unknown' map error */}
+                                {((uploadResult.errors as string[]) || []).map((err: string, i: number) => (
+                                    <li key={i}>{err}</li>
+                                ))}
                             </ul>
                         </div>
                     )}
