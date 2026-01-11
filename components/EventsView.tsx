@@ -694,20 +694,20 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                                 Buka menu <strong className="font-semibold">"SQL Editor"</strong>, salin perintah perbaikan yang tersedia di sana, and jalankan di Supabase untuk mengatasi masalah ini.
                             </p>
                         </div>
-                    ) : uploadResult.errors.length > 0 ? (
+                    ) : (uploadResult.errors as string[]).length > 0 ? (
                         <p className="text-red-500 font-bold">
-                            Ditemukan {uploadResult.errors.length} galat. {uploadResult.success > 0 ? `${uploadResult.success} nomor lomba berhasil ditambahkan.` : 'Tidak ada nomor lomba yang ditambahkan.'} Harap perbaiki file and coba lagi.
+                            Ditemukan {(uploadResult.errors as string[]).length} galat. {uploadResult.success > 0 ? `${uploadResult.success} nomor lomba berhasil ditambahkan.` : 'Tidak ada nomor lomba yang ditambahkan.'} Harap perbaiki file and coba lagi.
                         </p>
                     ) : (
                         <p className="text-green-500 font-bold">Berhasil! {uploadResult.success} nomor lomba baru telah ditambahkan.</p>
                     )}
                     
-                    {uploadResult.errors.length > 0 && (
+                    {(uploadResult.errors as string[]).length > 0 && (
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {/* FIX: Safely access errors after confirming uploadResult is not null */}
-                                {uploadResult.errors.map((err: string, i: number) => <li key={i}>{err}</li>)}
+                                {/* FIX: Safely access errors after confirming uploadResult is not null and cast to string[] */}
+                                {(uploadResult.errors as string[]).map((err: string, i: number) => <li key={i}>{err}</li>)}
                             </ul>
                         </div>
                     )}
