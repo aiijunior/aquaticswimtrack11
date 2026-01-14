@@ -17,7 +17,11 @@ const toCompetitionInfo = (data) => (data ? {
     isRegistrationOpen: data.is_registration_open,
     numberOfLanes: data.number_of_lanes,
     registrationDeadline: data.registration_deadline,
-    ageGroups: data.age_groups // Added missing field
+    ageGroups: data.age_groups,
+    isFree: data.is_free,
+    recipientName: data.recipient_name,
+    accountNumber: data.account_number,
+    feePerEvent: data.fee_per_event
 } : null);
 
 const toSwimmer = (data) => ({
@@ -31,7 +35,7 @@ const toSwimmer = (data) => ({
 
 const toEventEntry = (data) => ({
     swimmerId: data.swimmer_id,
-    seedTime: data.seed_time
+    seed_time: data.seed_time
 });
 
 const toResult = (data) => ({

@@ -64,11 +64,13 @@ const MedalIcon = ({ rank }: { rank: number }) => {
 
 // --- PRINTABLE COMPONENTS ---
 
-const ReportHeader: React.FC<{ info: CompetitionInfo, title: string }> = ({ info, title }) => (
+// FIX: Using regular function instead of React.FC to improve type inference for props
+const ReportHeader = ({ info, title }: { info: CompetitionInfo, title: string }) => (
     <header className="border-b-2 border-gray-300 pb-4 mb-6 text-center">
         {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-16 object-contain mx-auto mb-2" />}
         <div className="mb-2">
-            {(info.eventName || '').split('\n').map((line, index) => (
+            {/* FIX: Ensure eventName is treated as string and lines as string[] to avoid unknown type errors */}
+            {(info.eventName || '').split('\n').map((line: string, index: number) => (
                 <p key={index} className={`font-bold uppercase tracking-tight leading-tight ${index === 0 ? 'text-xl' : 'text-xs'}`}>{line}</p>
             ))}
             <p className="text-sm text-gray-600 mt-1 uppercase font-semibold">
@@ -328,7 +330,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
     // 2. Data Processing for Reports
     const processedData = useMemo(() => {
-        const swimmersMap = new Map(swimmers.map(s => [s.id, s]));
+        // FIX: Explicitly type swimmersMap as Map<string, Swimmer> to fix 'unknown' property access errors
+        const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
         
         // Detailed Events (Program & Results)
         const detailedEvents = renderEvents.map(event => {
@@ -350,8 +353,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             let runningTime = event.sessionDateTime ? new Date(event.sessionDateTime).getTime() : null;
             const heatsWithTimes = heats.map(h => {
                 const th = { ...h, estimatedHeatStartTime: runningTime || undefined };
-                // FIX: Added null check for runningTime to avoid arithmetic operation with null error
-                if (runningTime !== null) runningTime += estimateHeatDuration(event.distance);
+                // FIX: Explicitly cast runningTime to number for arithmetic operations after null check
+                if (runningTime !== null) runningTime = (runningTime as number) + estimateHeatDuration(event.distance);
                 return th;
             });
 
@@ -400,7 +403,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 if (ws) {
                     [RecordType.PORPROV, RecordType.NASIONAL].forEach(type => {
                         const rec = records.find(r => r.type === type && r.gender === rawEvent.gender && r.distance === rawEvent.distance && r.style === rawEvent.style && (r.category ?? null) === (rawEvent.category ?? null));
-                        if (rec && winner.time < record.time) { // Note: record was used incorrectly here, should be rec
+                        // FIX: Changed 'record.time' to 'rec.time' to fix name error
+                        if (rec && winner.time < rec.time) { 
                             broken.push({ record: rec, newEventName: formatEventName(rawEvent), newHolder: ws, newTime: winner.time });
                         }
                     });
@@ -413,7 +417,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 const s = swimmersMap.get(r.swimmerId);
                 if (!s) return;
 
-                // FIX: Used explicit type initialization and typed keys to fix property access errors on potentially unknown Record values
+                // FIX: Used typed keys and explicit object mapping to fix unknown property errors
                 if (!clubs[s.club]) {
                     clubs[s.club] = { name: s.club, gold: 0, silver: 0, bronze: 0, individualDetails: {} };
                 }
@@ -429,6 +433,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 if (!clubs[s.club].individualDetails[s.id]) {
                     clubs[s.club].individualDetails[s.id] = { name: s.name, medals: [] };
                 }
+                clubs[s.club].individualDetails[s.id].individualDetails = undefined; // cleanup if any
                 clubs[s.club].individualDetails[s.id].medals.push({ rank, eventName: formatEventName(rawEvent), time: r.time });
             });
         });

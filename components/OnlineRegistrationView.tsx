@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, FormattableEvent } from '../types';
 import { getEventsForRegistration, processOnlineRegistration, processCollectiveRegistration } from '../services/databaseService';
@@ -107,19 +106,21 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     const maxAllowedEvents = useMemo(() => {
         if (competitionInfo?.isFree) return 999;
         const amount = parseInt(formData.paymentAmount) || 0;
-        const fee = competitionInfo?.feePerEvent || 1;
+        const fee = competitionInfo?.feePerEvent || 0;
+        if (fee <= 0) return 0;
         return Math.floor(amount / fee);
     }, [formData.paymentAmount, competitionInfo]);
 
     const selectedEventCount = useMemo(() => {
-        return (Object.values(selectedEvents) as any[]).filter((e) => e.selected).length;
+        return Object.values(selectedEvents).filter((e: any) => e.selected).length;
     }, [selectedEvents]);
 
     const isPaymentStepValid = useMemo(() => {
         if (competitionInfo?.isFree) return true;
         const proof = regType === 'INDIVIDUAL' ? formData.paymentProof : teamFormData.paymentProof;
         const amount = regType === 'INDIVIDUAL' ? formData.paymentAmount : teamFormData.paymentAmount;
-        return proof !== null && parseInt(amount) >= (competitionInfo?.feePerEvent || 0);
+        const feePerNo = competitionInfo?.feePerEvent || 0;
+        return proof !== null && parseInt(amount) >= feePerNo;
     }, [formData, teamFormData, regType, competitionInfo]);
 
     const isFormValid = useMemo(() => {
@@ -462,7 +463,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                         <div className="text-center py-12 bg-yellow-50 rounded-2xl border border-yellow-200">
                                             <p className="text-yellow-700 font-bold">⚠️ Harap pilih Kelompok Umur di Langkah 1</p>
                                         </div>
-                                    ) : !isPaymentStepValid ? (
+                                    ) : (!isPaymentStepValid && !isFree) ? (
                                         <div className="text-center py-12 bg-red-50 rounded-2xl border border-red-200">
                                             <p className="text-red-700 font-bold">⚠️ Harap lengkapi Bukti Bayar & Nominal di Langkah 2</p>
                                         </div>
@@ -711,7 +712,7 @@ const PaymentSection: React.FC<{ info: any, data: any, onFileChange: any, onAmou
                 
                 <div className="pt-3 border-t border-border flex justify-between items-center">
                     <span className="text-xs font-bold text-text-secondary uppercase tracking-tight">Biaya Pendaftaran</span>
-                    <span className="text-lg font-black text-text-primary">Rp {(info?.feePerEvent || 0).toLocaleString('id-ID')} <span className="text-[10px] font-normal text-text-secondary">/ nomor</span></span>
+                    <span className="text-lg font-black text-text-primary">Rp {(info?.feePerEvent || 0).toLocaleString('id-ID')} <span className="text-[10px] font-normal text-text-secondary">/ nomor acara</span></span>
                 </div>
             </div>
 
