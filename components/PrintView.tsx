@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, Entry, Heat, Result, BrokenRecord, SwimRecord, EventEntry } from '../types';
 import { RecordType, Gender, SwimStyle } from '../types';
@@ -37,6 +38,27 @@ interface TimedEvent extends ScheduledEvent {
     detailedResults?: any[];
 }
 
+// --- TALLY INTERFACES ---
+interface TallyClubIndividual {
+    name: string;
+    medals: { rank: number; eventName: string; time: number }[];
+}
+
+interface TallyClub {
+    name: string;
+    gold: number;
+    silver: number;
+    bronze: number;
+    individualDetails: Record<string, TallyClubIndividual>;
+}
+
+interface TallyIndividual {
+    swimmer: Swimmer;
+    gold: number;
+    silver: number;
+    bronze: number;
+}
+
 // --- HELPER FUNCTIONS ---
 const formatTime = (ms: number) => {
     // FIX: Tangani NaN, null, undefined, atau 0 sebagai "No Time" (99:99.99)
@@ -64,21 +86,21 @@ const formatEST = (timestamp: number | undefined) => {
 };
 
 const MedalIcon = ({ rank }: { rank: number }) => {
-    if (rank === 1) return <span>🥇</span>;
-    if (rank === 2) return <span>🥈</span>;
-    if (rank === 3) return <span>🥉</span>;
+    if (rank === 1) return <span className="text-lg">🥇</span>;
+    if (rank === 2) return <span className="text-lg">🥈</span>;
+    if (rank === 3) return <span className="text-lg">🥉</span>;
     return null;
 };
 
 // --- PRINTABLE COMPONENTS ---
 
-// FIX: Using regular function instead of React.FC to improve type inference for props
+// FIX: Added explicit cast to info.eventName as string to resolve 'unknown' map error
 const ReportHeader = ({ info, title }: { info: CompetitionInfo, title: string }) => (
     <header className="border-b-2 border-gray-300 pb-4 mb-6 text-center">
         {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-16 object-contain mx-auto mb-2" />}
         <div className="mb-2">
-            {/* FIX: Simplified to avoid "map does not exist on unknown" by directly accessing eventName split */}
-            {info.eventName.split('\n').map((line: string, index: number) => (
+            {/* FIX: Explicitly cast info.eventName to string to ensure split is available */}
+            {(info.eventName as string).split('\n').map((line: string, index: number) => (
                 <p key={index} className={`font-bold uppercase tracking-tight leading-tight ${index === 0 ? 'text-xl' : 'text-xs'}`}>{line}</p>
             ))}
             <p className="text-sm text-gray-600 mt-1 uppercase font-semibold">
@@ -129,7 +151,6 @@ const ScheduleReport: React.FC<{ events: ScheduledEvent[] }> = ({ events }) => {
 };
 
 // 2 & 3. Buku Acara & Buku Hasil (Unified UI Style)
-// FIX: Switched from React.FC to explicit prop typing to fix 'Property map does not exist on type unknown' errors on events and other props
 const EventBaseReport = ({ events, info, records, showResults }: { events: TimedEvent[], info: CompetitionInfo, records: SwimRecord[], showResults?: boolean }) => (
     <div className="space-y-8">
         {events.map(event => {
@@ -272,32 +293,45 @@ const AthleteRecapReport: React.FC<{ data: any[], title?: string }> = ({ data, t
     const female = data.filter(i => i.swimmer?.gender === 'Female');
     
     const RenderTable = ({ list, label }: { list: any[], label: string }) => (
-        <div className="mt-4 page-break-inside-avoid">
-            <h4 className="bg-gray-800 text-white p-1 px-2 font-bold text-xs uppercase mb-1">{label}</h4>
-            <table className="w-full text-[10px] border-collapse">
-                <thead><tr className="border-y-2 border-black bg-gray-100 font-bold">
-                    <th className="w-8 text-center">#</th><th className="text-left px-2">NAMA ATLET</th><th className="text-left px-2">TIM</th><th className="w-10 text-center">🥇</th><th className="w-10 text-center">🥈</th><th className="w-10 text-center">🥉</th><th className="w-12 text-center font-bold">TOT</th>
-                </tr></thead>
+        <div className="mt-6 page-break-inside-avoid">
+            <h4 className="bg-gray-800 text-white p-2 px-3 font-bold text-xs uppercase mb-1 tracking-widest">{label}</h4>
+            <table className="w-full text-[11px] border-collapse table-fixed">
+                <thead>
+                    <tr className="border-y-2 border-black bg-gray-100 font-bold">
+                        <th className="w-12 text-center py-2">#</th>
+                        <th className="text-left px-2">NAMA ATLET</th>
+                        <th className="text-left px-2">TIM / KLUB</th>
+                        <th className="w-10 text-center">🥇</th>
+                        <th className="w-10 text-center">🥈</th>
+                        <th className="w-10 text-center">🥉</th>
+                        <th className="w-14 text-center font-black">TOT</th>
+                    </tr>
+                </thead>
                 <tbody>
                     {list.map((item, i) => (
-                        <tr key={i} className="border-b border-gray-200">
-                            <td className="text-center py-1.5 font-bold">{i + 1}</td>
-                            <td className="px-2 font-bold uppercase">{item.swimmer?.name}</td>
-                            <td className="px-2 uppercase text-[8px]">{item.swimmer?.club}</td>
-                            <td className="text-center">{item.gold}</td>
-                            <td className="text-center">{item.silver}</td>
-                            <td className="text-center">{item.bronze}</td>
-                            <td className="text-center font-bold">{item.gold + item.silver + item.bronze}</td>
+                        <tr key={i} className="border-b border-gray-300">
+                            <td className="text-center py-2 font-bold bg-gray-50">{i + 1}</td>
+                            <td className="px-2 font-bold uppercase truncate">{item.swimmer?.name}</td>
+                            <td className="px-2 uppercase text-[9px] truncate">{item.swimmer?.club}</td>
+                            <td className="text-center font-bold text-lg">{item.gold}</td>
+                            <td className="text-center font-bold text-lg">{item.silver}</td>
+                            <td className="text-center font-bold text-lg">{item.bronze}</td>
+                            <td className="text-center font-black text-lg bg-gray-100">{item.gold + item.silver + item.bronze}</td>
                         </tr>
                     ))}
+                    {list.length === 0 && (
+                        <tr>
+                            <td colSpan={7} className="text-center py-6 text-gray-400 italic">BELUM ADA DATA PEMENANG MEDALI</td>
+                        </tr>
+                    )}
                 </tbody>
             </table>
         </div>
     );
 
     return (
-        <div className="space-y-8">
-            {title && <h3 className="text-center font-black text-xl mb-4 uppercase underline">{title}</h3>}
+        <div className="space-y-4">
+            {title && <h3 className="text-center font-black text-xl mb-4 uppercase underline tracking-tighter">{title}</h3>}
             <RenderTable list={male} label="KATEGORI PUTRA (MEN'S)" />
             <RenderTable list={female} label="KATEGORI PUTRI (WOMEN'S)" />
         </div>
@@ -325,7 +359,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         return [...events]
             .filter(e => (e.sessionNumber || 0) > 0)
             .filter(e => sessionFilter === 0 || e.sessionNumber === sessionFilter)
-            .sort((a, b) => (a.sessionNumber || 0) - (b.sessionNumber || 0) || (a.heatOrder || 0) - (b.heatOrder || 0))
+            .sort((a, b) => (Number(a.sessionNumber) || 0) - (Number(b.sessionNumber) || 0) || (Number(a.heatOrder) || 0) - (Number(b.heatOrder) || 0))
             .map((e, i) => ({ ...e, globalEventNumber: i + 1 }));
     }, [events, sessionFilter]);
 
@@ -409,27 +443,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         });
 
         // Tallying
-        // FIX: Defined explicit interfaces for tally objects to prevent 'Property does not exist on type unknown' errors
-        interface TallyClubIndividual {
-            name: string;
-            medals: { rank: number; eventName: string; time: number }[];
-        }
-
-        interface TallyClub {
-            name: string;
-            gold: number;
-            silver: number;
-            bronze: number;
-            individualDetails: Record<string, TallyClubIndividual>;
-        }
-
-        interface TallyIndividual {
-            swimmer: Swimmer;
-            gold: number;
-            silver: number;
-            bronze: number;
-        }
-
         const clubs: Record<string, TallyClub> = {};
         const individual: Record<string, TallyIndividual> = {};
         const broken: BrokenRecord[] = [];
@@ -444,8 +457,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 if (ws) {
                     [RecordType.PORPROV, RecordType.NASIONAL].forEach(type => {
                         const rec = records.find(r => r.type === type && r.gender === rawEvent.gender && r.distance === rawEvent.distance && r.style === rawEvent.style && (r.category ?? null) === (rawEvent.category ?? null));
-                        // FIX: Changed 'record.time' to 'rec.time' to fix name error and ensured valid arithmetic comparison
-                        if (rec && winner.time < rec.time) { 
+                        // FIX: Cast to Number to ensure valid arithmetic comparison
+                        if (rec && Number(winner.time) < Number(rec.time)) { 
                             broken.push({ record: rec, newEventName: formatEventName(rawEvent), newHolder: ws, newTime: winner.time });
                         }
                     });
@@ -458,7 +471,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 const s = swimmersMap.get(r.swimmerId);
                 if (!s) return;
 
-                // FIX: Used typed keys and explicit object mapping to fix unknown property errors
                 if (!clubs[s.club]) {
                     clubs[s.club] = { name: s.club, gold: 0, silver: 0, bronze: 0, individualDetails: {} };
                 }
@@ -478,7 +490,10 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             });
         });
 
-        const sortFn = (a: TallyClub | TallyIndividual, b: TallyClub | TallyIndividual) => b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze;
+        // FIX: Cast medal counts to Number for safe arithmetic sorting
+        const sortFn = (a: TallyClub | TallyIndividual, b: TallyClub | TallyIndividual) => 
+            (Number(b.gold) - Number(a.gold)) || (Number(b.silver) - Number(a.silver)) || (Number(b.bronze) - Number(a.bronze));
+
         const sortedClubs = Object.values(clubs).sort(sortFn).map((c) => ({
             ...c,
             individualDetails: Object.values(c.individualDetails).sort((a, b) => b.medals.length - a.medals.length)
@@ -518,8 +533,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 data = processedData.clubs.map((c, i) => ({ "PERINGKAT": i+1, "KLUB": c.name, "EMAS": c.gold, "PERAK": c.silver, "PERUNGGU": c.bronze, "TOTAL": c.gold+c.silver+c.bronze }));
                 break;
             case 'swimmerTotal':
+            case 'swimmerCategory':
                 processedData.individuals.forEach((i: any, idx) => data.push({
-                    "NO": idx+1, "GENDER": i.swimmer.gender === 'Male' ? 'L' : 'P', "NAMA": i.swimmer.name, "TIM": i.swimmer.club, "EMAS": i.gold, "PERAK": i.silver, "PERUNGGU": i.bronze, "TOTAL": i.gold+i.silver+i.bronze
+                    "NO": idx+1, "NAMA ATLET": i.swimmer.name, "TIM": i.swimmer.club, "JENIS KELAMIN": i.swimmer.gender === 'Male' ? 'PUTRA' : 'PUTRI', "KU": i.swimmer.ageGroup || '-', "EMAS": i.gold, "PERAK": i.silver, "PERUNGGU": i.bronze, "TOTAL": i.gold+i.silver+i.bronze
                 }));
                 break;
         }

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import type { SwimEvent } from '../types';
 import { SwimStyle, Gender } from '../types';
@@ -345,9 +346,13 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     }
 
     const sortedEvents: SwimEvent[] = [...events].sort((a, b) => {
-         const sessionDiff = (a.sessionNumber ?? 999) - (b.sessionNumber ?? 999);
+         const sessionNumberA = a.sessionNumber ?? 999;
+         const sessionNumberB = b.sessionNumber ?? 999;
+         const sessionDiff = sessionNumberA - sessionNumberB;
          if (sessionDiff !== 0) return sessionDiff;
-         const orderDiff = (a.heatOrder ?? 999) - (b.heatOrder ?? 999);
+         const heatOrderA = a.heatOrder ?? 999;
+         const heatOrderB = b.heatOrder ?? 999;
+         const orderDiff = heatOrderA - heatOrderB;
          if (orderDiff !== 0) return orderDiff;
          return formatEventName(a).localeCompare(formatEventName(b));
     });
@@ -701,12 +706,12 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <p className="text-green-500 font-bold">Berhasil! {uploadResult.success} nomor lomba baru telah ditambahkan.</p>
                     )}
                     
-                    {/* FIX: Simplified access and added null check for uploadResult and errors array to avoid map error on unknown types */}
-                    {uploadResult && uploadResult.errors && uploadResult.errors.length > 0 && (
+                    {/* FIX: Explicitly cast errors to string[] to resolve 'Property map does not exist on type unknown' error */}
+                    {uploadResult && uploadResult.errors && (uploadResult.errors as string[]).length > 0 && (
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {uploadResult.errors.map((err: string, i: number) => (
+                                {(uploadResult.errors as string[]).map((err: string, i: number) => (
                                     <li key={i}>{err}</li>
                                 ))}
                             </ul>
