@@ -39,9 +39,11 @@ interface TimedEvent extends ScheduledEvent {
 
 // --- HELPER FUNCTIONS ---
 const formatTime = (ms: number) => {
-    if (ms === 0) return '99:99.99';
+    // FIX: Tangani NaN, null, undefined, atau 0 sebagai "No Time" (99:99.99)
+    if (isNaN(ms) || ms === null || ms === undefined || ms === 0) return '99:99.99';
     if (ms === -2) return 'NS';
     if (ms < 0) return 'DQ';
+    
     const totalSeconds = ms / 1000;
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = Math.floor(totalSeconds % 60);
@@ -69,8 +71,8 @@ const ReportHeader = ({ info, title }: { info: CompetitionInfo, title: string })
     <header className="border-b-2 border-gray-300 pb-4 mb-6 text-center">
         {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-16 object-contain mx-auto mb-2" />}
         <div className="mb-2">
-            {/* FIX: Ensure eventName is treated as string and lines as string[] to avoid unknown type errors */}
-            {(info.eventName || '').split('\n').map((line: string, index: number) => (
+            {/* FIX: Explicitly cast info.eventName to string to ensure split and map work correctly across environments */}
+            {(String(info.eventName || '')).split('\n').map((line: string, index: number) => (
                 <p key={index} className={`font-bold uppercase tracking-tight leading-tight ${index === 0 ? 'text-xl' : 'text-xs'}`}>{line}</p>
             ))}
             <p className="text-sm text-gray-600 mt-1 uppercase font-semibold">
@@ -143,20 +145,24 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
                         (event.heatsWithTimes || []).map(heat => (
                             <div key={heat.heatNumber} className="mt-2">
                                 <p className="text-center font-bold text-[9px] uppercase bg-gray-200 py-0.5">Seri {heat.heatNumber} dari {event.heatsWithTimes?.length}</p>
-                                <table className="w-full text-[10px] mt-0.5 border-collapse">
+                                <table className="w-full text-[10px] mt-0.5 border-collapse table-fixed">
                                     <thead><tr className="border-y border-black font-bold">
-                                        <th className="w-8">LIN</th><th className="text-left px-1">NAMA ATLET</th><th className="w-10">THN</th><th className="text-left px-1">TIM</th><th className="text-right w-16 px-1">SEED</th>
+                                        <th className="w-8 text-center">LIN</th>
+                                        <th className="text-left px-2">NAMA ATLET</th>
+                                        <th className="w-12 text-center">THN</th>
+                                        <th className="text-left px-2">TIM</th>
+                                        <th className="w-20 text-right px-2">SEED</th>
                                     </tr></thead>
                                     <tbody>
                                         {Array.from({ length: info.numberOfLanes || 8 }, (_, i) => i + 1).map(lane => {
                                             const ass = heat.assignments.find(a => a.lane === lane);
                                             return (
-                                                <tr key={lane} className="border-b border-gray-100 h-5">
+                                                <tr key={lane} className="border-b border-gray-100 h-6">
                                                     <td className="text-center font-bold border-r border-gray-100">{lane}</td>
-                                                    <td className="px-1 truncate font-medium uppercase">{ass ? ass.entry.swimmer.name : '-'}</td>
+                                                    <td className="px-2 truncate font-medium uppercase">{ass ? ass.entry.swimmer.name : '-'}</td>
                                                     <td className="text-center">{ass ? ass.entry.swimmer.birthYear : '-'}</td>
-                                                    <td className="px-1 truncate text-[9px] uppercase">{ass ? ass.entry.swimmer.club : '-'}</td>
-                                                    <td className="text-right font-mono px-1">{ass ? formatTime(ass.entry.seedTime) : '-'}</td>
+                                                    <td className="px-2 truncate text-[9px] uppercase">{ass ? ass.entry.swimmer.club : '-'}</td>
+                                                    <td className="text-right font-mono px-2">{ass ? formatTime(ass.entry.seedTime) : '-'}</td>
                                                 </tr>
                                             );
                                         })}
@@ -166,13 +172,18 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
                         ))
                     ) : (
                         <div className="mt-2">
-                            <table className="w-full text-[10px] border-collapse">
+                            <table className="w-full text-[10px] border-collapse table-fixed">
                                 <thead><tr className="border-y border-black font-bold bg-gray-100">
-                                    <th className="w-10 text-center">RANK</th><th className="text-left px-2">NAMA ATLET</th><th className="w-12 text-center">THN</th><th className="text-left px-2">TIM</th><th className="text-right px-2 w-24">HASIL</th><th className="w-10 text-center">MEDALI</th>
+                                    <th className="w-12 text-center">RANK</th>
+                                    <th className="text-left px-2">NAMA ATLET</th>
+                                    <th className="w-12 text-center">THN</th>
+                                    <th className="text-left px-2">TIM</th>
+                                    <th className="w-24 text-right px-2">HASIL</th>
+                                    <th className="w-12 text-center">MEDALI</th>
                                 </tr></thead>
                                 <tbody>
                                     {event.detailedResults?.map((r: any) => (
-                                        <tr key={r.swimmerId} className="border-b border-gray-200 h-6">
+                                        <tr key={r.swimmerId} className="border-b border-gray-200 h-7">
                                             <td className="text-center font-bold">{r.rank || '-'}</td>
                                             <td className="px-2 uppercase font-medium">{r.swimmer?.name}</td>
                                             <td className="text-center">{r.swimmer?.birthYear}</td>
@@ -350,11 +361,14 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 rank: r.time > 0 ? validRes.findIndex(v => v.swimmerId === r.swimmerId) + 1 : 0
             }));
 
-            let runningTime = event.sessionDateTime ? new Date(event.sessionDateTime).getTime() : null;
+            // FIX: Explicitly type runningTime as number | null to handle arithmetic correctly
+            let runningTime: number | null = event.sessionDateTime ? new Date(event.sessionDateTime).getTime() : null;
             const heatsWithTimes = heats.map(h => {
                 const th = { ...h, estimatedHeatStartTime: runningTime || undefined };
-                // FIX: Explicitly cast runningTime to number for arithmetic operations after null check
-                if (runningTime !== null) runningTime = (runningTime as number) + estimateHeatDuration(event.distance);
+                // FIX: Ensure runningTime is treated as number after null check
+                if (runningTime !== null) {
+                    runningTime = (runningTime as number) + estimateHeatDuration(event.distance);
+                }
                 return th;
             });
 
@@ -433,7 +447,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 if (!clubs[s.club].individualDetails[s.id]) {
                     clubs[s.club].individualDetails[s.id] = { name: s.name, medals: [] };
                 }
-                clubs[s.club].individualDetails[s.id].individualDetails = undefined; // cleanup if any
                 clubs[s.club].individualDetails[s.id].medals.push({ rank, eventName: formatEventName(rawEvent), time: r.time });
             });
         });

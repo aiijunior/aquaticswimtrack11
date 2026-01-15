@@ -705,8 +705,8 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {/* FIX: Explicitly cast uploadResult.errors to string array and provide fallback to avoid 'unknown' type errors during map */}
-                                {((uploadResult.errors as string[]) || []).map((err: string, i: number) => (
+                                {/* FIX: Safely access errors from uploadResult to avoid "Property map does not exist on type unknown" */}
+                                {(uploadResult?.errors as string[] || []).map((err: string, i: number) => (
                                     <li key={i}>{err}</li>
                                 ))}
                             </ul>
