@@ -60,13 +60,13 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     relayLegs: 4,
     category: '',
   });
+  const [uploadResult, setUploadResult] = useState<{ success: number; errors: string[] } | null>(null);
   const { addNotification } = useNotification();
   
   // State for upload modal
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
-  const [uploadResult, setUploadResult] = useState<{ success: number; errors: string[] } | null>(null);
 
   // Explicitly typed options for rendering to prevent type errors
   const genderOptions: Gender[] = GENDER_OPTIONS;
@@ -701,12 +701,12 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <p className="text-green-500 font-bold">Berhasil! {uploadResult.success} nomor lomba baru telah ditambahkan.</p>
                     )}
                     
-                    {uploadResult.errors && (uploadResult.errors as string[]).length > 0 && (
+                    {/* FIX: Simplified access and added null check for uploadResult and errors array to avoid map error on unknown types */}
+                    {uploadResult && uploadResult.errors && uploadResult.errors.length > 0 && (
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {/* FIX: Safely access errors from uploadResult to avoid "Property map does not exist on type unknown" */}
-                                {(uploadResult?.errors as string[] || []).map((err: string, i: number) => (
+                                {uploadResult.errors.map((err: string, i: number) => (
                                     <li key={i}>{err}</li>
                                 ))}
                             </ul>

@@ -52,9 +52,15 @@ const formatTime = (ms: number) => {
 };
 
 const estimateHeatDuration = (distance: number): number => {
+    // Basic estimation: 50m = 2 min, 100m = 3 min, others = 5 min
     if (distance <= 50) return 2 * 60 * 1000;
     if (distance <= 100) return 3 * 60 * 1000;
     return 5 * 60 * 1000;
+};
+
+const formatEST = (timestamp: number | undefined) => {
+    if (!timestamp) return '';
+    return new Date(timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
 };
 
 const MedalIcon = ({ rank }: { rank: number }) => {
@@ -71,8 +77,8 @@ const ReportHeader = ({ info, title }: { info: CompetitionInfo, title: string })
     <header className="border-b-2 border-gray-300 pb-4 mb-6 text-center">
         {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-16 object-contain mx-auto mb-2" />}
         <div className="mb-2">
-            {/* FIX: Explicitly cast info.eventName to string to ensure split and map work correctly across environments */}
-            {(String(info.eventName || '')).split('\n').map((line: string, index: number) => (
+            {/* FIX: Simplified to avoid "map does not exist on unknown" by directly accessing eventName split */}
+            {info.eventName.split('\n').map((line: string, index: number) => (
                 <p key={index} className={`font-bold uppercase tracking-tight leading-tight ${index === 0 ? 'text-xl' : 'text-xs'}`}>{line}</p>
             ))}
             <p className="text-sm text-gray-600 mt-1 uppercase font-semibold">
@@ -134,7 +140,7 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
                 <div key={event.id} className="page-break-inside-avoid border-b-2 border-gray-400 pb-4">
                     <div className="bg-black text-white p-1 px-2 font-bold text-xs flex justify-between uppercase">
                         <span>#{event.globalEventNumber} - {formatEventName(event)}</span>
-                        {event.estimatedEventStartTime && !showResults && <span>EST: {new Date(event.estimatedEventStartTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>}
+                        {event.estimatedEventStartTime && !showResults && <span>EST: {formatEST(event.estimatedEventStartTime)}</span>}
                     </div>
                     <div className="my-1 px-2 border-l-2 border-black bg-gray-50 py-1">
                         <PrintRecordRow record={porprov} type="PORPROV" />
@@ -144,7 +150,10 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
                     {!showResults ? (
                         (event.heatsWithTimes || []).map(heat => (
                             <div key={heat.heatNumber} className="mt-2">
-                                <p className="text-center font-bold text-[9px] uppercase bg-gray-200 py-0.5">Seri {heat.heatNumber} dari {event.heatsWithTimes?.length}</p>
+                                <p className="text-center font-bold text-[9px] uppercase bg-gray-200 py-0.5">
+                                    Seri {heat.heatNumber} dari {event.heatsWithTimes?.length} 
+                                    {heat.estimatedHeatStartTime && <span className="ml-2">— EST: {formatEST(heat.estimatedHeatStartTime)}</span>}
+                                </p>
                                 <table className="w-full text-[10px] mt-0.5 border-collapse table-fixed">
                                     <thead><tr className="border-y border-black font-bold">
                                         <th className="w-8 text-center">LIN</th>
@@ -344,6 +353,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         // FIX: Explicitly type swimmersMap as Map<string, Swimmer> to fix 'unknown' property access errors
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
         
+        // Track running time per session cursor to calculate cumulative EST
+        const sessionCursors = new Map<number, number>();
+
         // Detailed Events (Program & Results)
         const detailedEvents = renderEvents.map(event => {
             const entries: Entry[] = event.entries.map(en => ({ ...en, swimmer: swimmersMap.get(en.swimmerId)! })).filter(e => e.swimmer);
@@ -361,23 +373,38 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 rank: r.time > 0 ? validRes.findIndex(v => v.swimmerId === r.swimmerId) + 1 : 0
             }));
 
-            // FIX: Explicitly type runningTime as number | null to handle arithmetic correctly
-            let runningTime: number | null = event.sessionDateTime ? new Date(event.sessionDateTime).getTime() : null;
+            // EST CALCULATION
+            const sessionNum = event.sessionNumber || 0;
+            let currentCursor = sessionCursors.get(sessionNum);
+            
+            // Initial session start time from the first event in that session
+            if (currentCursor === undefined && event.sessionDateTime) {
+                currentCursor = new Date(event.sessionDateTime).getTime();
+            }
+
+            const eventStartTime = currentCursor;
+
             const heatsWithTimes = heats.map(h => {
-                const th = { ...h, estimatedHeatStartTime: runningTime || undefined };
-                // FIX: Ensure runningTime is treated as number after null check
-                if (runningTime !== null) {
-                    runningTime = (runningTime as number) + estimateHeatDuration(event.distance);
+                const th = { ...h, estimatedHeatStartTime: currentCursor || undefined };
+                // FIX: Used explicit type narrowing and variable for arithmetic to avoid left/right operand errors on number|undefined
+                if (typeof currentCursor === 'number') {
+                    const start: number = currentCursor;
+                    currentCursor = start + estimateHeatDuration(event.distance);
                 }
                 return th;
             });
+
+            // Update session cursor for next event in this session
+            if (currentCursor !== undefined) {
+                sessionCursors.set(sessionNum, currentCursor);
+            }
 
             return { 
                 ...event, 
                 detailedEntries: entries, 
                 heatsWithTimes, 
                 detailedResults: detailedRes,
-                estimatedEventStartTime: event.sessionDateTime ? new Date(event.sessionDateTime).getTime() : undefined 
+                estimatedEventStartTime: eventStartTime 
             };
         });
 
@@ -417,7 +444,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 if (ws) {
                     [RecordType.PORPROV, RecordType.NASIONAL].forEach(type => {
                         const rec = records.find(r => r.type === type && r.gender === rawEvent.gender && r.distance === rawEvent.distance && r.style === rawEvent.style && (r.category ?? null) === (rawEvent.category ?? null));
-                        // FIX: Changed 'record.time' to 'rec.time' to fix name error
+                        // FIX: Changed 'record.time' to 'rec.time' to fix name error and ensured valid arithmetic comparison
                         if (rec && winner.time < rec.time) { 
                             broken.push({ record: rec, newEventName: formatEventName(rawEvent), newHolder: ws, newTime: winner.time });
                         }
