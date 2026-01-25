@@ -94,13 +94,13 @@ const MedalIcon = ({ rank }: { rank: number }) => {
 
 // --- PRINTABLE COMPONENTS ---
 
-// FIX: Added explicit cast to info.eventName as string to resolve 'unknown' map error
+// FIX: Added explicit cast to info.eventName as string and split result to any[] to ensure map is available if inference fails
 const ReportHeader = ({ info, title }: { info: CompetitionInfo, title: string }) => (
     <header className="border-b-2 border-gray-300 pb-4 mb-6 text-center">
         {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-16 object-contain mx-auto mb-2" />}
         <div className="mb-2">
-            {/* FIX: Explicitly cast info.eventName to string to ensure split is available */}
-            {(info.eventName as string).split('\n').map((line: string, index: number) => (
+            {/* FIX: Explicitly cast info.eventName to string and the split result to any[] to ensure split and map are available */}
+            {((info.eventName as string).split('\n') as any[]).map((line: string, index: number) => (
                 <p key={index} className={`font-bold uppercase tracking-tight leading-tight ${index === 0 ? 'text-xl' : 'text-xs'}`}>{line}</p>
             ))}
             <p className="text-sm text-gray-600 mt-1 uppercase font-semibold">
@@ -420,10 +420,11 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
             const heatsWithTimes = heats.map(h => {
                 const th = { ...h, estimatedHeatStartTime: currentCursor || undefined };
-                // FIX: Used explicit type narrowing and variable for arithmetic to avoid left/right operand errors on number|undefined
+                // FIX: Used explicit type narrowing and variable for arithmetic with Number() casting to ensure they are treated as numbers
                 if (typeof currentCursor === 'number') {
-                    const start: number = currentCursor;
-                    currentCursor = start + estimateHeatDuration(event.distance);
+                    const start: number = currentCursor as number;
+                    const duration: number = estimateHeatDuration(event.distance);
+                    currentCursor = Number(start) + Number(duration);
                 }
                 return th;
             });

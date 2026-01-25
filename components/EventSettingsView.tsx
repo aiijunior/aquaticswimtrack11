@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { getRecords, processRecordUpload, updateCompetitionInfo, updateEventSchedule, addOrUpdateRecord, deleteRecord, backupDatabase, clearAllData, restoreDatabase, deleteAllRecords } from '../services/databaseService';
 import { login } from '../services/authService';
@@ -716,6 +715,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                             value={info.numberOfLanes || 8}
                             onChange={(e) => setInfo({ ...info, numberOfLanes: parseInt(e.target.value, 10) })}
                         >
+                            <option value="3">3 Lintasan</option>
                             <option value="5">5 Lintasan</option>
                             <option value="6">6 Lintasan</option>
                             <option value="8">8 Lintasan</option>
