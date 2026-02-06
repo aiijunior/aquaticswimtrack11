@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, Entry, Heat, Result, BrokenRecord, SwimRecord, EventEntry } from '../types';
 import { RecordType, Gender, SwimStyle } from '../types';
@@ -21,7 +20,7 @@ interface PrintViewProps {
 }
 
 // --- TYPES ---
-type ReportType = 'schedule' | 'program' | 'results' | 'clubMedals' | 'clubSwimmerMedals' | 'swimmerTotal' | 'swimmerCategory' | 'brokenRecords';
+type ReportType = 'schedule' | 'program' | 'results' | 'clubMedals' | 'clubSwimmerMedals' | 'swimmerTotal' | 'swimmerCategory' | 'brokenRecords' | 'onlineRegistration';
 
 interface ScheduledEvent extends SwimEvent {
     globalEventNumber: number;
@@ -338,6 +337,63 @@ const AthleteRecapReport: React.FC<{ data: any[], title?: string }> = ({ data, t
     );
 };
 
+// 8. Laporan Pendaftaran Online
+const OnlineRegistrationReport: React.FC<{ data: any[] }> = ({ data }) => (
+    <table className="w-full text-[10px] border-collapse table-fixed">
+        <thead>
+            <tr className="bg-black text-white border-y-2 border-black font-bold">
+                <th className="w-8 text-center py-2">#</th>
+                <th className="w-1/4 text-left px-2">NAMA ATLET / TIM</th>
+                <th className="w-24 text-center">BUKTI BAYAR</th>
+                <th className="w-28 text-right px-2">NOMINAL</th>
+                <th className="text-left px-2">DAFTAR NOMOR LOMBA & SEED TIME</th>
+            </tr>
+        </thead>
+        <tbody>
+            {data.map((item, i) => (
+                <tr key={i} className="border-b border-gray-300 align-top">
+                    <td className="text-center py-2 font-bold bg-gray-50">{i + 1}</td>
+                    <td className="px-2 py-2">
+                        <p className="font-bold uppercase text-[11px]">{item.swimmer.name}</p>
+                        <p className="text-[9px] text-gray-600 font-medium uppercase">{item.swimmer.club}</p>
+                        <p className="text-[8px] text-primary mt-1 font-mono">{item.swimmer.picPhone || '-'}</p>
+                    </td>
+                    <td className="p-1 text-center">
+                        {item.swimmer.paymentProof ? (
+                            <div className="border border-gray-200 rounded overflow-hidden bg-white shadow-sm">
+                                <img 
+                                    src={item.swimmer.paymentProof} 
+                                    alt="Proof" 
+                                    className="h-16 w-full object-contain mx-auto" 
+                                />
+                            </div>
+                        ) : (
+                            <span className="text-[8px] text-gray-400 italic">BELUM UNGGAH</span>
+                        )}
+                    </td>
+                    <td className="px-2 py-2 text-right font-black text-xs">
+                        {item.swimmer.paymentAmount ? `Rp ${item.swimmer.paymentAmount.toLocaleString('id-ID')}` : 'Rp 0'}
+                    </td>
+                    <td className="px-2 py-2">
+                        <div className="space-y-1">
+                            {item.registeredEvents.map((ev: any, idx: number) => (
+                                <div key={idx} className="flex justify-between items-center border-b border-gray-100 last:border-0 pb-0.5">
+                                    <span className="uppercase text-[8px] leading-tight font-medium max-w-[70%]">{ev.name}</span>
+                                    <span className="font-mono text-[9px] font-black bg-gray-100 px-1 rounded">{ev.time}</span>
+                                </div>
+                            ))}
+                            {item.registeredEvents.length === 0 && <span className="text-gray-400 italic text-[8px]">TIDAK ADA NOMOR LOMBA</span>}
+                        </div>
+                    </td>
+                </tr>
+            ))}
+            {data.length === 0 && (
+                <tr><td colSpan={5} className="text-center py-10 text-gray-400 italic">BELUM ADA DATA PENDAFTARAN ONLINE</td></tr>
+            )}
+        </tbody>
+    </table>
+);
+
 // --- MAIN COMPONENT ---
 export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competitionInfo, isLoading }) => {
     const [reportType, setReportType] = useState<ReportType>('schedule');
@@ -491,6 +547,23 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             });
         });
 
+        // Online Registration Data Mapping
+        const registrationData = swimmers
+            .filter(s => s.birthYear !== 0) // Exclude generic relay entities if any
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(swimmer => {
+                const registeredEvents = events
+                    .filter(e => e.entries.some(en => en.swimmerId === swimmer.id))
+                    .map(e => {
+                        const entry = e.entries.find(en => en.swimmerId === swimmer.id);
+                        return {
+                            name: formatEventName(e),
+                            time: entry ? formatTime(entry.seedTime) : '99:99.99'
+                        };
+                    });
+                return { swimmer, registeredEvents };
+            });
+
         // FIX: Cast medal counts to Number for safe arithmetic sorting
         const sortFn = (a: TallyClub | TallyIndividual, b: TallyClub | TallyIndividual) => 
             (Number(b.gold) - Number(a.gold)) || (Number(b.silver) - Number(a.silver)) || (Number(b.bronze) - Number(a.bronze));
@@ -511,9 +584,10 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             clubs: sortedClubs, 
             individuals: sortedIndividuals, 
             categoryLeaderboard, 
-            broken 
+            broken,
+            registrationData
         };
-    }, [renderEvents, baseEvents, swimmers, competitionInfo, records]);
+    }, [renderEvents, baseEvents, swimmers, competitionInfo, records, events]);
 
 
     const handleExportExcel = () => {
@@ -539,6 +613,18 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                     "NO": idx+1, "NAMA ATLET": i.swimmer.name, "TIM": i.swimmer.club, "JENIS KELAMIN": i.swimmer.gender === 'Male' ? 'PUTRA' : 'PUTRI', "KU": i.swimmer.ageGroup || '-', "EMAS": i.gold, "PERAK": i.silver, "PERUNGGU": i.bronze, "TOTAL": i.gold+i.silver+i.bronze
                 }));
                 break;
+            case 'onlineRegistration':
+                processedData.registrationData.forEach((item, idx) => {
+                    data.push({
+                        "NO": idx + 1,
+                        "NAMA ATLET": item.swimmer.name,
+                        "KLUB": item.swimmer.club,
+                        "NOMINAL BAYAR": item.swimmer.paymentAmount || 0,
+                        "NOMOR LOMBA": item.registeredEvents.map(re => re.name).join(', '),
+                        "WAKTU UNGGULAN": item.registeredEvents.map(re => re.time).join(', ')
+                    });
+                });
+                break;
         }
 
         const ws = XLSX.utils.json_to_sheet(data);
@@ -557,7 +643,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         clubSwimmerMedals: 'REKAPITULASI MEDALI KLUB & ATLET',
         swimmerTotal: 'REKAPITULASI MEDALI ATLET (TOTAL)',
         swimmerCategory: 'KLASEMEN PERORANGAN (PER KATEGORI)',
-        brokenRecords: 'DAFTAR REKOR TERPECAHKAN'
+        brokenRecords: 'DAFTAR REKOR TERPECAHKAN',
+        onlineRegistration: 'LAPORAN PENDAFTARAN ONLINE & PEMBAYARAN'
     };
 
     return (
@@ -672,6 +759,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                         ))}
                     </div>
                 )}
+
+                {reportType === 'onlineRegistration' && <OnlineRegistrationReport data={processedData.registrationData} />}
 
                 {reportType === 'brokenRecords' && (
                     <div className="space-y-4">
