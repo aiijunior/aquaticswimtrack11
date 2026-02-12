@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, Entry, Heat, Result, BrokenRecord, SwimRecord, EventEntry } from '../types';
 import { RecordType, Gender, SwimStyle } from '../types';
@@ -94,13 +95,13 @@ const MedalIcon = ({ rank }: { rank: number }) => {
 
 // --- PRINTABLE COMPONENTS ---
 
-// FIX: Added explicit cast to info.eventName as string and ensured split result is handled safely to fix 'Property map does not exist on type unknown' error
+// FIX: Ensure eventName split returns a string array before mapping
 const ReportHeader = ({ info, title }: { info: CompetitionInfo, title: string }) => (
     <header className="border-b-2 border-gray-300 pb-4 mb-6 text-center">
         {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-16 object-contain mx-auto mb-2" />}
         <div className="mb-2">
-            {/* FIX: Explicitly handle split result as string[] or any to ensure map is available */}
-            {((info.eventName || "").split('\n') as string[]).map((line: string, index: number) => (
+            {/* FIX: Explicitly handle split result to ensure map is available */}
+            {((info.eventName || "").split('\n')).map((line: string, index: number) => (
                 <p key={index} className={`font-bold uppercase tracking-tight leading-tight ${index === 0 ? 'text-xl' : 'text-xs'}`}>{line}</p>
             ))}
             <p className="text-sm text-gray-600 mt-1 uppercase font-semibold">
@@ -151,10 +152,9 @@ const ScheduleReport: React.FC<{ events: ScheduledEvent[] }> = ({ events }) => {
 };
 
 // 2 & 3. Buku Acara & Buku Hasil (Unified UI Style)
-// FIX: Added explicit cast to any[] for events to fix 'Property map does not exist on type unknown' error if necessary
 const EventBaseReport = ({ events, info, records, showResults }: { events: TimedEvent[], info: CompetitionInfo, records: SwimRecord[], showResults?: boolean }) => (
     <div className="space-y-8">
-        {(events as any[]).map(event => {
+        {(events as TimedEvent[]).map(event => {
             const porprov = records.find(r => r.type === RecordType.PORPROV && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.category ?? null) === (event.category ?? null));
             const nasional = records.find(r => r.type === RecordType.NASIONAL && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.category ?? null) === (event.category ?? null));
             
@@ -541,11 +541,10 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
             const heatsWithTimes = heats.map(h => {
                 const th = { ...h, estimatedHeatStartTime: currentCursor || undefined };
-                // FIX: Used explicit type narrowing and variable for arithmetic with any casting to fix arithmetic type errors
+                // FIX: Used explicit type narrowing and simplification to fix arithmetic type errors
                 if (typeof currentCursor === 'number') {
-                    const start: any = currentCursor;
-                    const duration: any = estimateHeatDuration(event.distance);
-                    currentCursor = (start as number) + (duration as number);
+                    const duration = estimateHeatDuration(event.distance);
+                    currentCursor = currentCursor + duration;
                 }
                 return th;
             });

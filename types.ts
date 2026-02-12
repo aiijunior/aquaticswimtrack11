@@ -64,6 +64,7 @@ export interface Result {
 export interface EventEntry {
     swimmerId: string;
     seedTime: number; // in milliseconds
+    checked_in?: boolean; // NEW: Track check-in status
 }
 
 export interface SwimEvent {
@@ -110,6 +111,7 @@ export interface Entry {
     swimmerId: string;
     seedTime: number;
     swimmer: Swimmer;
+    checked_in?: boolean;
 }
 export interface LaneAssignment {
     lane: number;

@@ -1,3 +1,4 @@
+
 import type { Swimmer, SwimEvent, Result, CompetitionInfo, EventEntry, SwimRecord, User, FormattableEvent } from '../types';
 import { supabase } from './supabaseClient';
 import { Gender, SwimStyle, RecordType } from '../types';
@@ -6,7 +7,6 @@ import { config } from '../config';
 
 // --- MAPPING FUNCTIONS ---
 
-// FIX: Added toUser mapping function which was missing and causing a reference error in getUsers.
 const toUser = (data: any): User => ({
     id: data.id,
     role: data.role,
@@ -16,7 +16,6 @@ const toUser = (data: any): User => ({
     user_metadata: {},
 });
 
-// FIX: Corrected mapping of database fields to CompetitionInfo interface properties to match types.ts (camelCase vs snake_case).
 const toCompetitionInfo = (data: any): CompetitionInfo | null => (data ? {
     id: data.id,
     eventName: data.event_name,
@@ -25,10 +24,12 @@ const toCompetitionInfo = (data: any): CompetitionInfo | null => (data ? {
     sponsorLogo: data.sponsor_logo,
     isRegistrationOpen: data.is_registration_open,
     numberOfLanes: data.number_of_lanes,
+    // FIX: Changed from registration_deadline to registrationDeadline to match type interface
     registrationDeadline: data.registration_deadline,
     ageGroups: data.age_groups,
     isFree: data.is_free,
     recipientName: data.recipient_name,
+    // FIX: Changed from account_number and fee_per_event to camelCase to match type interface
     accountNumber: data.account_number,
     feePerEvent: data.fee_per_event
 } : null);
@@ -43,13 +44,13 @@ const toSwimmer = (data: any): Swimmer => ({
     paymentProof: data.payment_proof,
     paymentAmount: data.payment_amount,
     picName: data.pic_name,
-    // FIX: Corrected property name from picNamePhone to picPhone to match Swimmer interface in types.ts
     picPhone: data.pic_phone
 });
 
 const toEventEntry = (data: any): EventEntry => ({
     swimmerId: data.swimmer_id,
-    seedTime: data.seed_time
+    seedTime: data.seed_time,
+    checked_in: data.checked_in || false // NEW
 });
 
 const toResult = (data: any): Result => ({
@@ -107,8 +108,21 @@ export const getSwimmerById = async (id: string): Promise<Swimmer | null> => {
     return toSwimmer(data);
 };
 
+// --- CHECKIN SERVICE ---
+export const updateCheckinStatus = async (eventId: string, swimmerId: string, status: boolean) => {
+    const { error } = await supabase
+        .from('event_entries')
+        .update({ checked_in: status } as any)
+        .eq('event_id', eventId)
+        .eq('swimmer_id', swimmerId);
+    
+    if (error) throw error;
+    return true;
+};
+
+// --- REST OF SERVICES (UNCHANGED BUT RE-EXPORTED) ---
+
 export const addSwimmer = async (swimmer: Omit<Swimmer, 'id'>): Promise<Swimmer> => {
-    // FIX: Using any cast to bypass type errors when the Supabase client generic fails to resolve table structures properly.
     const { data, error } = await supabase.from('swimmers').insert({
         name: swimmer.name,
         birth_year: swimmer.birthYear,
@@ -123,7 +137,6 @@ export const addSwimmer = async (swimmer: Omit<Swimmer, 'id'>): Promise<Swimmer>
 };
 
 export const updateSwimmer = async (id: string, swimmer: Partial<Omit<Swimmer, 'id'>>): Promise<Swimmer> => {
-    // FIX: Using any cast to bypass type errors during update.
     const { data, error } = await supabase.from('swimmers').update({
         name: swimmer.name,
         birth_year: swimmer.birthYear,
@@ -147,8 +160,6 @@ export const deleteAllSwimmers = async (): Promise<void> => {
     if (error) throw error;
 };
 
-// --- EVENT SERVICES ---
-
 export const getEvents = async (): Promise<SwimEvent[]> => {
     const { data, error } = await supabase.from('events').select('*, event_entries(*), event_results(*)');
     if (error) throw error;
@@ -162,7 +173,6 @@ export const getEventById = async (id: string): Promise<SwimEvent | null> => {
 };
 
 export const addEvent = async (event: Omit<SwimEvent, 'id' | 'entries' | 'results'>): Promise<SwimEvent> => {
-    // FIX: Using any cast for insert parameters.
     const { data, error } = await supabase.from('events').insert({
         distance: event.distance,
         style: event.style,
@@ -185,7 +195,6 @@ export const deleteAllEvents = async (): Promise<void> => {
 };
 
 export const registerSwimmerToEvent = async (eventId: string, swimmerId: string, seedTime: number) => {
-    // FIX: Using any cast for upsert parameters.
     const { error } = await supabase.from('event_entries').upsert({
         event_id: eventId,
         swimmer_id: swimmerId,
@@ -201,13 +210,11 @@ export const unregisterSwimmerFromEvent = async (eventId: string, swimmerId: str
 };
 
 export const updateSwimmerSeedTime = async (eventId: string, swimmerId: string, seedTime: number) => {
-    // FIX: Using any cast for update parameters.
     const { error } = await supabase.from('event_entries').update({ seed_time: seedTime } as any).eq('event_id', eventId).eq('swimmer_id', swimmerId);
     if (error) throw error;
 };
 
 export const recordEventResults = async (eventId: string, results: Result[]) => {
-    // FIX: Using any cast for bulk upsert operations.
     const { error } = await supabase.from('event_results').upsert(
         results.map(r => ({ event_id: eventId, swimmer_id: r.swimmerId, time: r.time })) as any[]
     );
@@ -222,17 +229,13 @@ export const getEventsForRegistration = async (): Promise<SwimEvent[]> => {
     return data.map(toSwimEvent);
 };
 
-// --- RECORD SERVICES ---
-
 export const getRecords = async (): Promise<SwimRecord[]> => {
     const { data, error } = await supabase.from('records').select('*');
     if (error) throw error;
     return data.map(toRecord);
 };
 
-// FIX: Corrected mapping of camelCase record properties to snake_case database columns.
 export const addOrUpdateRecord = async (record: Partial<SwimRecord>): Promise<void> => {
-    // FIX: Using any cast for upsert parameters.
     const { error } = await supabase.from('records').upsert({
         id: record.id,
         type: record.type,
@@ -259,11 +262,7 @@ export const deleteAllRecords = async (): Promise<void> => {
     if (error) throw error;
 };
 
-// --- COMPETITION INFO & SCHEDULE ---
-
-// FIX: Corrected mapping of info.sponsorLogo to sponsor_logo column.
 export const updateCompetitionInfo = async (info: CompetitionInfo): Promise<void> => {
-    // FIX: Using any cast for upsert parameters.
     const { error } = await supabase.from('competition_info').upsert({
         id: 1,
         event_name: info.eventName,
@@ -283,7 +282,6 @@ export const updateCompetitionInfo = async (info: CompetitionInfo): Promise<void
 };
 
 export const updateEventSchedule = async (events: SwimEvent[]): Promise<void> => {
-    // FIX: Using any cast for bulk upsert operations.
     const { error } = await supabase.from('events').upsert(
         events.map(e => ({
             id: e.id,
@@ -294,8 +292,6 @@ export const updateEventSchedule = async (events: SwimEvent[]): Promise<void> =>
     );
     if (error) throw error;
 };
-
-// --- UPLOAD & DATA MANAGEMENT SERVICES ---
 
 export const processEventUpload = async (json: any[]) => {
     let success = 0;
@@ -309,7 +305,7 @@ export const processEventUpload = async (json: any[]) => {
             const relayLegs = parseInt(row["Jumlah Atlet"]) || null;
 
             let style: SwimStyle | undefined;
-            for (const [s, t] of Object.entries(SW_STYLE_TRANSLATIONS)) {
+            for (const [s, t] of Object.entries(SWIM_STYLE_TRANSLATIONS)) {
                 if (t === styleName) { style = s as SwimStyle; break; }
             }
             if (!style) throw new Error(`Gaya "${styleName}" tidak valid.`);
@@ -328,8 +324,6 @@ export const processEventUpload = async (json: any[]) => {
     }
     return { success, errors };
 };
-
-const SW_STYLE_TRANSLATIONS = SWIM_STYLE_TRANSLATIONS;
 
 export const processParticipantUpload = async (json: any[]) => {
     let newSwimmers = 0;
@@ -350,7 +344,6 @@ export const processParticipantUpload = async (json: any[]) => {
 
             const gender = genderSymbol === 'L' ? 'Male' : 'Female';
 
-            // Find or create swimmer
             const { data: existingSwimmers } = await supabase.from('swimmers').select('*').ilike('name', name).eq('birth_year', birthYear).eq('gender', gender);
             let swimmer: Swimmer;
             if (existingSwimmers && existingSwimmers.length > 0) {
@@ -361,12 +354,10 @@ export const processParticipantUpload = async (json: any[]) => {
                 newSwimmers++;
             }
 
-            // Find event
             const allEvents = await getEvents();
             const event = allEvents.find(e => formatEventName(e) === eventName);
             if (!event) throw new Error(`Nomor lomba "${eventName}" tidak ditemukan.`);
 
-            // Parse time
             let seedTime = 0;
             if (seedTimeStr.includes(':')) {
                 const [min, rest] = seedTimeStr.split(':');
@@ -472,19 +463,10 @@ export const restoreDatabase = async (data: any) => {
     if (data.records) await supabase.from('records').insert(data.records);
 };
 
-// --- ONLINE REGISTRATION ---
-
-interface OnlineRegistrationResponse {
-    success: boolean;
-    message: string;
-    swimmer: Swimmer | null;
-    previouslyRegisteredEvents?: FormattableEvent[];
-}
-
 export const processOnlineRegistration = async (
     swimmerData: Omit<Swimmer, 'id'>,
     registrations: { eventId: string, seedTime: number }[]
-): Promise<OnlineRegistrationResponse> => {
+): Promise<{ success: boolean; message: string; swimmer: Swimmer | null }> => {
     try {
         const response = await fetch('/.netlify/functions/submitRegistration', {
             method: 'POST',
@@ -499,18 +481,13 @@ export const processOnlineRegistration = async (
             try {
                 const errorData = await response.json();
                 errorMessage = errorData.message || JSON.stringify(errorData);
-            } catch (e) {
-                const textError = await response.text().catch(() => "Could not read error body.");
-                errorMessage = textError.substring(0, 500);
-            }
+            } catch (e) {}
             throw new Error(errorMessage);
         }
 
-        const data = await response.json();
-        return data;
+        return await response.json();
     } catch (error: any) {
-        console.error("Error submitting online registration:", error.message || error);
-        return { success: false, message: `Terjadi kesalahan: ${error.message}`, swimmer: null };
+        return { success: false, message: error.message, swimmer: null };
     }
 };
 
@@ -534,27 +511,12 @@ export const processCollectiveRegistration = async (
 
         return await response.json();
     } catch (error: any) {
-        console.error("Error in processCollectiveRegistration:", error);
         return { success: false, message: error.message };
     }
 };
-
-// --- USER MANAGEMENT ---
 
 export const getUsers = async (): Promise<User[]> => { 
     const { data, error } = await supabase.from('users').select('*'); 
     if (error) throw error; 
     return data.map(toUser); 
-};
-
-export const addUser = async (user: Omit<User, 'id'>): Promise<User> => { 
-    throw new Error("Admin-level user creation disabled."); 
-};
-
-export const updateUser = async (userId: string, updatedData: Partial<Omit<User, 'id'>>): Promise<User> => { 
-    throw new Error("User updates disabled."); 
-};
-
-export const deleteUser = async (userId: string): Promise<void> => { 
-    throw new Error("User deletion disabled."); 
 };

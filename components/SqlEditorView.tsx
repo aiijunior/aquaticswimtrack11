@@ -48,7 +48,10 @@ export const SqlEditorView: React.FC = () => {
     const projectRef = config.supabase.url.replace('https://', '').split('.')[0];
     const supabaseSqlEditorUrl = `https://app.supabase.com/project/${projectRef}/sql/new`;
 
-    const addPaymentFieldsQuery = `-- Menambahkan kolom biaya ke tabel informasi kompetisi
+    const addCheckinFieldQuery = `-- Menambahkan kolom checked_in ke tabel pendaftaran acara
+ALTER TABLE public.event_entries ADD COLUMN IF NOT EXISTS checked_in BOOLEAN DEFAULT FALSE;
+
+-- Menambahkan kolom biaya ke tabel informasi kompetisi
 ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS is_free boolean DEFAULT true;
 ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS recipient_name text;
 ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS account_number text;
@@ -72,16 +75,16 @@ ALTER TABLE public.swimmers ADD COLUMN IF NOT EXISTS pic_phone text;`;
                     <div>
                         <h2 className="text-xl font-bold text-yellow-600 dark:text-yellow-400">Pembaruan Database Diperlukan</h2>
                         <p className="text-text-secondary mt-2">
-                            Gunakan tombol di bawah untuk membuka SQL Editor di dasbor Supabase Anda, lalu salin dan jalankan perintah migrasi di bawah.
+                            Gunakan tombol di bawah untuk membuka SQL Editor di dasbor Supabase Anda, lalu salin dan jalankan perintah migrasi di bawah untuk mengaktifkan fitur **Cek-in Atlet**.
                         </p>
                     </div>
                 </div>
             </Card>
 
             <Card>
-                <h2 className="text-2xl font-bold mb-4">Migrasi Data Pembayaran & Kontak</h2>
-                <p className="text-text-secondary">Salin perintah ini untuk mengaktifkan fitur biaya, bukti bayar, dan informasi kontak penanggung jawab (PIC):</p>
-                <CodeBlock>{addPaymentFieldsQuery}</CodeBlock>
+                <h2 className="text-2xl font-bold mb-4">Migrasi Data Cek-in, Pembayaran & Kontak</h2>
+                <p className="text-text-secondary">Salin perintah ini untuk memastikan semua tabel mendukung fitur terbaru:</p>
+                <CodeBlock>{addCheckinFieldQuery}</CodeBlock>
                 <div className="mt-6">
                     <Button onClick={() => window.open(supabaseSqlEditorUrl, '_blank')}>
                         Buka Supabase SQL Editor
