@@ -706,12 +706,12 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <p className="text-green-500 font-bold">Berhasil! {uploadResult.success} nomor lomba baru telah ditambahkan.</p>
                     )}
                     
-                    {/* FIX: Explicitly cast errors to any[] to resolve 'Property map does not exist on type unknown' error */}
-                    {uploadResult && uploadResult.errors && (uploadResult.errors as any[]).length > 0 && (
+                    {/* FIX: Explicitly cast errors to any to resolve 'Property map does not exist on type unknown' error */}
+                    {uploadResult && uploadResult.errors && (uploadResult.errors as any).length > 0 && (
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {(uploadResult.errors as any[]).map((err: string, i: number) => (
+                                {(uploadResult.errors as any).map((err: string, i: number) => (
                                     <li key={i}>{err}</li>
                                 ))}
                             </ul>

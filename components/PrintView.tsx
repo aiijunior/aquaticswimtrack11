@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, Entry, Heat, Result, BrokenRecord, SwimRecord, EventEntry } from '../types';
 import { RecordType, Gender, SwimStyle } from '../types';
@@ -20,7 +21,7 @@ interface PrintViewProps {
 }
 
 // --- TYPES ---
-type ReportType = 'schedule' | 'program' | 'results' | 'clubMedals' | 'clubSwimmerMedals' | 'swimmerTotal' | 'swimmerCategory' | 'brokenRecords' | 'onlineRegistration';
+type ReportType = 'schedule' | 'program' | 'results' | 'clubMedals' | 'clubSwimmerMedals' | 'swimmerTotal' | 'swimmerCategory' | 'brokenRecords' | 'onlineRegistration' | 'participantCards';
 
 interface ScheduledEvent extends SwimEvent {
     globalEventNumber: number;
@@ -93,13 +94,13 @@ const MedalIcon = ({ rank }: { rank: number }) => {
 
 // --- PRINTABLE COMPONENTS ---
 
-// FIX: Added explicit cast to info.eventName as string and split result to any[] to ensure map is available if inference fails
+// FIX: Added explicit cast to info.eventName as string and ensured split result is handled safely to fix 'Property map does not exist on type unknown' error
 const ReportHeader = ({ info, title }: { info: CompetitionInfo, title: string }) => (
     <header className="border-b-2 border-gray-300 pb-4 mb-6 text-center">
         {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-16 object-contain mx-auto mb-2" />}
         <div className="mb-2">
-            {/* FIX: Explicitly cast info.eventName to string and the split result to any[] to ensure split and map are available */}
-            {((info.eventName as string).split('\n') as any[]).map((line: string, index: number) => (
+            {/* FIX: Explicitly handle split result as string[] or any to ensure map is available */}
+            {((info.eventName || "").split('\n') as string[]).map((line: string, index: number) => (
                 <p key={index} className={`font-bold uppercase tracking-tight leading-tight ${index === 0 ? 'text-xl' : 'text-xs'}`}>{line}</p>
             ))}
             <p className="text-sm text-gray-600 mt-1 uppercase font-semibold">
@@ -150,9 +151,10 @@ const ScheduleReport: React.FC<{ events: ScheduledEvent[] }> = ({ events }) => {
 };
 
 // 2 & 3. Buku Acara & Buku Hasil (Unified UI Style)
+// FIX: Added explicit cast to any[] for events to fix 'Property map does not exist on type unknown' error if necessary
 const EventBaseReport = ({ events, info, records, showResults }: { events: TimedEvent[], info: CompetitionInfo, records: SwimRecord[], showResults?: boolean }) => (
     <div className="space-y-8">
-        {events.map(event => {
+        {(events as any[]).map(event => {
             const porprov = records.find(r => r.type === RecordType.PORPROV && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.category ?? null) === (event.category ?? null));
             const nasional = records.find(r => r.type === RecordType.NASIONAL && r.gender === event.gender && r.distance === event.distance && r.style === event.style && (r.category ?? null) === (event.category ?? null));
             
@@ -168,7 +170,7 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
                     </div>
 
                     {!showResults ? (
-                        (event.heatsWithTimes || []).map(heat => (
+                        (event.heatsWithTimes || []).map((heat: any) => (
                             <div key={heat.heatNumber} className="mt-2">
                                 <p className="text-center font-bold text-[9px] uppercase bg-gray-200 py-0.5">
                                     Seri {heat.heatNumber} dari {event.heatsWithTimes?.length} 
@@ -184,7 +186,7 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
                                     </tr></thead>
                                     <tbody>
                                         {Array.from({ length: info.numberOfLanes || 8 }, (_, i) => i + 1).map(lane => {
-                                            const ass = heat.assignments.find(a => a.lane === lane);
+                                            const ass = heat.assignments.find((a: any) => a.lane === lane);
                                             return (
                                                 <tr key={lane} className="border-b border-gray-100 h-6">
                                                     <td className="text-center font-bold border-r border-gray-100">{lane}</td>
@@ -394,6 +396,69 @@ const OnlineRegistrationReport: React.FC<{ data: any[] }> = ({ data }) => (
     </table>
 );
 
+// 9. Kartu Peserta (ID Cards)
+const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> = ({ data, info }) => {
+    return (
+        <div className="grid grid-cols-2 gap-4">
+            {data.map((item, idx) => {
+                const swimmer = item.swimmer;
+                const checkinUrl = `${window.location.origin}${window.location.pathname}?view=checkin&id=${swimmer.id}`;
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(checkinUrl)}`;
+                
+                return (
+                    <div key={swimmer.id} className="page-break-inside-avoid border-2 border-black p-4 rounded-xl flex flex-col items-center bg-white shadow-sm relative overflow-hidden h-[300px]">
+                        {/* Background Decoration */}
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-primary opacity-10 rounded-bl-[100px]" />
+                        
+                        {/* Header */}
+                        <div className="w-full flex items-center justify-between border-b border-gray-300 pb-2 mb-3">
+                            <div className="flex items-center gap-2">
+                                {info.eventLogo && <img src={info.eventLogo} alt="Logo" className="h-8 object-contain" />}
+                                <span className="text-[10px] font-black uppercase tracking-tighter max-w-[120px] leading-none">{info.eventName.split('\n')[0]}</span>
+                            </div>
+                            <span className="text-[9px] font-bold text-gray-500 uppercase">{info.eventDate ? new Date(info.eventDate).getFullYear() : ''}</span>
+                        </div>
+
+                        {/* Body */}
+                        <div className="flex flex-1 w-full gap-4">
+                            <div className="flex-1">
+                                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Nama Peserta</p>
+                                <p className="text-sm font-black uppercase text-text-primary mb-3 leading-tight">{swimmer.name}</p>
+                                
+                                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Klub / Tim</p>
+                                <p className="text-xs font-bold uppercase text-primary mb-3 truncate">{swimmer.club}</p>
+                                
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                    <div>
+                                        <p className="text-[7px] font-bold text-gray-400 uppercase">Tahun</p>
+                                        <p className="text-[10px] font-black">{swimmer.birthYear || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[7px] font-bold text-gray-400 uppercase">KU</p>
+                                        <p className="text-[10px] font-black">{swimmer.ageGroup || '-'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* QR Code Section */}
+                            <div className="w-24 flex flex-col items-center justify-center bg-gray-50 rounded-lg p-2 border border-gray-200">
+                                <img src={qrUrl} alt="QR Check-in" className="w-full h-auto" />
+                                <p className="text-[6px] font-black mt-1 text-center text-gray-400 uppercase tracking-tighter">SCAN UNTUK CEK-IN</p>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="w-full mt-2 pt-2 border-t border-dashed border-gray-300 flex justify-between items-center text-[7px] font-bold text-gray-400 uppercase">
+                            <span>KARTU PESERTA RESMI</span>
+                            <span>ID: {swimmer.id.slice(0, 8)}</span>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
 // --- MAIN COMPONENT ---
 export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competitionInfo, isLoading }) => {
     const [reportType, setReportType] = useState<ReportType>('schedule');
@@ -476,11 +541,11 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
             const heatsWithTimes = heats.map(h => {
                 const th = { ...h, estimatedHeatStartTime: currentCursor || undefined };
-                // FIX: Used explicit type narrowing and variable for arithmetic with Number() casting to ensure they are treated as numbers
+                // FIX: Used explicit type narrowing and variable for arithmetic with any casting to fix arithmetic type errors
                 if (typeof currentCursor === 'number') {
-                    const start: number = currentCursor as number;
-                    const duration: number = estimateHeatDuration(event.distance);
-                    currentCursor = Number(start) + Number(duration);
+                    const start: any = currentCursor;
+                    const duration: any = estimateHeatDuration(event.distance);
+                    currentCursor = (start as number) + (duration as number);
                 }
                 return th;
             });
@@ -644,7 +709,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         swimmerTotal: 'REKAPITULASI MEDALI ATLET (TOTAL)',
         swimmerCategory: 'KLASEMEN PERORANGAN (PER KATEGORI)',
         brokenRecords: 'DAFTAR REKOR TERPECAHKAN',
-        onlineRegistration: 'LAPORAN PENDAFTARAN ONLINE & PEMBAYARAN'
+        onlineRegistration: 'LAPORAN PENDAFTARAN ONLINE & PEMBAYARAN',
+        participantCards: 'KARTU PESERTA ATLET'
     };
 
     return (
@@ -761,6 +827,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 )}
 
                 {reportType === 'onlineRegistration' && <OnlineRegistrationReport data={processedData.registrationData} />}
+                
+                {reportType === 'participantCards' && <ParticipantCardsReport data={processedData.registrationData} info={competitionInfo} />}
 
                 {reportType === 'brokenRecords' && (
                     <div className="space-y-4">

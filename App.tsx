@@ -14,6 +14,7 @@ import { PrintView } from './components/PrintView';
 import { PublicResultsView } from './components/PublicResultsView';
 import { UserManagementView } from './components/UserManagementView';
 import { OnlineRegistrationView } from './components/OnlineRegistrationView';
+import { CheckinView } from './components/CheckinView';
 import { SqlEditorView } from './components/SqlEditorView';
 import { logout, getCurrentUser } from './services/authService';
 import { getPublicData } from './services/databaseService';
@@ -101,19 +102,21 @@ const App: React.FC = () => {
         
         const urlParams = new URLSearchParams(window.location.search);
         const publicView = urlParams.get('view');
+        const entityId = urlParams.get('id');
         
         if (publicView === 'results') {
             setCurrentView(View.PUBLIC_RESULTS);
         } else if(publicView === 'registration') {
             setCurrentView(View.ONLINE_REGISTRATION);
+        } else if(publicView === 'checkin' && entityId) {
+            setSelectedEventId(entityId); // Reuse this state to store swimmerId
+            setCurrentView(View.CHECKIN);
         } else if (user) {
             setCurrentView(View.ADMIN_DASHBOARD);
         } else {
             setCurrentView(View.LOGIN);
         }
 
-        // Data fetching is now handled by the real-time subscription effect on initial connection
-        // await refreshData(); 
         setAppStatus('ready');
     };
 
@@ -133,7 +136,6 @@ const App: React.FC = () => {
           if (status === 'SUBSCRIBED') {
               console.log('Realtime channel connected.');
               setDbStatus('connected');
-              // Initial sync on successful connection to catch up on any missed changes
               refreshData();
           }
           if (status === 'CHANNEL_ERROR') {
@@ -144,33 +146,25 @@ const App: React.FC = () => {
               console.warn('Realtime channel timed out. Attempting to reconnect.');
               setDbStatus('reconnecting');
           }
-          // The Supabase client will attempt to reconnect automatically.
-          // On successful reconnect, 'SUBSCRIBED' will be emitted again.
       });
 
       return () => {
           supabase.removeChannel(channel);
       };
-  }, [refreshData]); // refreshData is stable, so this runs once
+  }, [refreshData]);
   
   // Manages browser online/offline status
   useEffect(() => {
       const handleOnline = () => {
           setInternetStatus('online');
-          // When browser comes back online, Supabase client will try to reconnect automatically.
-          // The realtime channel's SUBSCRIBED event will handle the final dbStatus update.
-          // We set it to 'reconnecting' as an intermediate state.
           setDbStatus('reconnecting'); 
-          console.log("Browser is online, attempting to reconnect to services.");
       };
 
       const handleOffline = () => {
           setInternetStatus('offline');
           setDbStatus('offline');
-          console.log("Browser is offline.");
       };
       
-      // Set initial state based on current browser status
       if (navigator.onLine) {
           setInternetStatus('online');
       } else {
@@ -215,7 +209,7 @@ const App: React.FC = () => {
 
   const handleSelectEvent = (id: string) => {
     setSelectedEventId(id);
-    setCurrentView(View.RACES); // Ensure view is correct for detail
+    setCurrentView(View.RACES); 
   };
   
   const handleStartTiming = (id: string) => {
@@ -267,6 +261,13 @@ const App: React.FC = () => {
         />;
     }
 
+    if (currentView === View.CHECKIN && selectedEventId) {
+        return <CheckinView
+            swimmerId={selectedEventId}
+            onBackToLogin={handleBackToLogin}
+        />;
+    }
+
     if (!currentUser) {
         return <LoginView 
             onLoginSuccess={handleLogin} 
@@ -283,18 +284,6 @@ const App: React.FC = () => {
     if (currentView === View.RACES && selectedEventId) {
       return <EventDetailView eventId={selectedEventId} onBack={handleBackToEvents} onDataUpdate={refreshData} />;
     }
-    // Handle SQL Editor View manually since it's not in the main enum yet for some reason
-    // or just assume we map it later. Let's add a case for it if we added it to enum?
-    // For now, let's map USER_MANAGEMENT which is repurposed or create a new one.
-    // Actually, let's look at NavLink click below. I added a new icon but need a View enum.
-    // Assuming View.USER_MANAGEMENT is fine or I add View.SQL_EDITOR.
-    // Let's stick to existing views or hijack USER_MANAGEMENT since that view is basically "Go to Supabase".
-    // Better: I'll just render it if a special state is set, but cleaner to use View.
-    // Let's assume I'll add SQL_EDITOR to View enum in types.ts later if I could, but I can't easily change types across files without being explicit.
-    // I'll render SqlEditorView inside USER_MANAGEMENT for now as "Advanced Tools" or similar if I can't change enum.
-    // Wait, the prompt allows modifying types.ts. I already modified it.
-    // I didn't add SQL_EDITOR to View enum in types.ts in the previous step.
-    // Let's just use USER_MANAGEMENT view to show the SQL Editor since user management is deprecated in app.
     
     switch (currentView) {
       case View.ADMIN_DASHBOARD:
@@ -308,17 +297,14 @@ const App: React.FC = () => {
       case View.RACES:
         return <EventsView events={events} isLoading={isLoading} onSelectEvent={handleSelectEvent} onStartTiming={handleStartTiming} onDataUpdate={refreshData} />;
       case View.PARTICIPANTS:
-          // FIX: Pass competitionInfo to ParticipantsView so it can use dynamic age groups for templates
           return <ParticipantsView swimmers={swimmers} events={events} onUploadSuccess={refreshData} competitionInfo={competitionInfo} />;
       case View.SWIMMERS_LIST:
-          // FIX: Pass competitionInfo to SwimmersView
           return <SwimmersView swimmers={swimmers} events={events} isLoading={isLoading} onDataUpdate={refreshData} initialState={navigationState} competitionInfo={competitionInfo} />;
       case View.RESULTS:
           return <ResultsView events={events} swimmers={swimmers} isLoading={isLoading} />;
       case View.PRINT_MENU:
           return <PrintView events={events} swimmers={swimmers} competitionInfo={competitionInfo} isLoading={isLoading} />;
       case View.USER_MANAGEMENT:
-          // Showing SQL Editor here for Super Admins, User Management info for others
           if (currentUser.role === 'SUPER_ADMIN') {
               return <SqlEditorView />;
           }
@@ -328,7 +314,7 @@ const App: React.FC = () => {
     }
   };
   
-  if (currentView === View.LOGIN || currentView === View.PUBLIC_RESULTS || currentView === View.ONLINE_REGISTRATION) {
+  if (currentView === View.LOGIN || currentView === View.PUBLIC_RESULTS || currentView === View.ONLINE_REGISTRATION || currentView === View.CHECKIN) {
       return (
         <>
           <NotificationContainer />

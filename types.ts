@@ -93,6 +93,7 @@ export enum View {
   USER_MANAGEMENT,
   PUBLIC_RESULTS,
   ONLINE_REGISTRATION,
+  CHECKIN,
 }
 
 export interface User {
