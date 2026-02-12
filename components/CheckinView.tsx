@@ -53,7 +53,6 @@ export const CheckinView: React.FC<CheckinViewProps> = ({ swimmerId, onBackToLog
             const newStatus = !currentStatus;
             await updateCheckinStatus(eventId, swimmerId, newStatus);
             
-            // Update local state for immediate feedback
             setEvents(prev => prev.map(ev => {
                 if (ev.id === eventId) {
                     return {
@@ -86,7 +85,6 @@ export const CheckinView: React.FC<CheckinViewProps> = ({ swimmerId, onBackToLog
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
             <div className="max-w-2xl mx-auto space-y-6">
-                {/* Profile Section */}
                 <Card className="text-center shadow-xl border-t-4 border-t-primary overflow-hidden relative">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-blue-400 to-primary opacity-50" />
                     {competitionInfo?.eventLogo && <img src={competitionInfo.eventLogo} alt="Logo" className="h-16 mx-auto mb-4 object-contain" />}
@@ -110,7 +108,6 @@ export const CheckinView: React.FC<CheckinViewProps> = ({ swimmerId, onBackToLog
                     </div>
                 </Card>
 
-                {/* Event List Section */}
                 <Card className="shadow-lg">
                     <h2 className="text-xl font-black mb-6 flex items-center gap-2 uppercase italic tracking-tighter text-text-primary">
                         <span className="bg-primary text-white p-1.5 rounded-lg shadow-sm">
@@ -176,7 +173,6 @@ export const CheckinView: React.FC<CheckinViewProps> = ({ swimmerId, onBackToLog
                                         </button>
                                     </div>
                                     
-                                    {/* Event Details for Committee */}
                                     <div className="mt-4 pt-3 border-t border-dashed border-gray-100 grid grid-cols-2 gap-2">
                                         <div className="text-left">
                                             <p className="text-[8px] font-bold text-gray-400 uppercase">Seed Time</p>

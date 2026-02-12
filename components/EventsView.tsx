@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo } from 'react';
 import type { SwimEvent } from '../types';
 import { SwimStyle, Gender } from '../types';
@@ -58,19 +57,17 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     distance: 100,
     style: SwimStyle.FREESTYLE,
     gender: Gender.MALE,
-    isRelay: false, // Initializer provided
+    isRelay: false,
     relayLegs: 4,
     category: '',
   });
   const [uploadResult, setUploadResult] = useState<{ success: number; errors: string[] } | null>(null);
   const { addNotification } = useNotification();
   
-  // State for upload modal
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
 
-  // Explicitly typed options for rendering to prevent type errors
   const genderOptions: Gender[] = GENDER_OPTIONS;
   const styleOptions: SwimStyle[] = SWIM_STYLE_OPTIONS;
 
@@ -100,7 +97,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         return acc;
     }, {} as Record<number, SwimEvent[]>);
 
-    // Sorting within sessions
     Object.values(grouped).forEach((sessionEvents: SwimEvent[]) => {
       sessionEvents.sort((a, b) => (a.heatOrder ?? 999) - (b.heatOrder ?? 999));
     });
@@ -261,7 +257,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     }
     const wb = XLSX.utils.book_new();
 
-    // --- Sheet 2: Petunjuk & Daftar Pilihan ---
     const listsSheetData: any[][] = [
         ["PETUNJUK PENGISIAN"],
         ["1. Isi data nomor lomba pada sheet 'Template Nomor Lomba'."],
@@ -269,7 +264,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         ["3. Untuk Gaya and Jenis Kelamin, mohon gunakan pilihan yang tersedia di dropdown."],
         ["4. Kolom 'Kategori' bersifat opsional. Kosongkan jika tidak ada (cth: untuk event senior/open)."],
         ["5. Kolom 'Jumlah Atlet' HANYA diisi untuk nomor estafet (relay), contoh: 4. Kosongkan untuk perorangan."],
-        [], // Spacer
+        [],
         ["DAFTAR PILIHAN VALID"],
         [],
         ["Gaya", "Jenis Kelamin"],
@@ -286,29 +281,27 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     ws_lists['!cols'] = [{ wch: 40 }, { wch: 20 }];
     XLSX.utils.book_append_sheet(wb, ws_lists, "Petunjuk & Pilihan");
 
-
-    // --- Sheet 1: Template Nomor Lomba ---
     const templateData = [
         {
             "Jarak (m)": 50,
             "Gaya": "Gaya Kupu-kupu",
             "Jenis Kelamin": "Putri",
             "Kategori": "KU 1-2",
-            "Jumlah Atlet": "" // Individual event
+            "Jumlah Atlet": ""
         },
         {
             "Jarak (m)": 200,
             "Gaya": "Gaya Bebas",
             "Jenis Kelamin": "Putra",
-            "Kategori": "", // Open/Senior event
+            "Kategori": "",
             "Jumlah Atlet": ""
         },
         {
-            "Jarak (m)": 100, // Distance per leg
+            "Jarak (m)": 100,
             "Gaya": "Gaya Ganti Perorangan",
             "Jenis Kelamin": "Campuran",
             "Kategori": "KU-3",
-            "Jumlah Atlet": 4 // Relay event
+            "Jumlah Atlet": 4
         },
         {
             "Jarak (m)": 25,
@@ -322,17 +315,13 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
     const ws = XLSX.utils.json_to_sheet(templateData);
     ws['!cols'] = [ { wch: 10 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 20 }];
 
-    // Add Data Validation to Sheet 1
     const maxRows = 1000;
     if (!ws['!dataValidation']) ws['!dataValidation'] = [];
     ws['!dataValidation'].push({ sqref: `B2:B${maxRows}`, opts: { type: 'list', formula1: `'Petunjuk & Pilihan'!$A$11:$A$${10 + styles.length}` } });
     ws['!dataValidation'].push({ sqref: `C2:C${maxRows}`, opts: { type: 'list', formula1: `'Petunjuk & Pilihan'!$B$11:$B$${10 + genders.length}` } });
     
     XLSX.utils.book_append_sheet(wb, ws, "Template Nomor Lomba");
-    
-    // Reorder sheets to have Template first
     wb.SheetNames.reverse();
-
     XLSX.writeFile(wb, "Template_Nomor_Lomba.xlsx");
   };
 
@@ -368,11 +357,11 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     worksheet['!cols'] = [
-        { wch: 10 }, // Jarak
-        { wch: 25 }, // Gaya
-        { wch: 15 }, // Jenis Kelamin
-        { wch: 15 }, // Kategori
-        { wch: 20 }  // Jumlah Atlet
+        { wch: 10 },
+        { wch: 25 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 20 }
     ];
 
     const workbook = XLSX.utils.book_new();
@@ -454,7 +443,7 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                                 } else if (recordedCount >= entryCount) {
                                     statusText = `${recordedCount} Hasil Tercatat`;
                                     statusColor = 'text-green-500';
-                                } else { // recordedCount < entryCount
+                                } else {
                                     const missingCount = entryCount - recordedCount;
                                     statusText = `${recordedCount} Hasil Tercatat (${missingCount} belum ada hasil)`;
                                     statusColor = 'text-yellow-500';
@@ -527,7 +516,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         setNewEvent(prev => ({
                             ...prev, 
                             isRelay,
-                            // If not a relay, and current gender is Mixed, reset to Male.
                             gender: !isRelay && prev.gender === Gender.MIXED ? Gender.MALE : prev.gender
                         }));
                     }} 
@@ -643,32 +631,6 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                 <p className="text-text-secondary mb-2">Unggah file Excel (.xlsx) untuk menambahkan beberapa nomor lomba sekaligus. File harus memiliki kolom berikut:</p>
                 <code className="block text-sm bg-surface p-2 rounded-md whitespace-pre">Jarak (m) | Gaya | Jenis Kelamin | Kategori | Jumlah Atlet</code>
                 <p className="text-xs text-text-secondary mt-1">Kolom 'Kategori' and 'Jumlah Atlet' bersifat opsional.</p>
-                
-                <div className="mt-4 pt-4 border-t border-border">
-                    <p className="text-sm font-semibold text-text-secondary mb-2">Contoh untuk nomor estafet (misal: 4x100m Estafet Gaya Ganti Campuran KU-3):</p>
-                    <div className="bg-background p-2 rounded">
-                        <table className="w-full text-xs text-left">
-                            <thead>
-                                <tr>
-                                    <th className="p-1 font-semibold">Jarak (m)</th>
-                                    <th className="p-1 font-semibold">Gaya</th>
-                                    <th className="p-1 font-semibold">Jenis Kelamin</th>
-                                    <th className="p-1 font-semibold">Kategori</th>
-                                    <th className="p-1 font-semibold">Jumlah Atlet</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr className="font-mono">
-                                    <td className="p-1">100</td>
-                                    <td className="p-1">Gaya Ganti</td>
-                                    <td className="p-1">Campuran</td>
-                                    <td className="p-1">KU-3</td>
-                                    <td className="p-1">4</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
             </div>
             
             <Button variant="secondary" onClick={handleDownloadTemplate}>
@@ -693,26 +655,23 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <div className="p-3 bg-red-900/20 border border-red-500/50 rounded-md">
                             <h4 className="font-bold text-red-400">Tindakan Diperlukan: Perbarui Skema Database</h4>
                             <p className="text-red-300/90 mt-1">
-                                Penyimpanan gagal karena gaya renang baru (seperti "Papan Luncur") belum ada di database Anda.
-                            </p>
-                            <p className="text-red-300/90 mt-2">
-                                Buka menu <strong className="font-semibold">"SQL Editor"</strong>, salin perintah perbaikan yang tersedia di sana, and jalankan di Supabase untuk mengatasi masalah ini.
+                                Penyimpanan gagal karena gaya renang baru belum ada di database Anda.
                             </p>
                         </div>
                     ) : (uploadResult.errors as string[]).length > 0 ? (
                         <p className="text-red-500 font-bold">
-                            Ditemukan {(uploadResult.errors as string[]).length} galat. {uploadResult.success > 0 ? `${uploadResult.success} nomor lomba berhasil ditambahkan.` : 'Tidak ada nomor lomba yang ditambahkan.'} Harap perbaiki file and coba lagi.
+                            Ditemukan {(uploadResult.errors as string[]).length} galat. {uploadResult.success > 0 ? `${uploadResult.success} nomor lomba berhasil ditambahkan.` : 'Tidak ada nomor lomba yang ditambahkan.'}
                         </p>
                     ) : (
                         <p className="text-green-500 font-bold">Berhasil! {uploadResult.success} nomor lomba baru telah ditambahkan.</p>
                     )}
                     
-                    {/* FIX: Ensure errors is cast to string[] to fix map access error */}
-                    {uploadResult && uploadResult.errors && (uploadResult.errors as string[]).length > 0 && (
+                    {/* FIX: Explicit narrowing and handling for uploadResult.errors to prevent unknown type property access issues. */}
+                    {uploadResult && Array.isArray(uploadResult.errors) && uploadResult.errors.length > 0 && (
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {(uploadResult.errors as string[]).map((err: string, i: number) => (
+                                {uploadResult.errors.map((err: string, i: number) => (
                                     <li key={i}>{err}</li>
                                 ))}
                             </ul>

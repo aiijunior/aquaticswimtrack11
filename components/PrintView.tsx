@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, Entry, Heat, Result, BrokenRecord, SwimRecord, EventEntry } from '../types';
 import { RecordType, Gender, SwimStyle } from '../types';
@@ -13,7 +12,6 @@ import { useNotification } from './ui/NotificationManager';
 
 declare var XLSX: any;
 
-// --- PROPS ---
 interface PrintViewProps {
   events: SwimEvent[];
   swimmers: Swimmer[];
@@ -21,7 +19,6 @@ interface PrintViewProps {
   isLoading: boolean;
 }
 
-// --- TYPES ---
 type ReportType = 'schedule' | 'program' | 'results' | 'clubMedals' | 'clubSwimmerMedals' | 'swimmerTotal' | 'swimmerCategory' | 'brokenRecords' | 'onlineRegistration' | 'participantCards';
 
 interface ScheduledEvent extends SwimEvent {
@@ -39,7 +36,6 @@ interface TimedEvent extends ScheduledEvent {
     detailedResults?: any[];
 }
 
-// --- TALLY INTERFACES ---
 interface TallyClubIndividual {
     name: string;
     medals: { rank: number; eventName: string; time: number }[];
@@ -60,9 +56,7 @@ interface TallyIndividual {
     bronze: number;
 }
 
-// --- HELPER FUNCTIONS ---
 const formatTime = (ms: number) => {
-    // FIX: Tangani NaN, null, undefined, atau 0 sebagai "No Time" (99:99.99)
     if (isNaN(ms) || ms === null || ms === undefined || ms === 0) return '99:99.99';
     if (ms === -2) return 'NS';
     if (ms < 0) return 'DQ';
@@ -75,7 +69,6 @@ const formatTime = (ms: number) => {
 };
 
 const estimateHeatDuration = (distance: number): number => {
-    // Basic estimation: 50m = 2 min, 100m = 3 min, others = 5 min
     if (distance <= 50) return 2 * 60 * 1000;
     if (distance <= 100) return 3 * 60 * 1000;
     return 5 * 60 * 1000;
@@ -93,15 +86,12 @@ const MedalIcon = ({ rank }: { rank: number }) => {
     return null;
 };
 
-// --- PRINTABLE COMPONENTS ---
-
-// FIX: Ensure eventName split returns a string array before mapping
 const ReportHeader = ({ info, title }: { info: CompetitionInfo, title: string }) => (
     <header className="border-b-2 border-gray-300 pb-4 mb-6 text-center">
         {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-16 object-contain mx-auto mb-2" />}
         <div className="mb-2">
-            {/* FIX: Explicitly handle split result to ensure map is available */}
-            {((info.eventName || "").split('\n')).map((line: string, index: number) => (
+            {/* FIX: Explicitly cast info.eventName split result to string[] to resolve 'unknown' type property map error. */}
+            {((info.eventName || "").split('\n') as string[]).map((line: string, index: number) => (
                 <p key={index} className={`font-bold uppercase tracking-tight leading-tight ${index === 0 ? 'text-xl' : 'text-xs'}`}>{line}</p>
             ))}
             <p className="text-sm text-gray-600 mt-1 uppercase font-semibold">
@@ -119,7 +109,6 @@ const PrintRecordRow: React.FC<{ record: SwimRecord | undefined; type: string; }
     return <p className="uppercase text-[8px] font-sans font-bold">{typeText} : {parts.join(' | ')}</p>;
 };
 
-// 1. Susunan Acara
 const ScheduleReport: React.FC<{ events: ScheduledEvent[] }> = ({ events }) => {
     const grouped = events.reduce((acc: Record<string, ScheduledEvent[]>, e) => {
         const session = `SESI ${romanize(e.sessionNumber || 0)}`;
@@ -151,7 +140,6 @@ const ScheduleReport: React.FC<{ events: ScheduledEvent[] }> = ({ events }) => {
     );
 };
 
-// 2 & 3. Buku Acara & Buku Hasil (Unified UI Style)
 const EventBaseReport = ({ events, info, records, showResults }: { events: TimedEvent[], info: CompetitionInfo, records: SwimRecord[], showResults?: boolean }) => (
     <div className="space-y-8">
         {(events as TimedEvent[]).map(event => {
@@ -233,7 +221,6 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
     </div>
 );
 
-// 4. Rekap Medali Klub
 const ClubMedalsReport: React.FC<{ data: any[] }> = ({ data }) => (
     <table className="w-full text-[12px] border-collapse">
         <thead><tr className="bg-black text-white border-2 border-black">
@@ -254,7 +241,6 @@ const ClubMedalsReport: React.FC<{ data: any[] }> = ({ data }) => (
     </table>
 );
 
-// 5. Rekap Medali Klub & Atlet (Custom Format)
 const ClubSwimmerMedalsReport: React.FC<{ data: any[] }> = ({ data }) => (
     <div className="space-y-8">
         {data.map((club, idx) => (
@@ -288,7 +274,6 @@ const ClubSwimmerMedalsReport: React.FC<{ data: any[] }> = ({ data }) => (
     </div>
 );
 
-// 6 & 7. Rekap Atlet (Gender Split)
 const AthleteRecapReport: React.FC<{ data: any[], title?: string }> = ({ data, title }) => {
     const male = data.filter(i => i.swimmer?.gender === 'Male');
     const female = data.filter(i => i.swimmer?.gender === 'Female');
@@ -339,7 +324,6 @@ const AthleteRecapReport: React.FC<{ data: any[], title?: string }> = ({ data, t
     );
 };
 
-// 8. Laporan Pendaftaran Online
 const OnlineRegistrationReport: React.FC<{ data: any[] }> = ({ data }) => (
     <table className="w-full text-[10px] border-collapse table-fixed">
         <thead>
@@ -396,7 +380,6 @@ const OnlineRegistrationReport: React.FC<{ data: any[] }> = ({ data }) => (
     </table>
 );
 
-// 9. Kartu Peserta (ID Cards)
 const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> = ({ data, info }) => {
     return (
         <div className="grid grid-cols-2 gap-4">
@@ -407,10 +390,8 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
                 
                 return (
                     <div key={swimmer.id} className="page-break-inside-avoid border-2 border-black p-4 rounded-xl flex flex-col items-center bg-white shadow-sm relative overflow-hidden h-[300px]">
-                        {/* Background Decoration */}
                         <div className="absolute top-0 right-0 w-24 h-24 bg-primary opacity-10 rounded-bl-[100px]" />
                         
-                        {/* Header */}
                         <div className="w-full flex items-center justify-between border-b border-gray-300 pb-2 mb-3">
                             <div className="flex items-center gap-2">
                                 {info.eventLogo && <img src={info.eventLogo} alt="Logo" className="h-8 object-contain" />}
@@ -419,7 +400,6 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
                             <span className="text-[9px] font-bold text-gray-500 uppercase">{info.eventDate ? new Date(info.eventDate).getFullYear() : ''}</span>
                         </div>
 
-                        {/* Body */}
                         <div className="flex flex-1 w-full gap-4">
                             <div className="flex-1">
                                 <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Nama Peserta</p>
@@ -440,14 +420,12 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
                                 </div>
                             </div>
                             
-                            {/* QR Code Section */}
                             <div className="w-24 flex flex-col items-center justify-center bg-gray-50 rounded-lg p-2 border border-gray-200">
                                 <img src={qrUrl} alt="QR Check-in" className="w-full h-auto" />
                                 <p className="text-[6px] font-black mt-1 text-center text-gray-400 uppercase tracking-tighter">SCAN UNTUK CEK-IN</p>
                             </div>
                         </div>
 
-                        {/* Footer */}
                         <div className="w-full mt-2 pt-2 border-t border-dashed border-gray-300 flex justify-between items-center text-[7px] font-bold text-gray-400 uppercase">
                             <span>KARTU PESERTA RESMI</span>
                             <span>ID: {swimmer.id.slice(0, 8)}</span>
@@ -459,23 +437,20 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
     );
 };
 
-// --- MAIN COMPONENT ---
 export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competitionInfo, isLoading }) => {
     const [reportType, setReportType] = useState<ReportType>('schedule');
     const [records, setRecords] = useState<SwimRecord[]>([]);
-    const [sessionFilter, setSessionFilter] = useState<number>(0); // 0 for All
+    const [sessionFilter, setSessionFilter] = useState<number>(0);
     const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
     const { addNotification } = useNotification();
 
     useEffect(() => { getRecords().then(setRecords); }, []);
 
-    // Session helper
     const availableSessions = useMemo(() => {
         const set = new Set(events.map(e => e.sessionNumber || 0).filter(s => s > 0));
         return Array.from(set).sort((a, b) => a - b);
     }, [events]);
 
-    // 1. Filtered Base Events
     const baseEvents = useMemo(() => {
         return [...events]
             .filter(e => (e.sessionNumber || 0) > 0)
@@ -484,7 +459,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             .map((e, i) => ({ ...e, globalEventNumber: i + 1 }));
     }, [events, sessionFilter]);
 
-    // Selection helper
     const handleToggleAllEvents = (select: boolean) => {
         if (select) setSelectedEventIds(new Set(baseEvents.map(e => e.id)));
         else setSelectedEventIds(new Set());
@@ -497,26 +471,19 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         setSelectedEventIds(next);
     };
 
-    // Final Events to Render (Filtered by ID if type is program/results)
     const renderEvents = useMemo(() => {
         const isSelectionActive = selectedEventIds.size > 0 && ['program', 'results'].includes(reportType);
         return baseEvents.filter(e => !isSelectionActive || selectedEventIds.has(e.id));
     }, [baseEvents, selectedEventIds, reportType]);
 
-    // 2. Data Processing for Reports
     const processedData = useMemo(() => {
-        // FIX: Explicitly type swimmersMap as Map<string, Swimmer> to fix 'unknown' property access errors
         const swimmersMap = new Map<string, Swimmer>(swimmers.map(s => [s.id, s]));
-        
-        // Track running time per session cursor to calculate cumulative EST
         const sessionCursors = new Map<number, number>();
 
-        // Detailed Events (Program & Results)
         const detailedEvents = renderEvents.map(event => {
             const entries: Entry[] = event.entries.map(en => ({ ...en, swimmer: swimmersMap.get(en.swimmerId)! })).filter(e => e.swimmer);
             const heats = generateHeats(entries, competitionInfo?.numberOfLanes || 8);
             
-            // Results calculation
             const validRes = [...event.results].filter(r => r.time > 0).sort((a, b) => a.time - b.time);
             const detailedRes = [...event.results].sort((a, b) => {
                 if (a.time > 0 && b.time > 0) return a.time - b.time;
@@ -528,11 +495,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 rank: r.time > 0 ? validRes.findIndex(v => v.swimmerId === r.swimmerId) + 1 : 0
             }));
 
-            // EST CALCULATION
             const sessionNum = event.sessionNumber || 0;
             let currentCursor = sessionCursors.get(sessionNum);
             
-            // Initial session start time from the first event in that session
             if (currentCursor === undefined && event.sessionDateTime) {
                 currentCursor = new Date(event.sessionDateTime).getTime();
             }
@@ -541,7 +506,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
             const heatsWithTimes = heats.map(h => {
                 const th = { ...h, estimatedHeatStartTime: currentCursor || undefined };
-                // FIX: Used explicit type narrowing and simplification to fix arithmetic type errors
                 if (typeof currentCursor === 'number') {
                     const duration = estimateHeatDuration(event.distance);
                     currentCursor = currentCursor + duration;
@@ -549,7 +513,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 return th;
             });
 
-            // Update session cursor for next event in this session
             if (currentCursor !== undefined) {
                 sessionCursors.set(sessionNum, currentCursor);
             }
@@ -563,12 +526,10 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             };
         });
 
-        // Tallying
         const clubs: Record<string, TallyClub> = {};
         const individual: Record<string, TallyIndividual> = {};
         const broken: BrokenRecord[] = [];
 
-        // We tally based on ALL base events (ignoring print selection for overall standings)
         baseEvents.forEach(rawEvent => {
             const valid = [...rawEvent.results].filter(r => r.time > 0).sort((a, b) => a.time - b.time);
             const winner = valid[0];
@@ -578,7 +539,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 if (ws) {
                     [RecordType.PORPROV, RecordType.NASIONAL].forEach(type => {
                         const rec = records.find(r => r.type === type && r.gender === rawEvent.gender && r.distance === rawEvent.distance && r.style === rawEvent.style && (r.category ?? null) === (rawEvent.category ?? null));
-                        // FIX: Cast to Number to ensure valid arithmetic comparison
                         if (rec && Number(winner.time) < Number(rec.time)) { 
                             broken.push({ record: rec, newEventName: formatEventName(rawEvent), newHolder: ws, newTime: winner.time });
                         }
@@ -603,7 +563,6 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 clubs[s.club][mKey]++;
                 individual[s.id][mKey]++;
 
-                // Collect data for Club & Swimmer report
                 if (!clubs[s.club].individualDetails[s.id]) {
                     clubs[s.club].individualDetails[s.id] = { name: s.name, medals: [] };
                 }
@@ -611,9 +570,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             });
         });
 
-        // Online Registration Data Mapping
         const registrationData = swimmers
-            .filter(s => s.birthYear !== 0) // Exclude generic relay entities if any
+            .filter(s => s.birthYear !== 0)
             .sort((a, b) => a.name.localeCompare(b.name))
             .map(swimmer => {
                 const registeredEvents = events
@@ -628,9 +586,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 return { swimmer, registeredEvents };
             });
 
-        // FIX: Cast medal counts to Number for safe arithmetic sorting
-        const sortFn = (a: TallyClub | TallyIndividual, b: TallyClub | TallyIndividual) => 
-            (Number(b.gold) - Number(a.gold)) || (Number(b.silver) - Number(a.silver)) || (Number(b.bronze) - Number(a.bronze));
+        // FIX: Re-typed parameters as any and explicitly accessed gold/silver/bronze to resolve union arithmetic operation errors.
+        const sortFn = (a: any, b: any) => 
+            ((b.gold || 0) - (a.gold || 0)) || ((b.silver || 0) - (a.silver || 0)) || ((b.bronze || 0) - (a.bronze || 0));
 
         const sortedClubs = Object.values(clubs).sort(sortFn).map((c) => ({
             ...c,

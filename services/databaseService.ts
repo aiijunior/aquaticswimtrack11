@@ -24,12 +24,11 @@ const toCompetitionInfo = (data: any): CompetitionInfo | null => (data ? {
     sponsorLogo: data.sponsor_logo,
     isRegistrationOpen: data.is_registration_open,
     numberOfLanes: data.number_of_lanes,
-    // FIX: Changed from registration_deadline to registrationDeadline to match type interface
+    // FIX: Menggunakan camelCase agar sesuai dengan interface tipe data
     registrationDeadline: data.registration_deadline,
     ageGroups: data.age_groups,
     isFree: data.is_free,
     recipientName: data.recipient_name,
-    // FIX: Changed from account_number and fee_per_event to camelCase to match type interface
     accountNumber: data.account_number,
     feePerEvent: data.fee_per_event
 } : null);
@@ -50,7 +49,7 @@ const toSwimmer = (data: any): Swimmer => ({
 const toEventEntry = (data: any): EventEntry => ({
     swimmerId: data.swimmer_id,
     seedTime: data.seed_time,
-    checked_in: data.checked_in || false // NEW
+    checked_in: data.checked_in || false
 });
 
 const toResult = (data: any): Result => ({
@@ -120,7 +119,7 @@ export const updateCheckinStatus = async (eventId: string, swimmerId: string, st
     return true;
 };
 
-// --- REST OF SERVICES (UNCHANGED BUT RE-EXPORTED) ---
+// --- REST OF SERVICES ---
 
 export const addSwimmer = async (swimmer: Omit<Swimmer, 'id'>): Promise<Swimmer> => {
     const { data, error } = await supabase.from('swimmers').insert({
