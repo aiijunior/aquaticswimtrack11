@@ -89,8 +89,8 @@ const ReportHeader = ({ info, title }: { info: CompetitionInfo, title: string })
     <header className="border-b-2 border-gray-300 pb-4 mb-6 text-center">
         {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-16 object-contain mx-auto mb-2" />}
         <div className="mb-2">
-            {/* FIX: Simplified splitting and mapping of eventName to resolve potential 'unknown' type issues. */}
-            {(info.eventName || "").split('\n').map((line, index) => (
+            {/* FIX: Explicitly cast info.eventName to string and map to avoid 'unknown' type errors. */}
+            {(String(info.eventName || "")).split('\n').map((line: string, index: number) => (
                 <p key={index} className={`font-bold uppercase tracking-tight leading-tight ${index === 0 ? 'text-xl' : 'text-xs'}`}>{line}</p>
             ))}
             <p className="text-sm text-gray-600 mt-1 uppercase font-semibold">
@@ -587,12 +587,12 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
         // FIX: Explicitly cast parameters as any and use internal values to resolve arithmetic operation errors.
         const sortFn = (a: any, b: any) => {
-            const bG = b.gold || 0;
-            const aG = a.gold || 0;
-            const bS = b.silver || 0;
-            const aS = a.silver || 0;
-            const bB = b.bronze || 0;
-            const aB = a.bronze || 0;
+            const bG = (b.gold || 0) as number;
+            const aG = (a.gold || 0) as number;
+            const bS = (b.silver || 0) as number;
+            const aS = (a.silver || 0) as number;
+            const bB = (b.bronze || 0) as number;
+            const aB = (a.bronze || 0) as number;
             return (bG - aG) || (bS - aS) || (bB - aB);
         };
 

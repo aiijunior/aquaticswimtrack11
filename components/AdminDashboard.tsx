@@ -3,7 +3,6 @@ import type { Swimmer, SwimEvent, CompetitionInfo } from '../types';
 import { View } from '../types';
 import { Card } from './ui/Card';
 import { Spinner } from './ui/Spinner';
-// FIX: Added missing Button import.
 import { Button } from './ui/Button';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -28,11 +27,7 @@ const DocumentTextIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
 );
-const QrCodeIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-);
+
 const SortIcon: React.FC<{ direction: 'asc' | 'desc' | 'none' }> = ({ direction }) => {
   if (direction === 'none') {
     return (
@@ -241,15 +236,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
     <div>
       <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Dashboard Admin</h1>
-          {!isLoading && (
-              <Button 
-                onClick={() => navigateTo(View.SCANNER)} 
-                className="flex items-center space-x-3 px-6 py-4 shadow-xl border-b-4 border-primary-hover active:border-b-0 active:translate-y-1 transition-all"
-              >
-                  <QrCodeIcon />
-                  <span className="text-xl font-black italic tracking-tighter">SCAN KARTU</span>
-              </Button>
-          )}
       </div>
 
       {isLoading ? (
