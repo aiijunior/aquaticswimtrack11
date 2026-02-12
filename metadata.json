@@ -1,6 +1,8 @@
 {
   "name": "R.E.A.C.T",
   "description": "Real-time Evaluation for Aquatic Competition & Timing.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "camera"
+  ],
   "prompt": ""
 }

@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import type { SwimEvent } from '../types';
 import { SwimStyle, Gender } from '../types';
@@ -666,12 +665,12 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                         <p className="text-green-500 font-bold">Berhasil! {uploadResult.success} nomor lomba baru telah ditambahkan.</p>
                     )}
                     
-                    {/* FIX: Explicit narrowing and handling for uploadResult.errors to prevent unknown type property access issues. */}
                     {uploadResult && Array.isArray(uploadResult.errors) && uploadResult.errors.length > 0 && (
                         <div>
                             <p className="font-semibold text-text-secondary">Detail Galat:</p>
                             <ul className="list-disc list-inside h-24 overflow-y-auto bg-surface p-2 rounded-md mt-1 text-red-400">
-                                {uploadResult.errors.map((err: string, i: number) => (
+                                {/* FIX: Explicitly cast uploadResult.errors to string[] to resolve 'unknown' type error. */}
+                                {(uploadResult.errors as string[]).map((err: string, i: number) => (
                                     <li key={i}>{err}</li>
                                 ))}
                             </ul>

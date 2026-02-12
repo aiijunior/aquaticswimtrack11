@@ -95,6 +95,7 @@ export enum View {
   PUBLIC_RESULTS,
   ONLINE_REGISTRATION,
   CHECKIN,
+  SCANNER, // NEW
 }
 
 export interface User {

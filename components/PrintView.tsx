@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, Entry, Heat, Result, BrokenRecord, SwimRecord, EventEntry } from '../types';
 import { RecordType, Gender, SwimStyle } from '../types';
@@ -90,8 +89,8 @@ const ReportHeader = ({ info, title }: { info: CompetitionInfo, title: string })
     <header className="border-b-2 border-gray-300 pb-4 mb-6 text-center">
         {info.eventLogo && <img src={info.eventLogo} alt="Event Logo" className="h-16 object-contain mx-auto mb-2" />}
         <div className="mb-2">
-            {/* FIX: Explicitly cast info.eventName split result to string[] to resolve 'unknown' type property map error. */}
-            {((info.eventName || "").split('\n') as string[]).map((line: string, index: number) => (
+            {/* FIX: Simplified splitting and mapping of eventName to resolve potential 'unknown' type issues. */}
+            {(info.eventName || "").split('\n').map((line, index) => (
                 <p key={index} className={`font-bold uppercase tracking-tight leading-tight ${index === 0 ? 'text-xl' : 'text-xs'}`}>{line}</p>
             ))}
             <p className="text-sm text-gray-600 mt-1 uppercase font-semibold">
@@ -586,9 +585,16 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 return { swimmer, registeredEvents };
             });
 
-        // FIX: Re-typed parameters as any and explicitly accessed gold/silver/bronze to resolve union arithmetic operation errors.
-        const sortFn = (a: any, b: any) => 
-            ((b.gold || 0) - (a.gold || 0)) || ((b.silver || 0) - (a.silver || 0)) || ((b.bronze || 0) - (a.bronze || 0));
+        // FIX: Explicitly cast parameters as any and use internal values to resolve arithmetic operation errors.
+        const sortFn = (a: any, b: any) => {
+            const bG = b.gold || 0;
+            const aG = a.gold || 0;
+            const bS = b.silver || 0;
+            const aS = a.silver || 0;
+            const bB = b.bronze || 0;
+            const aB = a.bronze || 0;
+            return (bG - aG) || (bS - aS) || (bB - aB);
+        };
 
         const sortedClubs = Object.values(clubs).sort(sortFn).map((c) => ({
             ...c,

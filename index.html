@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -7,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
       :root {
         --color-primary: #0ea5e9;
@@ -35,43 +37,28 @@
         color: var(--color-text-primary);
       }
       @keyframes flash {
-        0% { background-color: rgba(14, 165, 233, 0.3); } /* primary with opacity */
+        0% { background-color: rgba(14, 165, 233, 0.3); } 
         100% { background-color: transparent; }
       }
       .flash-animation {
         animation: flash 1.5s ease-out;
       }
       
-      /* Pulse animation for timing indicator */
       @keyframes pulse-indicator {
-        0% {
-          transform: scale(1);
-          opacity: 0.75;
-        }
-        75%, 100% {
-          transform: scale(2.5);
-          opacity: 0;
-        }
+        0% { transform: scale(1); opacity: 0.75; }
+        75%, 100% { transform: scale(2.5); opacity: 0; }
       }
       
-      /* Login screen blob animation */
       @keyframes blob {
         0% { transform: translate(0px, 0px) scale(1); }
         33% { transform: translate(30px, -50px) scale(1.1); }
         66% { transform: translate(-20px, 20px) scale(0.9); }
         100% { transform: translate(0px, 0px) scale(1); }
       }
-      .animate-blob {
-        animation: blob 7s infinite;
-      }
-      .animation-delay-2000 {
-        animation-delay: 2s;
-      }
-      .animation-delay-4000 {
-        animation-delay: 4s;
-      }
+      .animate-blob { animation: blob 7s infinite; }
+      .animation-delay-2000 { animation-delay: 2s; }
+      .animation-delay-4000 { animation-delay: 4s; }
 
-      /* Styles for the on-screen print preview to improve readability */
       .print-preview-content {
         background-color: var(--color-surface);
         color: var(--color-text-primary);
@@ -123,27 +110,23 @@
         font-weight: 600 !important;
       }
 
-      /* Selectively re-apply secondary text color where it's meaningful */
       .print-preview-content .text-gray-500,
       .print-preview-content .text-gray-600,
       .print-preview-content .text-text-secondary {
         color: var(--color-text-secondary) !important;
       }
       
-      /* Make times stand out */
       .print-preview-content .font-mono {
         color: var(--color-primary) !important;
         font-weight: 600;
         font-size: 1.05em;
       }
 
-      /* Override hardcoded background colors from components */
       .print-preview-content .bg-gray-100,
       .print-preview-content .bg-gray-200 {
         background-color: var(--color-background) !important;
       }
 
-      /* Badge for broken records */
       .record-badge {
         display: inline-block;
         padding: 0.125rem 0.5rem;
@@ -153,205 +136,104 @@
         border-radius: 9999px;
         line-height: 1;
         vertical-align: middle;
-        color: white !important; /* Important to override print styles */
+        color: white !important;
         text-shadow: none;
       }
-      .record-badge.porprov { background-color: #3b82f6; } /* Blue-500 */
-      .record-badge.nasional { background-color: #ef4444; } /* Red-500 */
+      .record-badge.porprov { background-color: #3b82f6; }
+      .record-badge.nasional { background-color: #ef4444; }
       
-      /* NEW: Styles for Notification Toasts */
       .notification-toast {
         animation: toast-in-right 0.5s cubic-bezier(0.215, 0.610, 0.355, 1.000);
       }
 
       @keyframes toast-in-right {
-        from {
-          transform: translateX(100%);
-          opacity: 0;
-        }
-        to {
-          transform: translateX(0);
-          opacity: 1;
-        }
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
       }
 
-      /* PDF & Print Specific Styles */
       @media print {
-        .no-print {
-          display: none !important;
-        }
-
-        @page {
-          size: A4;
-          margin: 1.5cm;
-        }
-
+        .no-print { display: none !important; }
+        @page { size: A4; margin: 1.5cm; }
         body {
           background-color: #ffffff !important;
           color: #000000 !important;
-          margin: 0;
-          padding: 0;
+          margin: 0; padding: 0;
           font-family: sans-serif;
-          counter-reset: page;
         }
-
-        main {
-          padding: 0 !important;
-          overflow: visible !important;
-        }
-
+        main { padding: 0 !important; overflow: visible !important; }
         .print-preview-content {
-          /* NEW: Reset CSS variables to a standard light theme for all printing */
           --color-background: #ffffff;
           --color-surface: #ffffff;
           --color-text-primary: #000000;
           --color-text-secondary: #555555;
           --color-border: #cccccc;
           --color-primary: #000000;
-          
           box-shadow: none !important;
           border: none !important;
           border-radius: 0 !important;
           width: 100% !important;
           max-width: 100% !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          color: var(--color-text-primary) !important;
-          background-color: var(--color-background) !important;
+          margin: 0 !important; padding: 0 !important;
         }
-
-        .print-preview-content table {
-          width: 100%;
-          border-collapse: collapse;
-          page-break-inside: auto;
-        }
-
-        .print-preview-content tr {
-          page-break-inside: avoid;
-          page-break-after: auto;
-        }
-        
-        .print-preview-content th,
-        .print-preview-content td {
-          border: 1px solid var(--color-border) !important;
-          padding: 6px 8px;
-        }
-        
-        .print-preview-content th {
-          background-color: #f0f0f0 !important;
-          font-weight: bold !important;
-        }
-
-        .print-event-section {
-          page-break-inside: avoid;
-          padding-top: 1rem;
-        }
-        .print-event-section:first-child {
-          padding-top: 0;
-        }
-        
-        .print-preview-content a {
-          text-decoration: underline !important;
-        }
-        
-        .record-badge {
-          display: inline-block !important;
-          border: 1px solid #000 !important;
-          color: #000 !important;
-          background-color: #fff !important;
-          padding: 0.1rem 0.4rem !important;
-          font-size: 0.65rem !important;
-          margin-left: 0.5rem !important;
-          border-radius: 4px !important;
-          vertical-align: middle !important;
-        }
-
-        .print-preview-content .bg-gray-100,
-        .print-preview-content .bg-gray-200,
-        .print-preview-content .bg-background {
-          background-color: transparent !important;
-        }
-
-        .print-preview-content .text-primary,
-        .print-preview-content .font-mono {
-          color: #000000 !important;
-        }
-
-        /* --- New Styles for Winners --- */
-        .print-gold-medal {
-            background-color: #ffd900 !important;
-            font-weight: bold !important;
-        }
-        .print-silver-medal {
-            background-color: #e0e0e0 !important;
-            font-weight: bold !important;
-        }
-        .print-bronze-medal {
-            background-color: #d9a075 !important;
-            font-weight: bold !important;
-        }
-
-        /* --- Rules for screenshot deterrent on public page --- */
-        .secure-view-content {
-          display: none !important;
-        }
-        .secure-view::after {
-          display: none !important;
-        }
+        .print-preview-content table { width: 100%; border-collapse: collapse; }
+        .print-preview-content th, .print-preview-content td { border: 1px solid var(--color-border) !important; padding: 6px 8px; }
+        .secure-view-content { display: none !important; }
         .secure-view-print-message {
           display: block !important;
           position: fixed;
-          top: 40%;
-          left: 50%;
+          top: 40%; left: 50%;
           transform: translate(-50%, -50%);
-          font-size: 1.5rem;
-          font-weight: bold;
-          color: #000 !important;
-          text-align: center;
-          width: 80%;
+          font-size: 1.5rem; font-weight: bold;
+          text-align: center; width: 80%;
         }
         .secure-view-print-message::before {
           content: "Pencetakan dan penyimpanan PDF untuk halaman hasil ini telah dinonaktifkan.";
         }
       }
 
-      /* --- Screenshot Deterrent Styles --- */
-      .secure-view {
-        position: relative;
-      }
       .secure-view::after {
         content: 'RAHASIA - DILARANG MENYEBARLUASKAN';
-        position: fixed; /* Fixed position covers the whole viewport */
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
         gap: 50px 100px;
-        align-content: center;
-        justify-content: center;
-        font-size: 1.5rem; /* Slightly smaller to fit more */
-        font-weight: bold;
+        align-content: center; justify-content: center;
+        font-size: 1.5rem; font-weight: bold;
         color: var(--color-text-primary);
         opacity: 0.07;
         transform: rotate(-30deg);
-        pointer-events: none; /* Let clicks pass through */
+        pointer-events: none;
         z-index: 9999;
       }
-      .no-select {
-        -webkit-user-select: none; /* Safari */
-        -ms-user-select: none; /* IE 10+ and Edge */
-        user-select: none; /* Standard syntax */
+      .no-select { user-select: none; }
+      .secure-view-print-message { display: none; }
+
+      /* QR Scanner custom UI overrides */
+      #qr-reader {
+        border: none !important;
+        background: black !important;
+        border-radius: 1rem !important;
+        overflow: hidden !important;
       }
-      .secure-view-print-message {
-          display: none;
+      #qr-reader__dashboard_section_csr button {
+        background-color: var(--color-primary) !important;
+        color: white !important;
+        border-radius: 0.5rem !important;
+        padding: 0.5rem 1rem !important;
+        font-weight: bold !important;
+        border: none !important;
+        margin-top: 1rem !important;
+      }
+      #qr-reader__scan_region {
+        background: rgba(0,0,0,0.1) !important;
       }
 
     </style>
     <script>
       tailwind.config = {
-        darkMode: 'class', // Enable dark mode based on class
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
