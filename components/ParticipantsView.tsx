@@ -4,7 +4,7 @@ import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Spinner } from './ui/Spinner';
 import { processParticipantUpload, getEvents, registerSwimmerToEvent } from '../services/databaseService';
-import { formatEventName, formatTime, AGE_GROUP_OPTIONS } from '../constants';
+import { formatEventName, formatTime, AGE_GROUP_OPTIONS, translateSwimStyle } from '../constants';
 import type { Swimmer, SwimEvent, CompetitionInfo } from '../types';
 import { Gender } from '../types';
 import { Input } from './ui/Input';
@@ -24,6 +24,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloadingFinal, setIsDownloadingFinal] = useState(false);
   const [uploadResult, setUploadResult] = useState<{ newSwimmers: number; updatedSwimmers: number; errors: string[] } | null>(null);
   const [canDownload, setCanDownload] = useState(false);
   const { addNotification } = useNotification();
@@ -323,6 +324,78 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
     }
   };
 
+  const handleDownloadFinalData = () => {
+    if (typeof XLSX === 'undefined') {
+        addNotification('Pustaka Excel belum termuat.', 'error');
+        return;
+    }
+
+    setIsDownloadingFinal(true);
+
+    try {
+        const wb = XLSX.utils.book_new();
+
+        // 1. Athletes Sheet
+        const athletesData = swimmers
+            .filter(s => s.birthYear !== 0) // Exclude relay teams
+            .map(s => ({
+                'ID': s.id,
+                'Nama': s.name,
+                'Tgl Lahir': s.birthYear,
+                'Gender': s.gender === 'Male' ? 'L' : 'P',
+                'Tim': s.club,
+                'Kota': '', // This data is not available
+                'Provinsi': '' // This data is not available
+            }));
+        const wsAthletes = XLSX.utils.json_to_sheet(athletesData);
+        wsAthletes['!cols'] = [ { wch: 36 }, { wch: 30 }, { wch: 10 }, { wch: 8 }, { wch: 30 }, { wch: 15 }, { wch: 15 }];
+        XLSX.utils.book_append_sheet(wb, wsAthletes, "Athletes");
+
+        // 2. Clubs Sheet
+        const uniqueClubs = [...new Set(swimmers.map(s => s.club))].sort();
+        const clubsData = uniqueClubs.map((clubName, index) => ({
+            'ID': index + 1,
+            'Nama': clubName,
+            'Alamat': '',
+            'Pelatih': '',
+            'Berdiri': '',
+            'Deskripsi': ''
+        }));
+        const wsClubs = XLSX.utils.json_to_sheet(clubsData);
+        wsClubs['!cols'] = [ { wch: 5 }, { wch: 30 }, { wch: 30 }, { wch: 25 }, { wch: 10 }, { wch: 40 }];
+        XLSX.utils.book_append_sheet(wb, wsClubs, "Clubs");
+        
+        // 3. Records (Results) Sheet
+        const recordsData: any[] = [];
+        for (const event of events) {
+            for (const result of event.results) {
+                if (result.time > 0) { // Only include valid times
+                    recordsData.push({
+                        'ID Atlet': result.swimmerId,
+                        'Nama Event': formatEventName(event),
+                        'Tanggal': competitionInfo?.eventDate || '',
+                        'Gaya': translateSwimStyle(event.style),
+                        'Jarak': event.distance,
+                        'Waktu': formatTime(result.time)
+                    });
+                }
+            }
+        }
+        const wsRecords = XLSX.utils.json_to_sheet(recordsData);
+        wsRecords['!cols'] = [ { wch: 36 }, { wch: 45 }, { wch: 12 }, { wch: 20 }, { wch: 8 }, { wch: 15 }];
+        XLSX.utils.book_append_sheet(wb, wsRecords, "Records");
+        
+        XLSX.writeFile(wb, "Data_Final_Perlombaan.xlsx");
+        addNotification('Data final berhasil diunduh.', 'success');
+
+    } catch (error: any) {
+        console.error("Gagal membuat unduhan data final:", error);
+        addNotification(`Gagal membuat unduhan data final: ${error.message}`, 'error');
+    } finally {
+        setIsDownloadingFinal(false);
+    }
+  };
+
 
   // --- Manual Registration Logic ---
   const handleManualFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -463,6 +536,15 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                   </Button>
                    <Button variant="secondary" onClick={handleDownloadFullRegistration} disabled={isDownloading || events.length === 0 || swimmers.length === 0} title="Unduh rekap lengkap semua pendaftaran per nomor lomba">
                       {isDownloading ? <Spinner /> : 'Unduh Rekap Pendaftaran Lengkap'}
+                    </Button>
+                    <Button 
+                        variant="primary" 
+                        onClick={handleDownloadFinalData}
+                        disabled={isDownloadingFinal || swimmers.length === 0 || events.length === 0}
+                        className="bg-green-600 hover:bg-green-700"
+                        title="Unduh data final dalam format multi-tab sesuai spesifikasi"
+                    >
+                        {isDownloadingFinal ? <Spinner /> : 'Unduh Data Final Perlombaan'}
                     </Button>
               </div>
               <p className="text-xs text-text-secondary">{canDownload ? "Template Pendaftaran sudah dilengkapi dropdown KU dan Nomor Lomba yang saling terhubung." : "Tombol 'Unduh Template Pendaftaran' akan aktif setelah Anda membuat setidaknya satu nomor lomba."}</p>
