@@ -470,56 +470,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6">Manajemen Peserta</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <h2 className="text-xl font-bold mb-4">Pendaftaran Manual</h2>
-          <form onSubmit={handleManualRegister} className="space-y-4">
-            <Select label="Pilih Atlet" id="manual-swimmer" name="swimmerId" value={manualForm.swimmerId} onChange={handleManualFormChange}>
-                <option value="">-- Pilih Atlet --</option>
-                {swimmers.sort((a,b) => a.name.localeCompare(b.name)).map(s => <option key={s.id} value={s.id}>{s.name} ({s.club})</option>)}
-            </Select>
-            <Select
-                label="Filter berdasarkan Kategori"
-                id="manual-category-filter"
-                value={categoryFilter}
-                onChange={(e) => {
-                    setCategoryFilter(e.target.value);
-                    setManualForm(prev => ({ ...prev, eventId: '' })); // Reset event selection
-                }}
-                disabled={!manualForm.swimmerId}
-            >
-                <option value="all">Semua Kategori</option>
-                {availableCategories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                ))}
-            </Select>
-            <Select 
-              label="Pilih Nomor Lomba" 
-              id="manual-event" 
-              name="eventId" 
-              value={manualForm.eventId} 
-              onChange={handleManualFormChange} 
-              disabled={!manualForm.swimmerId || availableEventsForManualReg.length === 0}
-            >
-                <option value="">-- Pilih Nomor Lomba --</option>
-                {availableEventsForManualReg.map(e => <option key={e.id} value={e.id}>{formatEventName(e)}</option>)}
-            </Select>
-             <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">Waktu Unggulan</label>
-                <div className="grid grid-cols-3 gap-2">
-                    <Input label="Menit" id="manual-min" name="min" type="number" min="0" value={manualForm.min} onChange={handleManualFormChange} />
-                    <Input label="Detik" id="manual-sec" name="sec" type="number" min="0" max="99" value={manualForm.sec} onChange={handleManualFormChange} />
-                    <Input label="ss/100" id="manual-ms" name="ms" type="number" min="0" max="99" value={manualForm.ms} onChange={handleManualFormChange} />
-                </div>
-            </div>
-            <div className="pt-2">
-                <Button type="submit" className="w-full" disabled={isProcessing}>
-                    {isProcessing ? <Spinner/> : 'Daftarkan Atlet'}
-                </Button>
-            </div>
-          </form>
-        </Card>
-
+      <div className="max-w-4xl">
         <Card>
           <h2 className="text-xl font-bold mb-4">Pendaftaran Massal via Excel</h2>
           <div className="bg-background p-4 rounded-md border border-border space-y-3 mb-4">
