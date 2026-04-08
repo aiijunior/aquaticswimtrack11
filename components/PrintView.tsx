@@ -164,12 +164,12 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
                                     {heat.estimatedHeatStartTime && <span className="ml-2">— EST: {formatEST(heat.estimatedHeatStartTime)}</span>}
                                 </p>
                                 <table className="w-full text-[10px] mt-0.5 border-collapse table-fixed">
-                                    <thead><tr className="border-y border-black font-bold">
-                                        <th className="w-8 text-center">LIN</th>
+                                    <thead><tr className="border-y border-black font-bold bg-gray-100">
+                                        <th className="w-16 text-center">LINTASAN</th>
                                         <th className="text-left px-2">NAMA ATLET</th>
                                         <th className="w-12 text-center">THN</th>
-                                        <th className="text-left px-2">TIM</th>
-                                        <th className="w-20 text-right px-2">SEED</th>
+                                        <th className="text-left px-2">KLUB / TIM</th>
+                                        <th className="w-24 text-right px-2">SEED TIME</th>
                                     </tr></thead>
                                     <tbody>
                                         {Array.from({ length: info.numberOfLanes || 8 }, (_, i) => i + 1).map(lane => {
@@ -192,12 +192,12 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
                         <div className="mt-2">
                             <table className="w-full text-[10px] border-collapse table-fixed">
                                 <thead><tr className="border-y border-black font-bold bg-gray-100">
-                                    <th className="w-12 text-center">RANK</th>
+                                    <th className="w-16 text-center">RANK</th>
                                     <th className="text-left px-2">NAMA ATLET</th>
                                     <th className="w-12 text-center">THN</th>
-                                    <th className="text-left px-2">TIM</th>
+                                    <th className="text-left px-2">KLUB / TIM</th>
                                     <th className="w-24 text-right px-2">HASIL</th>
-                                    <th className="w-12 text-center">MEDALI</th>
+                                    <th className="w-16 text-center">MEDALI</th>
                                 </tr></thead>
                                 <tbody>
                                     {event.detailedResults?.map((r: any) => (
