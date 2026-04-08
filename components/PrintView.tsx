@@ -147,9 +147,9 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
             
             return (
                 <div key={event.id} className="page-break-inside-avoid border-b-2 border-gray-400 pb-4">
-                    <div className="bg-black text-white p-1 px-2 font-bold text-xs flex justify-between uppercase">
-                        <span>#{event.globalEventNumber} - {formatEventName(event)}</span>
-                        {event.estimatedEventStartTime && !showResults && <span>EST: {formatEST(event.estimatedEventStartTime)}</span>}
+                    <div className="bg-gray-200 text-black border-y-2 border-black p-1 px-2 font-bold text-xs flex justify-between uppercase">
+                        <span>Acara {event.globalEventNumber} - {formatEventName(event)}</span>
+                        {event.estimatedEventStartTime && !showResults && <span>Waktu Perlombaan : {formatEST(event.estimatedEventStartTime)}</span>}
                     </div>
                     <div className="my-1 px-2 border-l-2 border-black bg-gray-50 py-1">
                         <PrintRecordRow record={porprov} type="PORPROV" />
@@ -222,7 +222,7 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
 
 const ClubMedalsReport: React.FC<{ data: any[] }> = ({ data }) => (
     <table className="w-full text-[12px] border-collapse">
-        <thead><tr className="bg-black text-white border-2 border-black">
+        <thead><tr className="bg-gray-200 text-black border-2 border-black">
             <th className="p-2 w-12 text-center">#</th><th className="text-left px-2">NAMA TIM / KLUB</th><th className="w-16 text-center">🥇</th><th className="w-16 text-center">🥈</th><th className="w-16 text-center">🥉</th><th className="w-16 text-center font-bold">TOTAL</th>
         </tr></thead>
         <tbody>
@@ -244,7 +244,7 @@ const ClubSwimmerMedalsReport: React.FC<{ data: any[] }> = ({ data }) => (
     <div className="space-y-8">
         {data.map((club, idx) => (
             <div key={idx} className="page-break-inside-avoid border-2 border-black rounded overflow-hidden shadow-sm">
-                <div className="bg-black text-white p-2 flex justify-between items-center font-bold">
+                <div className="bg-gray-200 text-black border-b-2 border-black p-2 flex justify-between items-center font-bold">
                     <span className="text-lg uppercase tracking-tight">{club.name}</span>
                     <span className="text-lg">🥇{club.gold} 🥈{club.silver} 🥉{club.bronze}</span>
                 </div>
@@ -279,7 +279,7 @@ const AthleteRecapReport: React.FC<{ data: any[], title?: string }> = ({ data, t
     
     const RenderTable = ({ list, label }: { list: any[], label: string }) => (
         <div className="mt-6 page-break-inside-avoid">
-            <h4 className="bg-gray-800 text-white p-2 px-3 font-bold text-xs uppercase mb-1 tracking-widest">{label}</h4>
+            <h4 className="bg-gray-200 text-black border-y-2 border-black p-2 px-3 font-bold text-xs uppercase mb-1 tracking-widest">{label}</h4>
             <table className="w-full text-[11px] border-collapse table-fixed">
                 <thead>
                     <tr className="border-y-2 border-black bg-gray-100 font-bold">
@@ -326,7 +326,7 @@ const AthleteRecapReport: React.FC<{ data: any[], title?: string }> = ({ data, t
 const OnlineRegistrationReport: React.FC<{ data: any[] }> = ({ data }) => (
     <table className="w-full text-[10px] border-collapse table-fixed">
         <thead>
-            <tr className="bg-black text-white border-y-2 border-black font-bold">
+            <tr className="bg-gray-200 text-black border-y-2 border-black font-bold">
                 <th className="w-8 text-center py-2">#</th>
                 <th className="w-1/4 text-left px-2">NAMA ATLET / TIM</th>
                 <th className="w-24 text-center">BUKTI BAYAR</th>
@@ -753,7 +753,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 </Card>
             </div>
 
-            <div className="print-only bg-white text-black p-2 min-h-screen">
+            <div className="print-preview-content bg-white text-black p-2 min-h-screen">
                 <ReportHeader info={competitionInfo} title={reportTitles[reportType]} />
                 
                 {reportType === 'schedule' && <ScheduleReport events={baseEvents} />}

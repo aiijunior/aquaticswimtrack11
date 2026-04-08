@@ -152,6 +152,10 @@
       }
 
       @media print {
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
         .no-print { display: none !important; }
         @page { size: A4; margin: 1.5cm; }
         body {
