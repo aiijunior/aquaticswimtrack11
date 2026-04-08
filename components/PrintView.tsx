@@ -165,7 +165,7 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
                                 </p>
                                 <table className="w-full text-[10px] mt-0.5 border-collapse table-fixed">
                                     <thead><tr className="border-y border-black font-bold bg-gray-100">
-                                        <th className="w-16 text-center">LINTASAN</th>
+                                        <th className="w-16 text-center">Lane</th>
                                         <th className="text-left px-2">NAMA ATLET</th>
                                         <th className="w-12 text-center">THN</th>
                                         <th className="text-left px-2">KLUB / TIM</th>
