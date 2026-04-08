@@ -152,6 +152,13 @@
       }
 
       @media print {
+        :root {
+          --color-background: #ffffff !important;
+          --color-surface: #ffffff !important;
+          --color-text-primary: #000000 !important;
+          --color-text-secondary: #555555 !important;
+          --color-border: #cccccc !important;
+        }
         * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -166,12 +173,6 @@
         }
         main { padding: 0 !important; overflow: visible !important; }
         .print-preview-content {
-          --color-background: #ffffff;
-          --color-surface: #ffffff;
-          --color-text-primary: #000000;
-          --color-text-secondary: #555555;
-          --color-border: #cccccc;
-          --color-primary: #000000;
           box-shadow: none !important;
           border: none !important;
           border-radius: 0 !important;
@@ -181,18 +182,11 @@
         }
         .print-preview-content table { width: 100%; border-collapse: collapse; }
         .print-preview-content th, .print-preview-content td { border: 1px solid var(--color-border) !important; padding: 6px 8px; }
-        .secure-view-content { display: none !important; }
-        .secure-view-print-message {
-          display: block !important;
-          position: fixed;
-          top: 40%; left: 50%;
-          transform: translate(-50%, -50%);
-          font-size: 1.5rem; font-weight: bold;
-          text-align: center; width: 80%;
-        }
-        .secure-view-print-message::before {
-          content: "Pencetakan dan penyimpanan PDF untuk halaman hasil ini telah dinonaktifkan.";
-        }
+        
+        .secure-view-content { display: block !important; }
+        .secure-view-print-message { display: none !important; }
+        .secure-view::after { display: none !important; }
+        .secure-view { background-color: #ffffff !important; }
       }
 
       .secure-view::after {
