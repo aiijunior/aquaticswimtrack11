@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import type { CompetitionInfo, SwimEvent, Swimmer, Entry, Heat, Result, BrokenRecord, SwimRecord, EventEntry } from '../types';
 import { RecordType, Gender, SwimStyle } from '../types';
 import { Card } from './ui/Card';
@@ -394,18 +395,20 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
                 <div key={pageIdx} className={`grid grid-cols-2 gap-x-2 gap-y-4 ${pageIdx < chunkedData.length - 1 ? 'break-after-page' : ''}`} style={{ padding: '0.5cm' }}>
                     {chunk.map((item) => {
                         const swimmer = item.swimmer;
+                        const qrData = `NAMA: ${swimmer.name}\nKLUB: ${swimmer.club}\nID: ${swimmer.id}\nLOMBA: ${(item.registeredEvents || []).map((e: any) => `${e.no}.${e.name} (S${e.session})`).join(', ')}`;
+                        
                         return (
                             <div 
                                 key={swimmer.id} 
                                 className="border border-black rounded-lg flex flex-col bg-white relative overflow-hidden box-border"
                                 style={{ width: '105mm', height: '80mm', padding: '5mm' }}
                             >
-                                <div className="absolute top-0 right-0 w-16 h-16 bg-primary opacity-5 rounded-bl-[50px]" />
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-black opacity-5 rounded-bl-[50px]" />
                                 
                                 {/* Header */}
-                                <div className="w-full flex items-center justify-between border-b border-gray-200 pb-1 mb-1">
-                                    <div className="flex items-center gap-1.5">
-                                        {info.eventLogo && <img src={info.eventLogo} alt="Logo" className="h-5 object-contain" />}
+                                <div className="w-full flex items-center justify-between border-b border-black pb-1 mb-2">
+                                    <div className="flex items-center gap-1.5 font-sans">
+                                        {info.eventLogo && <img src={info.eventLogo} alt="Logo" className="h-6 object-contain" />}
                                         <div className="flex flex-col">
                                             <span className="text-[7px] font-black uppercase tracking-tight leading-none text-black">KARTU PESERTA RESMI</span>
                                             <span className="text-[6px] font-bold uppercase truncate max-w-[120px] leading-tight text-black">
@@ -413,7 +416,12 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
                                             </span>
                                         </div>
                                     </div>
-                                    <span className="text-[7px] font-black text-black">EST. {info.eventDate ? new Date(info.eventDate).getFullYear() : ''}</span>
+                                    <div className="flex flex-col items-end gap-0.5">
+                                        <span className="text-[6px] font-black text-black leading-none">{info.eventDate ? new Date(info.eventDate).getFullYear() : ''}</span>
+                                        <div className="bg-white p-0.5 border border-black rounded-[1px]">
+                                            <QRCodeSVG value={qrData} size={28} level="L" />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Content Body */}
