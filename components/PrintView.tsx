@@ -386,8 +386,6 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
         <div className="grid grid-cols-2 gap-4">
             {data.map((item, idx) => {
                 const swimmer = item.swimmer;
-                const checkinUrl = `${window.location.origin}${window.location.pathname}?view=checkin&id=${swimmer.id}`;
-                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(checkinUrl)}`;
                 
                 return (
                     <div key={swimmer.id} className="page-break-inside-avoid border-2 border-black p-4 rounded-xl flex flex-col items-center bg-white shadow-sm relative overflow-hidden h-[300px]">
@@ -401,59 +399,55 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
                             <span className="text-[9px] font-bold text-gray-500 uppercase">{info.eventDate ? new Date(info.eventDate).getFullYear() : ''}</span>
                         </div>
 
-                        <div className="flex flex-1 w-full gap-4">
+                        <div className="flex flex-1 w-full gap-2">
                             <div className="flex-1 overflow-hidden">
                                 <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Nama Peserta</p>
-                                <p className="text-sm font-black uppercase text-text-primary mb-3 leading-tight truncate">{swimmer.name}</p>
+                                <p className="text-sm font-black uppercase text-text-primary mb-2 leading-tight truncate">{swimmer.name}</p>
                                 
                                 <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Klub / Tim</p>
-                                <p className="text-xs font-bold uppercase text-primary mb-3 truncate">{swimmer.club}</p>
+                                <p className="text-xs font-bold uppercase text-primary mb-2 truncate">{swimmer.club}</p>
                                 
-                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                <div className="grid grid-cols-2 gap-2 mt-1">
                                     <div>
                                         <p className="text-[7px] font-bold text-gray-400 uppercase">Tahun</p>
-                                        <p className="text-[10px] font-black">{swimmer.birthYear || '-'}</p>
+                                        <p className="text-[9px] font-black">{swimmer.birthYear || '-'}</p>
                                     </div>
                                     <div>
                                         <p className="text-[7px] font-bold text-gray-400 uppercase">KU</p>
-                                        <p className="text-[10px] font-black">{swimmer.ageGroup || '-'}</p>
+                                        <p className="text-[9px] font-black">{swimmer.ageGroup || '-'}</p>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div className="shrink-0 flex flex-col items-center justify-start gap-2">
-                                <div className="w-20 bg-gray-50 rounded p-1 border border-gray-200">
-                                    <img src={qrUrl} alt="QR Check-in" className="w-full h-auto" />
-                                    <p className="text-[5px] font-black mt-1 text-center text-gray-400 uppercase tracking-tighter leading-none">SCAN CEK-IN</p>
-                                </div>
-                                <div className="overflow-y-auto max-h-[85px] w-[140px] border border-gray-200 rounded">
-                                    <table className="w-full text-[6px] text-left">
-                                        <thead className="bg-gray-100 text-gray-600 sticky top-0">
-                                            <tr>
-                                                <th className="px-1 py-0.5 whitespace-nowrap overflow-hidden text-clip font-bold">Lomba</th>
-                                                <th className="px-1 py-0.5 whitespace-nowrap font-bold text-right">Seed Time</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {item.registeredEvents && item.registeredEvents.length > 0 ? (
-                                                item.registeredEvents.map((re: any, i: number) => (
-                                                    <tr key={i} className="border-t border-gray-100">
-                                                        <td className="px-1 py-0.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[80px]" title={re.name}>{re.name}</td>
-                                                        <td className="px-1 py-0.5 whitespace-nowrap text-right text-gray-500 font-mono">{re.time}</td>
-                                                    </tr>
-                                                ))
-                                            ) : (
-                                                <tr>
-                                                    <td colSpan={2} className="px-1 py-1 text-center text-gray-400 italic">Tidak ada lomba</td>
+                            <div className="flex-1 shrink-0 overflow-y-auto max-h-[170px] border border-gray-200 rounded">
+                                <table className="w-full text-[7px] text-left">
+                                    <thead className="bg-gray-100 text-gray-600 sticky top-0">
+                                        <tr className="border-b border-gray-200">
+                                            <th className="px-1 py-1 font-bold"># Gaya Lomba</th>
+                                            <th className="px-1 py-1 font-bold text-center w-8">Sesi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {item.registeredEvents && item.registeredEvents.length > 0 ? (
+                                            item.registeredEvents.map((re: any, i: number) => (
+                                                <tr key={i} className="border-t border-gray-100">
+                                                    <td className="px-1 py-1 overflow-hidden text-ellipsis whitespace-nowrap max-w-[110px]" title={re.name}>
+                                                        <span className="font-bold text-gray-500 mr-1">{re.no}.</span> {re.name}
+                                                    </td>
+                                                    <td className="px-1 py-1 text-center font-black text-primary">{re.session || '-'}</td>
                                                 </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={2} className="px-1 py-2 text-center text-gray-400 italic">Tidak ada lomba</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
-                        <div className="w-full mt-2 pt-2 border-t border-dashed border-gray-300 flex justify-between items-center text-[7px] font-bold text-gray-400 uppercase">
+                        <div className="w-full mt-2 pt-1 border-t border-dashed border-gray-300 flex justify-between items-center text-[7px] font-bold text-gray-400 uppercase">
                             <span>KARTU PESERTA RESMI</span>
                             <span>ID: {swimmer.id.slice(0, 8)}</span>
                         </div>
@@ -601,13 +595,13 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             .filter(s => s.birthYear !== 0)
             .sort((a, b) => a.name.localeCompare(b.name))
             .map(swimmer => {
-                const registeredEvents = events
+                const registeredEvents = baseEvents
                     .filter(e => e.entries.some(en => en.swimmerId === swimmer.id))
                     .map(e => {
-                        const entry = e.entries.find(en => en.swimmerId === swimmer.id);
                         return {
+                            no: e.globalEventNumber,
                             name: formatEventName(e),
-                            time: entry ? formatTime(entry.seedTime) : '99:99.99'
+                            session: e.sessionNumber
                         };
                     });
                 return { swimmer, registeredEvents };
