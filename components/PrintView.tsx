@@ -108,7 +108,7 @@ const PrintRecordRow: React.FC<{ record: SwimRecord | undefined; type: string; }
     return <p className="uppercase text-[8px] font-sans font-bold">{typeText} : {parts.join(' | ')}</p>;
 };
 
-const ScheduleReport: React.FC<{ events: ScheduledEvent[] }> = ({ events }) => {
+const ScheduleReport: React.FC<{ events: ScheduledEvent[], info: CompetitionInfo | null }> = ({ events, info }) => {
     const grouped = events.reduce((acc: Record<string, ScheduledEvent[]>, e) => {
         const session = `SESI ${romanize(e.sessionNumber || 0)}`;
         if (!acc[session]) acc[session] = [];
@@ -116,19 +116,21 @@ const ScheduleReport: React.FC<{ events: ScheduledEvent[] }> = ({ events }) => {
         return acc;
     }, {});
 
+    const lanes = info?.numberOfLanes || 8;
+
     return (
         <div className="space-y-6">
             {Object.entries(grouped).map(([session, sessionEvents]) => (
                 <div key={session} className="page-break-inside-avoid">
                     <h3 className="font-bold text-md border-b-2 border-black mb-2 uppercase">{session}</h3>
                     <table className="w-full text-[11px] border-collapse">
-                        <thead><tr className="border-b bg-gray-100"><th className="text-left py-1 px-2 w-12">NO</th><th className="text-left px-2">NOMOR LOMBA</th><th className="text-center w-24 px-2">PESERTA</th></tr></thead>
+                        <thead><tr className="border-b bg-gray-100"><th className="text-left py-1 px-2 w-12">NO</th><th className="text-left px-2">NOMOR LOMBA</th><th className="text-center w-24 px-2">JUMLAH SERI</th></tr></thead>
                         <tbody>
                             {sessionEvents.map(e => (
                                 <tr key={e.id} className="border-b border-gray-200">
                                     <td className="py-1 px-2 font-bold">{e.globalEventNumber}</td>
                                     <td className="px-2 font-medium">{formatEventName(e)}</td>
-                                    <td className="text-center px-2">{e.entries.length}</td>
+                                    <td className="text-center px-2">{Math.ceil((e.entries?.length || 0) / lanes)}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -180,7 +182,7 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
                                                     <td className="px-2 truncate font-medium uppercase">{ass ? ass.entry.swimmer.name : '-'}</td>
                                                     <td className="text-center">{ass ? ass.entry.swimmer.birthYear : '-'}</td>
                                                     <td className="px-2 truncate text-[9px] uppercase">{ass ? ass.entry.swimmer.club : '-'}</td>
-                                                    <td className="text-right font-mono px-2">{ass ? formatTime(ass.entry.seedTime) : '-'}</td>
+                                                    <td className="text-right font-mono text-black px-2">{ass ? formatTime(ass.entry.seedTime) : '-'}</td>
                                                 </tr>
                                             );
                                         })}
@@ -206,7 +208,7 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
                                             <td className="px-2 uppercase font-medium">{r.swimmer?.name}</td>
                                             <td className="text-center">{r.swimmer?.birthYear}</td>
                                             <td className="px-2 uppercase text-[9px]">{r.swimmer?.club}</td>
-                                            <td className="text-right font-mono px-2">{formatTime(r.time)}</td>
+                                            <td className="text-right font-mono text-black px-2">{formatTime(r.time)}</td>
                                             <td className="text-center scale-125"><MedalIcon rank={r.rank} /></td>
                                         </tr>
                                     ))}
@@ -400,9 +402,9 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
                         </div>
 
                         <div className="flex flex-1 w-full gap-4">
-                            <div className="flex-1">
+                            <div className="flex-1 overflow-hidden">
                                 <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Nama Peserta</p>
-                                <p className="text-sm font-black uppercase text-text-primary mb-3 leading-tight">{swimmer.name}</p>
+                                <p className="text-sm font-black uppercase text-text-primary mb-3 leading-tight truncate">{swimmer.name}</p>
                                 
                                 <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Klub / Tim</p>
                                 <p className="text-xs font-bold uppercase text-primary mb-3 truncate">{swimmer.club}</p>
@@ -419,9 +421,35 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
                                 </div>
                             </div>
                             
-                            <div className="w-24 flex flex-col items-center justify-center bg-gray-50 rounded-lg p-2 border border-gray-200">
-                                <img src={qrUrl} alt="QR Check-in" className="w-full h-auto" />
-                                <p className="text-[6px] font-black mt-1 text-center text-gray-400 uppercase tracking-tighter">SCAN UNTUK CEK-IN</p>
+                            <div className="shrink-0 flex flex-col items-center justify-start gap-2">
+                                <div className="w-20 bg-gray-50 rounded p-1 border border-gray-200">
+                                    <img src={qrUrl} alt="QR Check-in" className="w-full h-auto" />
+                                    <p className="text-[5px] font-black mt-1 text-center text-gray-400 uppercase tracking-tighter leading-none">SCAN CEK-IN</p>
+                                </div>
+                                <div className="overflow-y-auto max-h-[85px] w-[140px] border border-gray-200 rounded">
+                                    <table className="w-full text-[6px] text-left">
+                                        <thead className="bg-gray-100 text-gray-600 sticky top-0">
+                                            <tr>
+                                                <th className="px-1 py-0.5 whitespace-nowrap overflow-hidden text-clip font-bold">Lomba</th>
+                                                <th className="px-1 py-0.5 whitespace-nowrap font-bold text-right">Seed Time</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {item.registeredEvents && item.registeredEvents.length > 0 ? (
+                                                item.registeredEvents.map((re: any, i: number) => (
+                                                    <tr key={i} className="border-t border-gray-100">
+                                                        <td className="px-1 py-0.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[80px]" title={re.name}>{re.name}</td>
+                                                        <td className="px-1 py-0.5 whitespace-nowrap text-right text-gray-500 font-mono">{re.time}</td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={2} className="px-1 py-1 text-center text-gray-400 italic">Tidak ada lomba</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
 
@@ -756,7 +784,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             <div className="print-preview-content bg-white text-black p-2 min-h-screen">
                 <ReportHeader info={competitionInfo} title={reportTitles[reportType]} />
                 
-                {reportType === 'schedule' && <ScheduleReport events={baseEvents} />}
+                {reportType === 'schedule' && <ScheduleReport events={baseEvents} info={competitionInfo} />}
                 
                 {reportType === 'program' && (
                     <EventBaseReport 
