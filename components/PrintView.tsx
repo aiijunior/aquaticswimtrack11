@@ -416,12 +416,7 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex flex-col items-end gap-0.5">
-                                        <span className="text-[6px] font-black text-black leading-none">{info.eventDate ? new Date(info.eventDate).getFullYear() : ''}</span>
-                                        <div className="bg-white p-0.5 border border-black rounded-[1px]">
-                                            <QRCodeSVG value={qrData} size={28} level="L" />
-                                        </div>
-                                    </div>
+                                    <span className="text-[6px] font-black text-black leading-none">{info.eventDate ? new Date(info.eventDate).getFullYear() : ''}</span>
                                 </div>
 
                                 {/* Content Body */}
@@ -437,6 +432,13 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
                                             <div>
                                                 <p className="text-[5px] font-bold text-black uppercase tracking-tighter">KLUB / TIM</p>
                                                 <p className="text-[8px] font-bold uppercase text-black leading-tight line-clamp-2">{swimmer.club}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* QR Code in Middle of Left Column */}
+                                        <div className="flex justify-center my-1">
+                                            <div className="bg-white p-0.5 border border-black rounded-[1px] shadow-sm">
+                                                <QRCodeSVG value={qrData} size={36} level="L" />
                                             </div>
                                         </div>
                                         
