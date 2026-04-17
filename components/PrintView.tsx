@@ -103,7 +103,7 @@ const ReportHeader = ({ info, title }: { info: CompetitionInfo, title: string })
 
 const PrintRecordRow: React.FC<{ record: SwimRecord | undefined; type: string; }> = ({ record, type }) => {
     const typeText = type.toUpperCase() === 'PORPROV' ? 'REKOR PORPROV' : 'REKOR NASIONAL';
-    if (!record) return <p className="uppercase text-[8px] font-sans text-gray-400 font-bold">{typeText} : -</p>;
+    if (!record) return <p className="uppercase text-[8px] font-sans text-black font-bold">{typeText} : -</p>;
     const parts = [formatTime(record.time), record.holderName, record.yearSet, record.locationSet].filter(p => p != null && String(p).trim() !== '');
     return <p className="uppercase text-[8px] font-sans font-bold text-black">{typeText} : {parts.join(' | ')}</p>;
 };
@@ -262,7 +262,7 @@ const ClubSwimmerMedalsReport: React.FC<{ data: any[] }> = ({ data }) => (
                                     {swimmer.medals.map((m: any, mIdx: number) => (
                                         <div key={mIdx} className="flex gap-2 items-center">
                                             <MedalIcon rank={m.rank} />
-                                            <span className="font-medium uppercase">{m.eventName} - {formatTime(m.time)}</span>
+                                            <span className="font-medium uppercase text-black">{m.eventName} - {formatTime(m.time)}</span>
                                         </div>
                                     ))}
                                 </td>
