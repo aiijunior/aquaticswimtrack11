@@ -382,78 +382,87 @@ const OnlineRegistrationReport: React.FC<{ data: any[] }> = ({ data }) => (
 );
 
 const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> = ({ data, info }) => {
-    return (
-        <div className="grid grid-cols-2 gap-4">
-            {data.map((item, idx) => {
-                const swimmer = item.swimmer;
-                
-                return (
-                    <div key={swimmer.id} className="page-break-inside-avoid border-2 border-black p-4 rounded-xl flex flex-col items-center bg-white shadow-sm relative overflow-hidden h-[300px]">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-primary opacity-10 rounded-bl-[100px]" />
-                        
-                        <div className="w-full flex items-center justify-between border-b border-gray-300 pb-2 mb-3">
-                            <div className="flex items-center gap-2">
-                                {info.eventLogo && <img src={info.eventLogo} alt="Logo" className="h-8 object-contain" />}
-                                <span className="text-[10px] font-black uppercase tracking-tighter max-w-[120px] leading-none">{info.eventName.split('\n')[0]}</span>
-                            </div>
-                            <span className="text-[9px] font-bold text-gray-500 uppercase">{info.eventDate ? new Date(info.eventDate).getFullYear() : ''}</span>
-                        </div>
+    // Chunk data into groups of 6 to ensure 6 cards per page
+    const chunkedData = [];
+    for (let i = 0; i < data.length; i += 6) {
+        chunkedData.push(data.slice(i, i + 6));
+    }
 
-                        <div className="flex flex-1 w-full gap-2">
-                            <div className="flex-1 overflow-hidden">
-                                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Nama Peserta</p>
-                                <p className="text-sm font-black uppercase text-text-primary mb-2 leading-tight truncate">{swimmer.name}</p>
+    return (
+        <div className="space-y-0">
+            {chunkedData.map((chunk, pageIdx) => (
+                <div key={pageIdx} className={`grid grid-cols-2 gap-4 ${pageIdx < chunkedData.length - 1 ? 'break-after-page mb-8' : ''}`} style={{ minHeight: 'calc(100vh - 4cm)' }}>
+                    {chunk.map((item) => {
+                        const swimmer = item.swimmer;
+                        return (
+                            <div key={swimmer.id} className="border-2 border-black p-4 rounded-xl flex flex-col items-center bg-white shadow-sm relative overflow-hidden min-h-[300px] h-fit">
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-primary opacity-10 rounded-bl-[100px]" />
                                 
-                                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Klub / Tim</p>
-                                <p className="text-xs font-bold uppercase text-primary mb-2 truncate">{swimmer.club}</p>
-                                
-                                <div className="grid grid-cols-2 gap-2 mt-1">
-                                    <div>
-                                        <p className="text-[7px] font-bold text-gray-400 uppercase">Tahun</p>
-                                        <p className="text-[9px] font-black">{swimmer.birthYear || '-'}</p>
+                                <div className="w-full flex items-center justify-between border-b border-gray-300 pb-2 mb-3">
+                                    <div className="flex items-center gap-2">
+                                        {info.eventLogo && <img src={info.eventLogo} alt="Logo" className="h-8 object-contain" />}
+                                        <span className="text-[10px] font-black uppercase tracking-tighter max-w-[120px] leading-none">{info.eventName.split('\n')[0]}</span>
                                     </div>
-                                    <div>
-                                        <p className="text-[7px] font-bold text-gray-400 uppercase">KU</p>
-                                        <p className="text-[9px] font-black">{swimmer.ageGroup || '-'}</p>
+                                    <span className="text-[9px] font-bold text-gray-500 uppercase">{info.eventDate ? new Date(info.eventDate).getFullYear() : ''}</span>
+                                </div>
+
+                                <div className="flex flex-1 w-full gap-2 overflow-hidden">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Nama Peserta</p>
+                                        <p className="text-sm font-black uppercase text-text-primary mb-2 leading-tight truncate">{swimmer.name}</p>
+                                        
+                                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Klub / Tim</p>
+                                        <p className="text-xs font-bold uppercase text-primary mb-2 truncate">{swimmer.club}</p>
+                                        
+                                        <div className="grid grid-cols-2 gap-2 mt-1">
+                                            <div>
+                                                <p className="text-[7px] font-bold text-gray-400 uppercase">Tahun</p>
+                                                <p className="text-[9px] font-black">{swimmer.birthYear || '-'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[7px] font-bold text-gray-400 uppercase">KU</p>
+                                                <p className="text-[9px] font-black">{swimmer.ageGroup || '-'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex-1 shrink-0 border border-gray-200 rounded overflow-hidden">
+                                        <table className="w-full text-[7px] text-left">
+                                            <thead className="bg-gray-100 text-gray-600">
+                                                <tr className="border-b border-gray-200">
+                                                    <th className="px-1 py-1 font-bold"># Gaya Lomba</th>
+                                                    <th className="px-1 py-1 font-bold text-center w-8">Sesi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {item.registeredEvents && item.registeredEvents.length > 0 ? (
+                                                    item.registeredEvents.map((re: any, i: number) => (
+                                                        <tr key={i} className="border-t border-gray-100">
+                                                            <td className="px-1 py-1 overflow-hidden text-ellipsis whitespace-nowrap max-w-[110px]" title={re.name}>
+                                                                <span className="font-bold text-gray-500 mr-1">{re.no}.</span> {re.name}
+                                                            </td>
+                                                            <td className="px-1 py-1 text-center font-black text-primary">{re.session || '-'}</td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={2} className="px-1 py-2 text-center text-gray-400 italic">Tidak ada lomba</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
-                            </div>
-                            
-                            <div className="flex-1 shrink-0 overflow-y-auto max-h-[170px] border border-gray-200 rounded">
-                                <table className="w-full text-[7px] text-left">
-                                    <thead className="bg-gray-100 text-gray-600 sticky top-0">
-                                        <tr className="border-b border-gray-200">
-                                            <th className="px-1 py-1 font-bold"># Gaya Lomba</th>
-                                            <th className="px-1 py-1 font-bold text-center w-8">Sesi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {item.registeredEvents && item.registeredEvents.length > 0 ? (
-                                            item.registeredEvents.map((re: any, i: number) => (
-                                                <tr key={i} className="border-t border-gray-100">
-                                                    <td className="px-1 py-1 overflow-hidden text-ellipsis whitespace-nowrap max-w-[110px]" title={re.name}>
-                                                        <span className="font-bold text-gray-500 mr-1">{re.no}.</span> {re.name}
-                                                    </td>
-                                                    <td className="px-1 py-1 text-center font-black text-primary">{re.session || '-'}</td>
-                                                </tr>
-                                            ))
-                                        ) : (
-                                            <tr>
-                                                <td colSpan={2} className="px-1 py-2 text-center text-gray-400 italic">Tidak ada lomba</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
 
-                        <div className="w-full mt-2 pt-1 border-t border-dashed border-gray-300 flex justify-between items-center text-[7px] font-bold text-gray-400 uppercase">
-                            <span>KARTU PESERTA RESMI</span>
-                            <span>ID: {swimmer.id.slice(0, 8)}</span>
-                        </div>
-                    </div>
-                );
-            })}
+                                <div className="w-full mt-2 pt-1 border-t border-dashed border-gray-300 flex justify-between items-center text-[7px] font-bold text-gray-400 uppercase">
+                                    <span>KARTU PESERTA RESMI</span>
+                                    <span>ID: {swimmer.id.slice(0, 8)}</span>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            ))}
         </div>
     );
 };
@@ -462,6 +471,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const [reportType, setReportType] = useState<ReportType>('schedule');
     const [records, setRecords] = useState<SwimRecord[]>([]);
     const [sessionFilter, setSessionFilter] = useState<number>(0);
+    const [nameFilter, setNameFilter] = useState<string>('');
     const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
     const { addNotification } = useNotification();
 
@@ -593,6 +603,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
 
         const registrationData = swimmers
             .filter(s => s.birthYear !== 0)
+            .filter(s => !nameFilter || s.name.toLowerCase().includes(nameFilter.toLowerCase()))
             .sort((a, b) => a.name.localeCompare(b.name))
             .map(swimmer => {
                 const registeredEvents = baseEvents
@@ -733,6 +744,35 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                                 {availableSessions.map(s => <option key={s} value={s}>SESI {romanize(s)}</option>)}
                             </select>
                         </div>
+
+                        {reportType === 'participantCards' && (
+                            <div className="md:col-span-2">
+                                <label className="block text-xs font-black uppercase text-text-secondary mb-1">Cari Nama Atlet</label>
+                                <div className="relative">
+                                    <Input 
+                                        placeholder="Ketik nama lengkap atau panggilan..." 
+                                        value={nameFilter} 
+                                        onChange={(e) => setNameFilter(e.target.value)}
+                                        className="pl-10"
+                                    />
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                    </div>
+                                    {nameFilter && (
+                                        <button 
+                                            onClick={() => setNameFilter('')}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {['program', 'results'].includes(reportType) && (
