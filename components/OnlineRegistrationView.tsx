@@ -135,6 +135,12 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
+        
+        // Reset selected events when ageGroup or gender changes to prevent mismatch
+        if (name === 'ageGroup' || name === 'gender') {
+            setSelectedEvents({});
+        }
+
         setFormData(prev => ({ ...prev, [name]: (name === 'name' || name === 'club') ? toTitleCase(value) : value }));
     };
 
