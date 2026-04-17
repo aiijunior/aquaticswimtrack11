@@ -105,7 +105,7 @@ const PrintRecordRow: React.FC<{ record: SwimRecord | undefined; type: string; }
     const typeText = type.toUpperCase() === 'PORPROV' ? 'REKOR PORPROV' : 'REKOR NASIONAL';
     if (!record) return <p className="uppercase text-[8px] font-sans text-gray-400 font-bold">{typeText} : -</p>;
     const parts = [formatTime(record.time), record.holderName, record.yearSet, record.locationSet].filter(p => p != null && String(p).trim() !== '');
-    return <p className="uppercase text-[8px] font-sans font-bold">{typeText} : {parts.join(' | ')}</p>;
+    return <p className="uppercase text-[8px] font-sans font-bold text-black">{typeText} : {parts.join(' | ')}</p>;
 };
 
 const ScheduleReport: React.FC<{ events: ScheduledEvent[], info: CompetitionInfo | null }> = ({ events, info }) => {
@@ -151,7 +151,7 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
                 <div key={event.id} className="page-break-inside-avoid border-b-2 border-gray-400 pb-4">
                     <div className="bg-gray-200 text-black border-y-2 border-black p-1 px-2 font-bold text-xs flex justify-between uppercase">
                         <span>Acara {event.globalEventNumber} - {formatEventName(event)}</span>
-                        {event.estimatedEventStartTime && !showResults && <span>Waktu Perlombaan : {formatEST(event.estimatedEventStartTime)}</span>}
+                        {event.estimatedEventStartTime && !showResults && <span className="text-black">Waktu Perlombaan : {formatEST(event.estimatedEventStartTime)}</span>}
                     </div>
                     <div className="my-1 px-2 border-l-2 border-black bg-gray-50 py-1">
                         <PrintRecordRow record={porprov} type="PORPROV" />
@@ -161,9 +161,9 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
                     {!showResults ? (
                         (event.heatsWithTimes || []).map((heat: any) => (
                             <div key={heat.heatNumber} className="mt-2">
-                                <p className="text-center font-bold text-[9px] uppercase bg-gray-200 py-0.5">
+                                <p className="text-center font-bold text-[9px] uppercase bg-gray-200 py-0.5 text-black">
                                     Seri {heat.heatNumber} dari {event.heatsWithTimes?.length} 
-                                    {heat.estimatedHeatStartTime && <span className="ml-2">— EST: {formatEST(heat.estimatedHeatStartTime)}</span>}
+                                    {heat.estimatedHeatStartTime && <span className="ml-2 text-black">— EST: {formatEST(heat.estimatedHeatStartTime)}</span>}
                                 </p>
                                 <table className="w-full text-[10px] mt-0.5 border-collapse table-fixed">
                                     <thead><tr className="border-y border-black font-bold bg-gray-100">
@@ -389,64 +389,83 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
     }
 
     return (
-        <div className="space-y-0">
+        <div className="space-y-0 text-black">
             {chunkedData.map((chunk, pageIdx) => (
-                <div key={pageIdx} className={`grid grid-cols-2 gap-4 ${pageIdx < chunkedData.length - 1 ? 'break-after-page mb-8' : ''}`} style={{ minHeight: 'calc(100vh - 4cm)' }}>
+                <div key={pageIdx} className={`grid grid-cols-2 gap-x-2 gap-y-4 ${pageIdx < chunkedData.length - 1 ? 'break-after-page' : ''}`} style={{ padding: '0.5cm' }}>
                     {chunk.map((item) => {
                         const swimmer = item.swimmer;
                         return (
-                            <div key={swimmer.id} className="border-2 border-black p-4 rounded-xl flex flex-col items-center bg-white shadow-sm relative overflow-hidden min-h-[300px] h-fit">
-                                <div className="absolute top-0 right-0 w-24 h-24 bg-primary opacity-10 rounded-bl-[100px]" />
+                            <div 
+                                key={swimmer.id} 
+                                className="border border-black rounded-lg flex flex-col bg-white relative overflow-hidden box-border"
+                                style={{ width: '105mm', height: '80mm', padding: '5mm' }}
+                            >
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-primary opacity-5 rounded-bl-[50px]" />
                                 
-                                <div className="w-full flex items-center justify-between border-b border-gray-300 pb-2 mb-3">
-                                    <div className="flex items-center gap-2">
-                                        {info.eventLogo && <img src={info.eventLogo} alt="Logo" className="h-8 object-contain" />}
-                                        <span className="text-[10px] font-black uppercase tracking-tighter max-w-[120px] leading-none">{info.eventName.split('\n')[0]}</span>
+                                {/* Header */}
+                                <div className="w-full flex items-center justify-between border-b border-gray-200 pb-1 mb-1">
+                                    <div className="flex items-center gap-1.5">
+                                        {info.eventLogo && <img src={info.eventLogo} alt="Logo" className="h-5 object-contain" />}
+                                        <div className="flex flex-col">
+                                            <span className="text-[7px] font-black uppercase tracking-tight leading-none text-primary">KARTU PESERTA RESMI</span>
+                                            <span className="text-[6px] font-bold uppercase truncate max-w-[120px] leading-tight text-gray-400">
+                                                {info.eventName.split('\n')[0]}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <span className="text-[9px] font-bold text-gray-500 uppercase">{info.eventDate ? new Date(info.eventDate).getFullYear() : ''}</span>
+                                    <span className="text-[7px] font-black text-gray-300">EST. {info.eventDate ? new Date(info.eventDate).getFullYear() : ''}</span>
                                 </div>
 
-                                <div className="flex flex-1 w-full gap-2 overflow-hidden">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Nama Peserta</p>
-                                        <p className="text-sm font-black uppercase text-text-primary mb-2 leading-tight truncate">{swimmer.name}</p>
-                                        
-                                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Klub / Tim</p>
-                                        <p className="text-xs font-bold uppercase text-primary mb-2 truncate">{swimmer.club}</p>
-                                        
-                                        <div className="grid grid-cols-2 gap-2 mt-1">
+                                {/* Content Body */}
+                                <div className="flex flex-1 w-full gap-2 min-h-0 overflow-hidden">
+                                    {/* Swimmer Info - Left Column */}
+                                    <div className="flex-[0.7] flex flex-col justify-between overflow-hidden">
+                                        <div className="space-y-1.5">
                                             <div>
-                                                <p className="text-[7px] font-bold text-gray-400 uppercase">Tahun</p>
-                                                <p className="text-[9px] font-black">{swimmer.birthYear || '-'}</p>
+                                                <p className="text-[5px] font-bold text-gray-400 uppercase tracking-tighter">NAMA PESERTA</p>
+                                                <p className="text-[10px] font-black uppercase text-black leading-tight line-clamp-2">{swimmer.name}</p>
+                                            </div>
+                                            
+                                            <div>
+                                                <p className="text-[5px] font-bold text-gray-400 uppercase tracking-tighter">KLUB / TIM</p>
+                                                <p className="text-[8px] font-bold uppercase text-primary leading-tight line-clamp-2">{swimmer.club}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-1 mt-auto pb-1">
+                                            <div>
+                                                <p className="text-[5px] font-bold text-gray-400 uppercase">TAHUN</p>
+                                                <p className="text-[8px] font-black">{swimmer.birthYear || '-'}</p>
                                             </div>
                                             <div>
-                                                <p className="text-[7px] font-bold text-gray-400 uppercase">KU</p>
-                                                <p className="text-[9px] font-black">{swimmer.ageGroup || '-'}</p>
+                                                <p className="text-[5px] font-bold text-gray-400 uppercase">K.U</p>
+                                                <p className="text-[8px] font-black">{swimmer.ageGroup || '-'}</p>
                                             </div>
                                         </div>
                                     </div>
                                     
-                                    <div className="flex-1 shrink-0 border border-gray-200 rounded overflow-hidden">
-                                        <table className="w-full text-[7px] text-left">
+                                    {/* Events Table - Right Column */}
+                                    <div className="flex-1 border border-gray-100 rounded bg-gray-50/20 overflow-hidden">
+                                        <table className="w-full text-[6px] text-left">
                                             <thead className="bg-gray-100 text-gray-600">
                                                 <tr className="border-b border-gray-200">
-                                                    <th className="px-1 py-1 font-bold"># Gaya Lomba</th>
-                                                    <th className="px-1 py-1 font-bold text-center w-8">Sesi</th>
+                                                    <th className="px-1 py-0.5 font-bold uppercase tracking-tighter">NOMOR / GAYA LOMBA</th>
+                                                    <th className="px-0.5 py-0.5 font-bold text-center w-6 uppercase tracking-tighter">SESI</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {item.registeredEvents && item.registeredEvents.length > 0 ? (
                                                     item.registeredEvents.map((re: any, i: number) => (
                                                         <tr key={i} className="border-t border-gray-100">
-                                                            <td className="px-1 py-1 overflow-hidden text-ellipsis whitespace-nowrap max-w-[110px]" title={re.name}>
-                                                                <span className="font-bold text-gray-500 mr-1">{re.no}.</span> {re.name}
+                                                            <td className="px-1 py-0.5 overflow-hidden text-ellipsis whitespace-nowrap max-w-[90px]" title={re.name}>
+                                                                <span className="font-bold text-gray-400 mr-0.5">{re.no}.</span> {re.name}
                                                             </td>
-                                                            <td className="px-1 py-1 text-center font-black text-primary">{re.session || '-'}</td>
+                                                            <td className="px-0.5 py-0.5 text-center font-black text-primary">{re.session || '-'}</td>
                                                         </tr>
                                                     ))
                                                 ) : (
                                                     <tr>
-                                                        <td colSpan={2} className="px-1 py-2 text-center text-gray-400 italic">Tidak ada lomba</td>
+                                                        <td colSpan={2} className="px-1 py-1 text-center text-gray-400 italic">BELUM TERDAFTAR</td>
                                                     </tr>
                                                 )}
                                             </tbody>
@@ -454,9 +473,13 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
                                     </div>
                                 </div>
 
-                                <div className="w-full mt-2 pt-1 border-t border-dashed border-gray-300 flex justify-between items-center text-[7px] font-bold text-gray-400 uppercase">
-                                    <span>KARTU PESERTA RESMI</span>
-                                    <span>ID: {swimmer.id.slice(0, 8)}</span>
+                                {/* Footer */}
+                                <div className="w-full mt-1 pt-1 border-t border-dashed border-gray-200 flex justify-between items-center text-[5px] font-bold text-gray-400 uppercase">
+                                    <div className="flex items-center gap-1 text-[4px] tracking-tight">
+                                         <span className="text-primary tracking-widest font-black text-[5px]">R.E.A.C.T</span>
+                                         <span>OFFICIAL EVENT ID CARD - SECURE GEN</span>
+                                    </div>
+                                    <span>ID: {swimmer.id.slice(0, 8).toUpperCase()}</span>
                                 </div>
                             </div>
                         );
@@ -860,12 +883,12 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                         {processedData.broken.map((br, i) => (
                             <div key={i} className="p-4 border-2 border-black rounded bg-gray-50 flex justify-between items-center">
                                 <div>
-                                    <p className="font-black text-sm uppercase">{br.newEventName}</p>
-                                    <p className="text-lg font-black uppercase tracking-tight">{br.newHolder.name} ({br.newHolder.club})</p>
-                                    <p className="text-[10px] mt-1 font-bold italic text-red-600 uppercase">MEMECAHKAN REKOR {br.record.type} ({formatTime(br.record.time)} - {br.record.holderName})</p>
+                                    <p className="font-black text-sm uppercase text-black">{br.newEventName}</p>
+                                    <p className="text-lg font-black uppercase tracking-tight text-black">{br.newHolder.name} ({br.newHolder.club})</p>
+                                    <p className="text-[10px] mt-1 font-bold italic text-black uppercase">MEMECAHKAN REKOR {br.record.type} ({formatTime(br.record.time)} - {br.record.holderName})</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="font-mono text-3xl font-black">{formatTime(br.newTime)}</p>
+                                    <p className="font-mono text-3xl font-black text-black">{formatTime(br.newTime)}</p>
                                 </div>
                             </div>
                         ))}
