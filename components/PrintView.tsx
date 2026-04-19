@@ -436,9 +436,9 @@ const ParticipantCardsReport: React.FC<{ data: any[], info: CompetitionInfo }> =
                                         </div>
                                         
                                         {/* QR Code in Middle of Left Column */}
-                                        <div className="flex justify-center my-1">
-                                            <div className="bg-white p-0.5 border border-black rounded-[1px] shadow-sm">
-                                                <QRCodeSVG value={qrData} size={36} level="L" />
+                                        <div className="flex justify-center my-1.5">
+                                            <div className="bg-white p-1 border border-black rounded-[1px] shadow-sm">
+                                                <QRCodeSVG value={qrData} size={64} level="L" />
                                             </div>
                                         </div>
                                         
