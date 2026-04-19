@@ -241,14 +241,10 @@ SET event_name = EXCLUDED.event_name,
 
 ## Langkah Deployment Lengkap
 
-1.  **Supabase**: Jalankan SQL di atas pada menu SQL Editor untuk menyiapkan database.
-2.  **API Keys**: Ambil `Project URL` dan `Project API key (anon/public)` dari menu Project Settings > API di Supabase.
-3.  **Environment Variables**: Di platform deployment Anda (misal: Netlify, Vercel, atau AI Studio Settings), tambahkan variabel berikut:
-    - `VITE_SUPABASE_URL`: (Gunakan URL dari Supabase)
-    - `VITE_SUPABASE_ANON_KEY`: (Gunakan Anon Key dari Supabase)
-    - `VITE_SUPER_ADMIN_EMAIL`: (Tentukan email login super admin Anda)
-    - `VITE_SUPER_ADMIN_PASSWORD`: (Tentukan kata sandi super admin Anda)
-4.  **Konfigurasi Tambahan (Opsional)**: Anda juga dapat mengubah nilai-nilai ini secara langsung di file `config.ts`, namun penggunaan Environment Variables lebih disarankan untuk keamanan.
-5.  **Site URL**: Update Site URL di dasbor Supabase (**Authentication > URL Configuration**) agar sesuai dengan domain tempat aplikasi Anda dijalankan.
+1.  **Supabase**: Jalankan SQL di atas, ambil `URL` dan `Anon Key`.
+2.  **Konfigurasi**: Ubah nama `config.ts.txt` menjadi `config.ts` dan masukkan kredensial Supabase.
+3.  **Netlify**: Unggah kode ke GitHub, hubungkan ke Netlify.
+4.  **Environment Variables**: Tambahkan `SUPABASE_URL` dan `SUPABASE_SERVICE_KEY` di Netlify Dashboard.
+5.  **Site URL**: Update Site URL di dasbor Supabase (Authentication -> URL Configuration) agar sesuai dengan domain Netlify Anda.
 
 **Selamat Menggunakan R.E.A.C.T!** platform renang paling modern dan akurat untuk kompetisi Anda.

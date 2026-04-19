@@ -17,8 +17,8 @@ export const config = {
    * Found in your Supabase project's "Project Settings" > "API"
    */
   supabase: {
-    url: import.meta.env.VITE_SUPABASE_URL || "https://kbtyaxrddbcnkhlohlnn.supabase.co", // 👈 VITE_SUPABASE_URL
-    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtidHlheHJkZGJjbmtobG9obG5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5NjUwODYsImV4cCI6MjA3MDU0MTA4Nn0.jmi-2h7K-4Q3zGlqGSFwpGzp00MpWDZ1F9HLEKiHiS4", // 👈 VITE_SUPABASE_ANON_KEY
+    url: "https://kbtyaxrddbcnkhlohlnn.supabase.co", // 👈 VITE_SUPABASE_URL
+    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtidHlheHJkZGJjbmtobG9obG5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5NjUwODYsImV4cCI6MjA3MDU0MTA4Nn0.jmi-2h7K-4Q3zGlqGSFwpGzp00MpWDZ1F9HLEKiHiS4", // 👈 VITE_SUPABASE_ANON_KEY
   },
 
   /**
@@ -27,8 +27,8 @@ export const config = {
    * IMPORTANT: Use strong, unique credentials.
    */
   superAdmin: {
-    email: import.meta.env.VITE_SUPER_ADMIN_EMAIL || "muarifamir@sman11mks.com", // 👈 Change this for the super admin login
-    password: import.meta.env.VITE_SUPER_ADMIN_PASSWORD || "12345", // 👈 Change this for the super admin login
+    email: "muarifamir@sman11mks.com", // 👈 Change this for the super admin login
+    password: "12345", // 👈 Change this for the super admin login
   },
 
   /**
