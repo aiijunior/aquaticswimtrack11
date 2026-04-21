@@ -6,95 +6,112 @@ export const handler = async (event) => {
     if (!name) {
         return {
             statusCode: 400,
-            body: JSON.stringify({ message: 'Name parameter is required' })
+            headers: { 'Access-Control-Allow-Origin': '*' },
+            body: JSON.stringify({ message: 'Nama harus diisi' })
         };
     }
 
-    // Try both Vercel and Netlify paths since the target host is on Vercel
+    // Try multiple possible endpoints for getPublicData
     const candidates = [
         'https://reactswimsulsel.vercel.app/api/getPublicData',
-        'https://reactswimsulsel.vercel.app/.netlify/functions/getPublicData'
+        'https://reactswimsulsel.vercel.app/.netlify/functions/getPublicData',
+        'https://reactswimsulsel.vercel.app/getPublicData'
     ];
 
     let data = null;
-    let lastError = null;
+    let errorDetails = '';
 
     for (const url of candidates) {
         try {
-            const resp = await fetch(url, { timeout: 5000 });
+            const resp = await fetch(url, { 
+                timeout: 15000, // Increase to 15s for large DBs
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'application/json',
+                    'Referer': 'https://reactswimsulsel.vercel.app/'
+                }
+            });
             if (resp.ok) {
                 data = await resp.json();
                 break; 
+            } else {
+                errorDetails += `${url}: ${resp.status}; `;
             }
         } catch (e) {
-            lastError = e;
+            errorDetails += `${url}: ${e.message}; `;
         }
     }
 
     if (!data) {
         return {
-            statusCode: 500,
-            body: JSON.stringify({ message: 'Tidak dapat terhubung ke database Sulawesi Selatan. URL tidak valid atau server tujuan sedang sibuk.' })
+            statusCode: 502,
+            headers: { 'Access-Control-Allow-Origin': '*' },
+            body: JSON.stringify({ 
+                message: 'Database Sulawesi Selatan tidak merespons.',
+                details: errorDetails
+            })
         };
     }
 
     try {
-        const { swimmers, events } = data;
+        const swimmers = data.swimmers || [];
+        const events = data.events || [];
 
-        if (!swimmers || !Array.isArray(swimmers)) {
+        if (!Array.isArray(swimmers)) {
             return {
                 statusCode: 200,
+                headers: { 'Access-Control-Allow-Origin': '*' },
                 body: JSON.stringify({ swimmers: [] })
             };
         }
 
-        // Search with normalized names (remove extra spaces, case insensitive)
-        const searchTerms = name.toLowerCase().trim().split(/\s+/);
+        // Tokenize search name
+        const searchTerms = name.toLowerCase().trim().split(/\s+/).filter(t => t.length >= 2);
         
+        if (searchTerms.length === 0) {
+            return {
+                statusCode: 200,
+                headers: { 'Access-Control-Allow-Origin': '*' },
+                body: JSON.stringify({ swimmers: [] })
+            };
+        }
+
         const matchedSwimmers = swimmers.filter(s => {
             if (!s.name) return false;
             const swimmerName = s.name.toLowerCase();
-            // Swimmer name must contain ALL search terms for better accuracy
             return searchTerms.every(term => swimmerName.includes(term));
         });
-
-        if (matchedSwimmers.length === 0) {
-            return {
-                statusCode: 200,
-                body: JSON.stringify({ swimmers: [] })
-            };
-        }
 
         const result = matchedSwimmers.map(swimmer => {
             const swimmerTimes = [];
 
-            if (events && Array.isArray(events)) {
+            if (Array.isArray(events)) {
                 events.forEach(event => {
                     const results = event.results || [];
                     const swimmerResult = results.find(r => r.swimmerId === swimmer.id);
                     
                     if (swimmerResult) {
                         swimmerTimes.push({
-                            distance: event.distance,
+                            distance: parseInt(event.distance),
                             style: event.style,
                             gender: event.gender,
-                            time: swimmerResult.time
+                            time: parseInt(swimmerResult.time)
                         });
                     }
                 });
             }
 
-            const bestTimes = {};
+            const timesMap = new Map();
             swimmerTimes.forEach(t => {
                 const key = `${t.distance}_${t.style}_${t.gender}`;
-                if (!bestTimes[key] || t.time < bestTimes[key].time) {
-                    bestTimes[key] = t;
+                if (!timesMap.has(key) || t.time < timesMap.get(key).time) {
+                    timesMap.set(key, t);
                 }
             });
 
             return {
                 ...swimmer,
-                bestTimes: Object.values(bestTimes)
+                bestTimes: Array.from(timesMap.values())
             };
         });
 
@@ -109,6 +126,7 @@ export const handler = async (event) => {
     } catch (error) {
         return {
             statusCode: 500,
+            headers: { 'Access-Control-Allow-Origin': '*' },
             body: JSON.stringify({ message: error.message })
         };
     }

@@ -201,13 +201,17 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         
         extSwimmer.bestTimes.forEach((bt: any) => {
             // Find current competition event that matches external event distance/style/gender
+            // Flexible matching: check if styles match and distance matches
             const matchingEvent = localEvents.find(le => 
                 le.distance === bt.distance && 
                 le.style === bt.style && 
                 (le.gender === 'Mixed' || 
                  (extSwimmer.gender === 'Male' && le.gender === "Men's") || 
-                 (extSwimmer.gender === 'Female' && le.gender === "Women's")) &&
-                (!le.category || le.category === extSwimmer.ageGroup)
+                 (extSwimmer.gender === 'Female' && le.gender === "Women's"))
+                // Removal of strict ageGroup check here because KUs might be named differently
+                // but distance/style/gender is usually enough to identify the target event 
+                // within the context of the user's current selected KU.
+                && (!le.category || le.category === extSwimmer.ageGroup || formData.ageGroup === le.category)
             );
 
             if (matchingEvent) {
@@ -229,6 +233,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
         setSelectedEvents(newSelectedEvents);
         setShowExternalModal(false);
+        setSuccessMessage(`Berhasil memuat data ${extSwimmer.name}.`);
+        setTimeout(() => setSuccessMessage(''), 3000);
     };
 
     // Collective Registration Helpers
