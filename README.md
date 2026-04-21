@@ -18,38 +18,40 @@ R.E.A.C.T adalah platform modern, real-time, dan komprehensif untuk manajemen ko
 ---
 ## Pembaruan Aplikasi (Changelog)
 
-### **Versi 1.2.0 (Pembaruan Terkini): Pendaftaran Kolektif & Manajemen Biaya**
-*Tanggal Rilis: Maret 2024*
+### **Versi 1.2.6 (Pembaruan Terkini): Integrasi Database Regional**
+*Tanggal Rilis: April 2024*
 
-Pembaruan besar ini menghadirkan sistem pendaftaran yang jauh lebih profesional dan akuntabel.
+Pembaruan ini mempermudah pendaftar dengan mengintegrasikan data dari database kompetisi regional lainnya.
 
-- **Fitur Baru: Pendaftaran Kolektif (Team Mode)**
-  - **Excel Pintar**: Admin menyediakan template Excel yang sudah terisi otomatis dengan daftar KU dan Nomor Lomba yang tersedia. Klub tinggal mengisi data atlet dan mengunggahnya.
-  - **Kontak PIC**: Menambahkan kolom **Nama PIC** dan **Nomor HP/WA Aktif** untuk memudahkan panitia menghubungi pendaftar jika terjadi masalah data/pembayaran.
-  
-- **Fitur Baru: Manajemen Pembayaran**
-  - **Mode Gratis/Berbayar**: Jika Admin memilih mode "GRATIS", seluruh formulir pendaftaran online akan menyembunyikan instruksi pembayaran secara otomatis.
-  - **Verifikasi Bukti Bayar**: Jika "BERBAYAR", pendaftar wajib mengunggah foto bukti transfer dan memasukkan nominal sesuai yang dibayarkan.
-  - **Detail Rekening**: Pengaturan Nama Penerima dan Nomor Rekening dapat diatur langsung di menu Pengaturan Acara.
+- **Fitur Baru: Pencarian Atlet Eksternal (Database Sulsel)**
+  - **Auto-Fill Data**: Pendaftar cukup memasukkan nama atlet dan mencari di database Sulawesi Selatan. Sistem akan menarik data Nama, Tahun Lahir, Jenis Kelamin, dan Klub secara otomatis.
+  - **Sinkronisasi Waktu Terbaik (Best Times)**: Mengambil catatan waktu terbaik atlet dari event-event sebelumnya untuk mengisi kolom *Seed Time* secara otomatis, mengurangi kesalahan input manual.
+  - **Proxy Server Aman**: Pencarian dilakukan melalui Netlify Function untuk menjamin keamanan dan performa.
+
+- **Peningkatan Visual: Tabel Hasil Lomba**
+  - Perbaikan kontras warna pada kolom waktu dan hasil agar tercetak lebih tajam baik dalam mode terang maupun gelap.
 
 ---
 ## Tindakan yang Diperlukan
 
 ### **1. Untuk Pengguna Baru**
-Jalankan skrip SQL lengkap di bawah ini pada menu **SQL Editor** di dasbor Supabase Anda untuk membuat struktur database yang sudah lengkap dengan semua fitur terbaru.
+Jalankan skrip SQL lengkap yang tersedia di file `schema.sql` atau salin dari bagian di bawah ini pada menu **SQL Editor** di dasbor Supabase Anda.
 
 ### **2. Untuk Pengguna Lama (Migrasi)**
-Skrip di bawah sekarang menyertakan perintah `ALTER TABLE` yang secara otomatis menambahkan kolom baru jika belum ada. Anda dapat menjalankan seluruh skrip ini tanpa khawatir merusak data lama.
+Gunakan menu **SQL Editor** di dalam aplikasi untuk mendapatkan perintah `ALTER TABLE` spesifik guna mengaktifkan fitur terbaru (Cek-in, Pembayaran, PIC) tanpa merusak data yang sudah ada.
 
 ---
 
 ## Panduan Instalasi Database (Supabase)
 
 ### Langkah 1: Jalankan Skema SQL Lengkap
-Buka **SQL Editor** di Supabase, buat **New Query**, lalu salin dan jalankan skrip ini secara menyeluruh:
+Buka **SQL Editor** di Supabase, buat **New Query**, lalu salin dan jalankan skrip ini (atau ambil dari file `schema.sql` di root proyek):
 
 ```sql
--- 1. Create custom types for enums (Safe Execution)
+-- Seluruh skrip SQL di bawah ini bersifat Idempotent (Aman dijalankan berulang kali)
+-- Menggunakan klausa IF NOT EXISTS untuk mencegah error pada database yang sudah ada.
+
+-- 1. Create custom types for enums
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'swim_style') THEN
         CREATE TYPE public.swim_style AS ENUM ('Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Medley', 'Papan Luncur');
@@ -85,11 +87,12 @@ CREATE TABLE IF NOT EXISTS public.competition_info (
     fee_per_event integer DEFAULT 0
 );
 
--- MIGRASI: Pastikan kolom baru ada jika tabel sudah pernah dibuat sebelumnya
+-- MIGRASI (competition_info)
 ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS is_free boolean DEFAULT true;
 ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS recipient_name text;
 ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS account_number text;
 ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS fee_per_event integer DEFAULT 0;
+ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS age_groups text;
 
 -- 3. Table for Swimmers
 CREATE TABLE IF NOT EXISTS public.swimmers (
@@ -105,7 +108,7 @@ CREATE TABLE IF NOT EXISTS public.swimmers (
     pic_phone text
 );
 
--- MIGRASI: Pastikan kolom baru ada jika tabel sudah pernah dibuat sebelumnya
+-- MIGRASI (swimmers)
 ALTER TABLE public.swimmers ADD COLUMN IF NOT EXISTS payment_proof text;
 ALTER TABLE public.swimmers ADD COLUMN IF NOT EXISTS payment_amount integer;
 ALTER TABLE public.swimmers ADD COLUMN IF NOT EXISTS pic_name text;
@@ -129,8 +132,12 @@ CREATE TABLE IF NOT EXISTS public.event_entries (
     event_id uuid NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
     swimmer_id uuid NOT NULL REFERENCES public.swimmers(id) ON DELETE CASCADE,
     seed_time bigint NOT NULL,
+    checked_in BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (event_id, swimmer_id)
 );
+
+-- MIGRASI (event_entries)
+ALTER TABLE public.event_entries ADD COLUMN IF NOT EXISTS checked_in BOOLEAN DEFAULT FALSE;
 
 -- 6. Table for Event Results
 CREATE TABLE IF NOT EXISTS public.event_results (
@@ -172,7 +179,7 @@ ALTER TABLE public.records ENABLE ROW LEVEL SECURITY;
 
 -- 10. Policies with existence check (Idempotent)
 DO $$ BEGIN
-    -- Public Read Policies
+    -- Public Read
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access' AND tablename = 'competition_info') THEN
         CREATE POLICY "Public read access" ON public.competition_info FOR SELECT USING (true);
     END IF;
@@ -192,7 +199,7 @@ DO $$ BEGIN
         CREATE POLICY "Public read access" ON public.records FOR SELECT USING (true);
     END IF;
 
-    -- Admin Full Access Policies
+    -- Admin Full Access
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admin full access' AND tablename = 'competition_info') THEN
         CREATE POLICY "Admin full access" ON public.competition_info FOR ALL USING (auth.role() = 'authenticated');
     END IF;
@@ -223,7 +230,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 12. Fix Trigger Existence Error (Drop if exists then create)
+-- 12. Fix Trigger
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users

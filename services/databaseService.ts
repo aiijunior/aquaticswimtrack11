@@ -514,6 +514,17 @@ export const processCollectiveRegistration = async (
     }
 };
 
+export const searchExternalSwimmer = async (name: string): Promise<any> => {
+    try {
+        const response = await fetch(`/.netlify/functions/searchExternalSwimmer?name=${encodeURIComponent(name)}`);
+        if (!response.ok) throw new Error('Gagal mencari data atlet eksternal');
+        return await response.json();
+    } catch (error) {
+        console.error('Error searching external swimmer:', error);
+        return { swimmers: [] };
+    }
+};
+
 export const getUsers = async (): Promise<User[]> => { 
     const { data, error } = await supabase.from('users').select('*'); 
     if (error) throw error; 

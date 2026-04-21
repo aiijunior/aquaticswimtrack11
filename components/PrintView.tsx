@@ -681,7 +681,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             broken,
             registrationData
         };
-    }, [renderEvents, baseEvents, swimmers, competitionInfo, records, events]);
+    }, [renderEvents, baseEvents, swimmers, competitionInfo, records, events, nameFilter]);
 
 
     const handleExportExcel = () => {
