@@ -10,21 +10,53 @@ export const handler = async (event) => {
         };
     }
 
-    const EXTERNAL_URL = 'https://reactswimsulsel.vercel.app/.netlify/functions/getPublicData';
+    // Try both Vercel and Netlify paths since the target host is on Vercel
+    const candidates = [
+        'https://reactswimsulsel.vercel.app/api/getPublicData',
+        'https://reactswimsulsel.vercel.app/.netlify/functions/getPublicData'
+    ];
+
+    let data = null;
+    let lastError = null;
+
+    for (const url of candidates) {
+        try {
+            const resp = await fetch(url, { timeout: 5000 });
+            if (resp.ok) {
+                data = await resp.json();
+                break; 
+            }
+        } catch (e) {
+            lastError = e;
+        }
+    }
+
+    if (!data) {
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ message: 'Tidak dapat terhubung ke database Sulawesi Selatan. URL tidak valid atau server tujuan sedang sibuk.' })
+        };
+    }
 
     try {
-        const response = await fetch(EXTERNAL_URL);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch from external source: ${response.statusText}`);
-        }
-
-        const data = await response.json();
         const { swimmers, events } = data;
 
-        // Find matches for the name (case insensitive)
-        const matchedSwimmers = swimmers.filter(s => 
-            s.name.toLowerCase().includes(name.toLowerCase())
-        );
+        if (!swimmers || !Array.isArray(swimmers)) {
+            return {
+                statusCode: 200,
+                body: JSON.stringify({ swimmers: [] })
+            };
+        }
+
+        // Search with normalized names (remove extra spaces, case insensitive)
+        const searchTerms = name.toLowerCase().trim().split(/\s+/);
+        
+        const matchedSwimmers = swimmers.filter(s => {
+            if (!s.name) return false;
+            const swimmerName = s.name.toLowerCase();
+            // Swimmer name must contain ALL search terms for better accuracy
+            return searchTerms.every(term => swimmerName.includes(term));
+        });
 
         if (matchedSwimmers.length === 0) {
             return {
@@ -33,25 +65,25 @@ export const handler = async (event) => {
             };
         }
 
-        // For each matched swimmer, gather their best times
         const result = matchedSwimmers.map(swimmer => {
             const swimmerTimes = [];
 
-            events.forEach(event => {
-                const results = event.results || [];
-                const swimmerResult = results.find(r => r.swimmerId === swimmer.id);
-                
-                if (swimmerResult) {
-                    swimmerTimes.push({
-                        distance: event.distance,
-                        style: event.style,
-                        gender: event.gender,
-                        time: swimmerResult.time
-                    });
-                }
-            });
+            if (events && Array.isArray(events)) {
+                events.forEach(event => {
+                    const results = event.results || [];
+                    const swimmerResult = results.find(r => r.swimmerId === swimmer.id);
+                    
+                    if (swimmerResult) {
+                        swimmerTimes.push({
+                            distance: event.distance,
+                            style: event.style,
+                            gender: event.gender,
+                            time: swimmerResult.time
+                        });
+                    }
+                });
+            }
 
-            // Keep only the best time per distance/style/gender
             const bestTimes = {};
             swimmerTimes.forEach(t => {
                 const key = `${t.distance}_${t.style}_${t.gender}`;
@@ -75,7 +107,6 @@ export const handler = async (event) => {
             body: JSON.stringify({ swimmers: result })
         };
     } catch (error) {
-        console.error('Error searching external swimmer:', error);
         return {
             statusCode: 500,
             body: JSON.stringify({ message: error.message })
