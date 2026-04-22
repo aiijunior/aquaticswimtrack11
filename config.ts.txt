@@ -18,8 +18,8 @@ export const config = {
    * Found in your Supabase project's "Project Settings" > "API"
    */
   supabase: {
-    url: "https://qavjlgwxcsnjyeenluuj.supabase.co", // 👈 Paste your Supabase URL here. E.g., "https://xyz.supabase.co"
-    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdmpsZ3d4Y3NuanllZW5sdXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MjE3OTgsImV4cCI6MjA4NzI5Nzc5OH0.SMFR1aXvG8yBolgXi5VXO8kwbY-p0402jN02M27zPy4", // 👈 Paste your Supabase anon key here.
+    url: "YOUR_SUPABASE_URL_HERE", // 👈 Paste your Supabase URL here. E.g., "https://xyz.supabase.co"
+    anonKey: "YOUR_SUPABASE_ANON_KEY_HERE", // 👈 Paste your Supabase anon key here.
   },
 
   /**

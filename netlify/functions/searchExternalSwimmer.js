@@ -37,52 +37,63 @@ export const handler = async (event) => {
 
         const result = await resp.json();
         
-        // Menangani struktur { success, data } sesuai format baru
+        // Menangani struktur { success, data } sesuai contoh Anda
+        // Namun tetap berjaga-jaga jika strukturnya adalah { swimmers, events, records }
         let swimmers = [];
+        let events = [];
+
         if (result.success && Array.isArray(result.data)) {
-            swimmers = result.data.map(s => ({
-                id: s.id,
-                name: s.name,
-                club: s.club,
-                birthYear: s.year, // Map year -> birthYear
-                gender: s.gender,
-                bestTimes: s.personal_bests || []
-            }));
+            // Struktur sesuai contoh Anda
+            swimmers = result.data;
+            // Jika dalam struktur ini tidak ada data events, kita mungkin hanya dapat data profil
+            events = result.events || []; 
         } else {
-            // Fallback ke struktur lama jika perlu
-            const rawSwimmers = result.swimmers || [];
-            const events = result.events || [];
-            
-            swimmers = rawSwimmers.map(swimmer => {
-                const swimmerTimes = [];
-                if (Array.isArray(events)) {
-                    events.forEach(event => {
-                        const eventResults = event.results || [];
-                        const swimmerResult = eventResults.find(r => r.swimmerId === swimmer.id);
-                        if (swimmerResult && swimmerResult.time > 0) {
-                            swimmerTimes.push({
-                                distance: parseInt(event.distance) || 0,
-                                style: event.style,
-                                gender: event.gender,
-                                time: parseInt(swimmerResult.time)
-                            });
-                        }
-                    });
-                }
-                const bestTimesMap = {};
-                swimmerTimes.forEach(t => {
-                    const key = `${t.distance}_${t.style}_${t.gender}`;
-                    if (!bestTimesMap[key] || t.time < bestTimesMap[key].time) {
-                        bestTimesMap[key] = t;
+            // Struktur standar R.E.A.C.T
+            swimmers = result.swimmers || [];
+            events = result.events || [];
+        }
+
+        // Jika pencarian dilakukan di server tujuan, kita tidak perlu filter manual lagi
+        // Kecuali jika server tujuan mengembalikan semua data dan mengabaikan parameter name
+        const matchedSwimmers = swimmers.filter(s => {
+            if (!s.name) return false;
+            return s.name.toLowerCase().includes(name.toLowerCase());
+        });
+
+        // Map data untuk mengambil "Best Times" (Catatan Waktu Terbaik)
+        const finalResults = matchedSwimmers.map(swimmer => {
+            const swimmerTimes = [];
+
+            if (Array.isArray(events)) {
+                events.forEach(event => {
+                    const eventResults = event.results || [];
+                    const swimmerResult = eventResults.find(r => r.swimmerId === swimmer.id);
+                    
+                    if (swimmerResult && swimmerResult.time > 0) {
+                        swimmerTimes.push({
+                            distance: parseInt(event.distance) || 0,
+                            style: event.style,
+                            gender: event.gender,
+                            time: parseInt(swimmerResult.time)
+                        });
                     }
                 });
-                return {
-                    ...swimmer,
-                    birthYear: swimmer.birthYear || swimmer.year,
-                    bestTimes: Object.values(bestTimesMap)
-                };
+            }
+
+            // Ringkas menjadi waktu terbaik per kategori
+            const bestTimesMap = {};
+            swimmerTimes.forEach(t => {
+                const key = `${t.distance}_${t.style}_${t.gender}`;
+                if (!bestTimesMap[key] || t.time < bestTimesMap[key].time) {
+                    bestTimesMap[key] = t;
+                }
             });
-        }
+
+            return {
+                ...swimmer,
+                bestTimes: Object.values(bestTimesMap)
+            };
+        });
 
         return {
             statusCode: 200,
@@ -91,8 +102,8 @@ export const handler = async (event) => {
                 'Access-Control-Allow-Origin': '*'
             },
             body: JSON.stringify({ 
-                swimmers: swimmers,
-                count: swimmers.length,
+                swimmers: finalResults,
+                count: finalResults.length,
                 success: true
             })
         };

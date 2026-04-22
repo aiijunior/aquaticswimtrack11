@@ -1,103 +1,112 @@
-/**
- * FILE: netlify/functions/getPublicData.js
- * 
- * PETUNJUK:
- * 1. Salin file ini ke folder 'netlify/functions' di proyek Netlify Anda.
- * 2. Pastikan Anda sudah menginstal @supabase/supabase-js di proyek Netlify Anda (npm install @supabase/supabase-js).
- * 3. Tambahkan variable berikut di Environment Variables Netlify:
- *    - SUPABASE_URL: (Gunakan URL Supabase dari aplikasi ini)
- *    - SUPABASE_ANON_KEY: (Gunakan Anon Key Supabase dari aplikasi ini)
- */
+import { createClient } from '@supabase/supabase-js';
 
-const { createClient } = require('@supabase/supabase-js');
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-exports.handler = async (event, context) => {
-  // Aktifkan CORS agar bisa dipanggil dari frontend mana saja
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTION',
-    'Content-Type': 'application/json'
-  };
+let supabaseAdmin;
+if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+  supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+}
 
-  // Handle preflight request
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers };
-  }
+// Helper functions to map DB schema to app types (camelCase)
+const toCompetitionInfo = (data) => (data ? {
+    eventName: data.event_name,
+    eventDate: data.event_date,
+    eventLogo: data.event_logo,
+    sponsorLogo: data.sponsor_logo,
+    isRegistrationOpen: data.is_registration_open,
+    numberOfLanes: data.number_of_lanes,
+    registrationDeadline: data.registration_deadline,
+    ageGroups: data.age_groups,
+    isFree: data.is_free,
+    recipientName: data.recipient_name,
+    accountNumber: data.account_number,
+    feePerEvent: data.fee_per_event
+} : null);
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const toSwimmer = (data) => ({
+    id: data.id,
+    name: data.name,
+    birthYear: data.birth_year,
+    gender: data.gender,
+    club: data.club,
+    ageGroup: data.age_group,
+});
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'Supabase credentials are missing.' })
-    };
-  }
+const toEventEntry = (data) => ({
+    swimmerId: data.swimmer_id,
+    seed_time: data.seed_time
+});
 
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
-  const { name, id, club } = event.queryStringParameters || {};
+const toResult = (data) => ({
+    swimmerId: data.swimmer_id,
+    time: data.time
+});
 
-  try {
-    // Query data atlet dan hasil lombanya
-    let query = supabase
-      .from('swimmers')
-      .select('*, results:event_results(*, event:events(*))');
+const toSwimEvent = (data) => ({
+    id: data.id,
+    distance: data.distance,
+    style: data.style,
+    gender: data.gender,
+    sessionNumber: data.session_number,
+    heatOrder: data.heat_order,
+    sessionDateTime: data.session_date_time,
+    relayLegs: data.relay_legs,
+    category: data.category,
+    entries: data.event_entries?.map(toEventEntry) || [],
+    results: data.event_results?.map(toResult) || []
+});
 
-    if (id) {
-      query = query.eq('id', id);
-    } else if (name) {
-      query = query.ilike('name', `%${name}%`);
+const toRecord = (data) => ({
+    id: data.id,
+    type: data.type,
+    gender: data.gender,
+    distance: data.distance,
+    style: data.style,
+    time: data.time,
+    holderName: data.holder_name,
+    yearSet: data.year_set,
+    locationSet: data.location_set,
+    relayLegs: data.relay_legs,
+    category: data.category
+});
+
+export const handler = async (event) => {
+    if (event.httpMethod !== 'GET') {
+        return { statusCode: 405, body: JSON.stringify({ message: 'Method Not Allowed' }) };
     }
-    
-    if (club) {
-      query = query.ilike('club', `%${club}%`);
+    if (!supabaseAdmin) {
+        return { statusCode: 500, body: JSON.stringify({ message: 'Database configuration error on server.' }) };
     }
 
-    const { data, error } = await query;
+    try {
+        const [infoRes, swimmersRes, eventsRes, recordsRes] = await Promise.all([
+            supabaseAdmin.from('competition_info').select('*').eq('id', 1).single(),
+            supabaseAdmin.from('swimmers').select('*'),
+            supabaseAdmin.from('events').select('*, event_entries(*), event_results(*)').order('session_number').order('heat_order'),
+            supabaseAdmin.from('records').select('*')
+        ]);
 
-    if (error) throw error;
+        if (infoRes.error && infoRes.error.code !== 'PGRST116') throw infoRes.error; // Ignore "No rows found" for info
+        if (swimmersRes.error) throw swimmersRes.error;
+        if (eventsRes.error) throw eventsRes.error;
+        if (recordsRes.error) throw recordsRes.error;
 
-    // Format data agar lebih "bersih" untuk aplikasi pendaftaran
-    const formattedData = (data || []).map(swimmer => {
-      const pbs = {};
-      swimmer.results?.forEach(r => {
-        const key = `${r.event?.distance}-${r.event?.style}`;
-        if (!pbs[key] || r.time < pbs[key].time) {
-          pbs[key] = {
-            distance: r.event?.distance,
-            style: r.event?.style,
-            time: r.time
-          };
-        }
-      });
+        const competitionInfo = toCompetitionInfo(infoRes.data);
+        const swimmers = swimmersRes.data.map(toSwimmer);
+        const events = eventsRes.data.map(toSwimEvent);
+        const records = recordsRes.data.map(toRecord);
 
-      return {
-        id: swimmer.id,
-        name: swimmer.name,
-        club: swimmer.club,
-        year: swimmer.birth_year,
-        gender: swimmer.gender,
-        personal_bests: Object.values(pbs)
-      };
-    });
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ 
-        success: true, 
-        count: formattedData.length,
-        data: formattedData 
-      })
-    };
-
-  } catch (err) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: err.message })
-    };
-  }
+        return {
+            statusCode: 200,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ competitionInfo, swimmers, events, records }),
+        };
+    } catch (error) {
+        console.error("Error in getPublicData function:", error.message || error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ message: `Server error: ${error.message || 'Unknown database error.'}` })
+        };
+    }
 };
