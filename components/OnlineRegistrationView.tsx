@@ -262,7 +262,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             });
 
             // Header for DataMaster
-            // A1: DAFTAR_KU, B1...: KU Names
+            // Col A: Daftar KU, Col B, C, D...: Events per KU
             const masterHeaders = ["DAFTAR_KU", ...allKUs];
             wsMaster.addRow(masterHeaders);
 
@@ -275,19 +275,17 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 wsMaster.addRow(rowData);
             }
 
-            // Add Named Ranges for dropdowns
+            // Define Named Range for the KU List (Column A)
             workbook.definedNames.add(`DataMaster!$A$2:$A$${allKUs.length + 1}`, 'DAFTAR_KU_LIST');
 
+            // Define individual Event Lists for each KU (Column B, C, D...)
             allKUs.forEach((ku, idx) => {
-                // Create a safe name for Excel (A-Z, 0-9, _)
-                const safeName = "KU_" + ku.replace(/[^a-zA-Z0-9]/g, "_");
-                
-                // Use XLSX helper to get correct column letter (B, C, D...)
+                // Column B is index 1, Column C is index 2...
                 let colLetter = "";
                 if (typeof XLSX !== 'undefined' && XLSX.utils && XLSX.utils.encode_col) {
                     colLetter = XLSX.utils.encode_col(idx + 1);
                 } else {
-                    // Robust fallback for column letters (A, B, C... Z, AA, AB...)
+                    // Manual Column Letter Calculation (A=0, B=1, etc.)
                     let tempIdx = idx + 1;
                     while (tempIdx >= 0) {
                         colLetter = String.fromCharCode((tempIdx % 26) + 65) + colLetter;
@@ -297,7 +295,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 
                 const eventCount = eventsByCategory[ku].length;
                 if (eventCount > 0) {
-                    workbook.definedNames.add(`DataMaster!$${colLetter}$2:$${colLetter}$${eventCount + 1}`, safeName);
+                    // Named ranges: LOMBA_1, LOMBA_2, etc. corresponding to order in DAFTAR_KU_LIST
+                    workbook.definedNames.add(`DataMaster!$${colLetter}$2:$${colLetter}$${eventCount + 1}`, `LOMBA_${idx + 1}`);
                 }
             });
 
@@ -316,9 +315,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             headerRow.font = { bold: true };
             headerRow.alignment = { horizontal: 'center' };
 
-            // Sample data
+            // Sample data (AISYAH)
             wsForm.addRow(["AISYAH WIJAYANTI AQRAM", 2012, "P", allKUs[0] || "", eventsByCategory[allKUs[0]]?.[0] || "", "00:35.50"]);
-            wsForm.addRow(["CONTOH ATLET 2", 2013, "L", allKUs[0] || "", eventsByCategory[allKUs[0]]?.[1] || "", "00:45.00"]);
+            wsForm.addRow(["CONTOH ATLET 2", 2013, "L", allKUs[1] || allKUs[0], eventsByCategory[allKUs[1] || allKUs[0]]?.[0] || "", "00:45.00"]);
 
             // Column widths
             wsForm.getColumn(1).width = 35;
@@ -345,16 +344,17 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                     formulae: ['DAFTAR_KU_LIST']
                 };
 
-                // Nomor Lomba Dropdown (Dependent)
-                // Use Excel's SUBSTITUTE to match the safeName logic
-                const indirectFormula = `INDIRECT("KU_"&SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE($D${i}," ","_"),"-","_"),"(","_"),")","_"),".","_"))`;
+                // Nomor Lomba Dropdown (DEPENDENT)
+                // Formula: =INDIRECT("LOMBA_" & MATCH($D2, DAFTAR_KU_LIST, 0))
+                // This finds the index of selected KU and gets the matching LOMBA_X range
+                const dependentFormula = `INDIRECT("LOMBA_" & MATCH($D${i}, DAFTAR_KU_LIST, 0))`;
                 wsForm.getCell(`E${i}`).dataValidation = {
                     type: 'list',
                     allowBlank: true,
-                    formulae: [indirectFormula],
+                    formulae: [dependentFormula],
                     showErrorMessage: true,
                     errorTitle: 'Salah Pilih KU',
-                    error: 'Pilih KU di kolom D dulu agar nomor lomba muncul.'
+                    error: 'Silakan pilih Kelompok Umur (KU) di kolom D terlebih dahulu.'
                 };
             }
 
