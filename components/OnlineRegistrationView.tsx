@@ -127,6 +127,12 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         return proof !== null && parseInt(amount) >= feePerNo;
     }, [formData, teamFormData, regType, competitionInfo]);
 
+    const isTeamInfoFilled = useMemo(() => {
+        return teamFormData.clubName.trim() !== '' && 
+               teamFormData.picName.trim() !== '' && 
+               teamFormData.picPhone.trim() !== '';
+    }, [teamFormData.clubName, teamFormData.picName, teamFormData.picPhone]);
+
     const isFormValid = useMemo(() => {
         if (regType === 'INDIVIDUAL') {
             const hasPersonalInfo = formData.name.trim() !== '' && formData.club.trim() !== '' && formData.ageGroup !== '' && formData.picPhone.trim() !== '';
@@ -667,20 +673,21 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                         <div className="bg-surface p-6 rounded-2xl border-2 border-dashed border-border text-center space-y-4">
                                             <p className="text-sm text-text-secondary">Silakan unduh template Excel kami, isi data atlet Anda, lalu unggah kembali di sini.</p>
                                             <div className="flex flex-wrap justify-center gap-4">
-                                                <Button variant="secondary" onClick={downloadTeamTemplate}>UNDUH TEMPLATE EXCEL</Button>
+                                                <Button variant="secondary" onClick={downloadTeamTemplate} disabled={!isTeamInfoFilled}>UNDUH TEMPLATE EXCEL</Button>
                                                 <div className="relative">
-                                                    <Button disabled={isParsingExcel || !teamFormData.clubName}>
+                                                    <Button disabled={isParsingExcel || !isTeamInfoFilled}>
                                                         {isParsingExcel ? <Spinner /> : 'UNGGAH BERKAS TERISI'}
                                                     </Button>
                                                     <input 
                                                         type="file" 
                                                         accept=".xlsx, .xls" 
                                                         onChange={handleTeamExcelUpload} 
-                                                        className="absolute inset-0 opacity-0 cursor-pointer" 
-                                                        disabled={isParsingExcel || !teamFormData.clubName}
+                                                        className={`absolute inset-0 opacity-0 ${isTeamInfoFilled ? 'cursor-pointer' : 'cursor-not-allowed pointer-events-none'}`}
+                                                        disabled={isParsingExcel || !isTeamInfoFilled}
                                                     />
                                                 </div>
                                             </div>
+                                            {!isTeamInfoFilled && <p className="text-[10px] text-red-500 italic font-bold">Lengkapi Info Tim & PIC di atas untuk mengaktifkan tombol unduh & unggah template.</p>}
                                         </div>
 
                                         {teamParticipants.length > 0 && (
