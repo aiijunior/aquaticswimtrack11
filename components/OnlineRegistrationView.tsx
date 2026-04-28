@@ -276,10 +276,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             }
 
             // Add Named Ranges for dropdowns
-            workbook.addDefinedName({
-                name: 'DAFTAR_KU_LIST',
-                ranges: [`DataMaster!$A$2:$A$${allKUs.length + 1}`]
-            });
+            workbook.definedNames.add(`DataMaster!$A$2:$A$${allKUs.length + 1}`, 'DAFTAR_KU_LIST');
 
             allKUs.forEach((ku, idx) => {
                 // Create a safe name for Excel (A-Z, 0-9, _)
@@ -290,16 +287,17 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 if (typeof XLSX !== 'undefined' && XLSX.utils && XLSX.utils.encode_col) {
                     colLetter = XLSX.utils.encode_col(idx + 1);
                 } else {
-                    // Simple fallback logic for column letters
-                    colLetter = String.fromCharCode(66 + idx);
+                    // Robust fallback for column letters (A, B, C... Z, AA, AB...)
+                    let tempIdx = idx + 1;
+                    while (tempIdx >= 0) {
+                        colLetter = String.fromCharCode((tempIdx % 26) + 65) + colLetter;
+                        tempIdx = Math.floor(tempIdx / 26) - 1;
+                    }
                 }
                 
                 const eventCount = eventsByCategory[ku].length;
                 if (eventCount > 0) {
-                    workbook.addDefinedName({
-                        name: safeName,
-                        ranges: [`DataMaster!$${colLetter}$2:$${colLetter}$${eventCount + 1}`]
-                    });
+                    workbook.definedNames.add(`DataMaster!$${colLetter}$2:$${colLetter}$${eventCount + 1}`, safeName);
                 }
             });
 
