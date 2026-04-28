@@ -315,8 +315,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             headerRow.font = { bold: true };
             headerRow.alignment = { horizontal: 'center' };
 
-            // Sample data (AISYAH)
-            wsForm.addRow(["AISYAH WIJAYANTI AQRAM", 2012, "P", allKUs[0] || "", eventsByCategory[allKUs[0]]?.[0] || "", "00:35.50"]);
+            // Sample data (CONTOH)
+            wsForm.addRow(["CONTOH ATLET 1", 2012, "P", allKUs[0] || "", eventsByCategory[allKUs[0]]?.[0] || "", "00:35.50"]);
             wsForm.addRow(["CONTOH ATLET 2", 2013, "L", allKUs[1] || allKUs[0], eventsByCategory[allKUs[1] || allKUs[0]]?.[0] || "", "00:45.00"]);
 
             // Column widths
@@ -327,26 +327,54 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             wsForm.getColumn(5).width = 55;
             wsForm.getColumn(6).width = 30;
 
-            // Data Validation (Dropdowns)
+            // Data Validation (Dropdowns & Constraints)
             const maxRows = 500;
+            const currentYear = new Date().getFullYear();
             for (let i = 2; i <= maxRows; i++) {
+                // Nama Atlet (Not Empty)
+                wsForm.getCell(`A${i}`).dataValidation = {
+                    type: 'textLength',
+                    allowBlank: false,
+                    operator: 'greaterThan',
+                    formulae: [2],
+                    showErrorMessage: true,
+                    errorTitle: 'Nama Terlalu Pendek',
+                    error: 'Masukkan nama atlet minimal 3 karakter.'
+                };
+
+                // Tahun Lahir (Must be number)
+                wsForm.getCell(`B${i}`).dataValidation = {
+                    type: 'whole',
+                    operator: 'between',
+                    allowBlank: true,
+                    formulae: [1950, currentYear],
+                    showErrorMessage: true,
+                    errorTitle: 'Tahun Tidak Valid',
+                    error: `Masukkan tahun lahir antara 1950 dan ${currentYear}.`
+                };
+
                 // Gender Dropdown
                 wsForm.getCell(`C${i}`).dataValidation = {
                     type: 'list',
                     allowBlank: true,
-                    formulae: ['"L,P"']
+                    formulae: ['"L,P"'],
+                    showErrorMessage: true,
+                    errorTitle: 'Salah Pilihan',
+                    error: 'Gunakan "L" untuk Laki-laki atau "P" untuk Perempuan.'
                 };
 
                 // KU Dropdown
                 wsForm.getCell(`D${i}`).dataValidation = {
                     type: 'list',
                     allowBlank: true,
-                    formulae: ['DAFTAR_KU_LIST']
+                    formulae: ['DAFTAR_KU_LIST'],
+                    showErrorMessage: true,
+                    errorTitle: 'Pilih KU',
+                    error: 'Pilih Kelompok Umur dari daftar yang tersedia.'
                 };
 
                 // Nomor Lomba Dropdown (DEPENDENT)
                 // Formula: =INDIRECT("LOMBA_" & MATCH($D2, DAFTAR_KU_LIST, 0))
-                // This finds the index of selected KU and gets the matching LOMBA_X range
                 const dependentFormula = `INDIRECT("LOMBA_" & MATCH($D${i}, DAFTAR_KU_LIST, 0))`;
                 wsForm.getCell(`E${i}`).dataValidation = {
                     type: 'list',
@@ -354,7 +382,19 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                     formulae: [dependentFormula],
                     showErrorMessage: true,
                     errorTitle: 'Salah Pilih KU',
-                    error: 'Silakan pilih Kelompok Umur (KU) di kolom D terlebih dahulu.'
+                    error: 'Silakan pilih Kelompok Umur (KU) di kolom D terlebih dahulu agar nomor gaya muncul.'
+                };
+
+                // Waktu Unggulan Validation (MM:SS.ss)
+                // Formula checks: Length 8, position 3 is ":", position 6 is "."
+                const timeFormula = `AND(LEN($F${i})=8, MID($F${i},3,1)=":", MID($F${i},6,1)=".")`;
+                wsForm.getCell(`F${i}`).dataValidation = {
+                    type: 'custom',
+                    allowBlank: true,
+                    formulae: [timeFormula],
+                    showErrorMessage: true,
+                    errorTitle: 'Format Waktu Salah',
+                    error: 'Gunakan format MM:SS.ss (contoh: 00:35.50). Pastikan tepat 8 karakter termasuk titik dan titik dua.'
                 };
             }
 
