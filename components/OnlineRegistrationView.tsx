@@ -207,16 +207,12 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         
         extSwimmer.bestTimes.forEach((bt: any) => {
             // Find current competition event that matches external event distance/style/gender
-            // Flexible matching: check if styles match and distance matches
             const matchingEvent = localEvents.find(le => 
                 le.distance === bt.distance && 
                 le.style === bt.style && 
                 (le.gender === 'Mixed' || 
                  (extSwimmer.gender === 'Male' && le.gender === "Men's") || 
                  (extSwimmer.gender === 'Female' && le.gender === "Women's"))
-                // Removal of strict ageGroup check here because KUs might be named differently
-                // but distance/style/gender is usually enough to identify the target event 
-                // within the context of the user's current selected KU.
                 && (!le.category || le.category === extSwimmer.ageGroup || formData.ageGroup === le.category)
             );
 
@@ -251,36 +247,99 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         }
 
         const workbook = XLSX.utils.book_new();
+        
+        // 1. Prepare DataMaster Sheet
         const allKUs = [...ageOptions];
-        const eventNames = localEvents.map(e => formatEventName(e));
+        
+        // Group events by category (KU) for easier reference
+        const eventsByCategory: { [key: string]: string[] } = {};
+        allKUs.forEach(ku => {
+            eventsByCategory[ku] = localEvents
+                .filter(e => !e.category || e.category === ku)
+                .map(e => formatEventName(e));
+        });
 
-        const masterAOA = [
-            ["DAFTAR_KU", "DAFTAR_NOMOR_LOMBA"],
-            ...allKUs.map((ku, i) => [ku, eventNames[i] || ""])
-        ];
-        // Continue adding event names if there are more than KUs
-        if (eventNames.length > allKUs.length) {
-            for(let i = allKUs.length; i < eventNames.length; i++) {
-                masterAOA.push(["", eventNames[i]]);
-            }
+        const masterAOA: any[][] = [["DAFTAR KU", "DAFTAR NOMOR LOMBA"]];
+        
+        // Create a flat master list for the dropdowns
+        const maxLen = Math.max(allKUs.length, localEvents.length);
+        for (let i = 0; i < maxLen; i++) {
+            masterAOA.push([
+                allKUs[i] || "",
+                localEvents[i] ? formatEventName(localEvents[i]) : ""
+            ]);
         }
 
         const wsMaster = XLSX.utils.aoa_to_sheet(masterAOA);
+        wsMaster['!cols'] = [{ wch: 20 }, { wch: 50 }];
         XLSX.utils.book_append_sheet(workbook, wsMaster, "DataMaster");
 
-        const templateAOA = [
-            ["Nama Atlet", "Tahun Lahir", "Jenis Kelamin (L/P)", "KU", "Nomor Lomba", "Waktu Unggulan (mm:ss.SS)"],
-            ["CONTOH ATLET 1", 2012, "L", allKUs[0] || "", eventNames[0] || "", "01:15.50"],
-            ["CONTOH ATLET 2", 2013, "P", allKUs[0] || "", eventNames[0] || "", "00:45.00"]
+        // 2. Prepare Form Pendaftaran Sheet
+        const headers = [
+            "* Nama Atlet", 
+            "* Tahun Lahir", 
+            "* Jenis Kelamin (L/P)", 
+            "* KU (Kelompok Umur)", 
+            "* Nomor Lomba", 
+            "* Waktu Unggulan (MM:SS.ss)"
         ];
-        const wsTemplate = XLSX.utils.aoa_to_sheet(templateAOA);
-        wsTemplate['!cols'] = [{ wch: 30 }, { wch: 12 }, { wch: 18 }, { wch: 15 }, { wch: 45 }, { wch: 25 }];
 
+        const templateAOA = [
+            headers,
+            ["CONTOH ATLET 1", 2012, "L", allKUs[0] || "", eventsByCategory[allKUs[0]]?.[0] || "", "01:15.50"],
+            ["CONTOH ATLET 2", 2013, "P", allKUs[0] || "", eventsByCategory[allKUs[0]]?.[1] || "", "00:45.00"]
+        ];
+
+        const wsTemplate = XLSX.utils.aoa_to_sheet(templateAOA);
+        
+        // Column widths
+        wsTemplate['!cols'] = [
+            { wch: 35 }, // Nama
+            { wch: 15 }, // Tahun
+            { wch: 20 }, // Gender
+            { wch: 25 }, // KU
+            { wch: 55 }, // Nomor Lomba
+            { wch: 30 }  // Waktu
+        ];
+
+        // Add help comments to headers
+        if (!wsTemplate['!comments']) wsTemplate['!comments'] = [];
+        
+        const columnComments = [
+            "Wajib diisi. Sesuai Akta Kelahiran.",
+            "Wajib diisi. Format: YYYY (Contoh: 2010).",
+            "Pilih 'L' untuk Laki-laki atau 'P' untuk Perempuan.",
+            "Pilih Kelompok Umur yang sesuai dari daftar dropdown.",
+            "Pilih Nomor Lomba dari daftar dropdown. Pastikan sesuai dengan KU atlet.",
+            "Wajib diisi. Format Menit:Detik.Mili (Contoh: 01:25.50). Jika tidak ada waktu, isi 00:00.00."
+        ];
+
+        headers.forEach((_, i) => {
+            const cellAddr = XLSX.utils.encode_cell({ r: 0, c: i });
+            wsTemplate[cellAddr].c = [{ a: "Panitia", t: columnComments[i] }];
+        });
+
+        // Data Validation (Dropdowns)
         const maxRows = 500;
         if (!wsTemplate['!dataValidation']) wsTemplate['!dataValidation'] = [];
-        wsTemplate['!dataValidation'].push({ sqref: `C2:C${maxRows}`, opts: { type: 'list', formula1: '"L,P"' } });
-        wsTemplate['!dataValidation'].push({ sqref: `D2:D${maxRows}`, opts: { type: 'list', formula1: `DataMaster!$A$2:$A$${allKUs.length + 1}` } });
-        wsTemplate['!dataValidation'].push({ sqref: `E2:E${maxRows}`, opts: { type: 'list', formula1: `DataMaster!$B$2:$B$${eventNames.length + 1}` } });
+        
+        // Gender Dropdown
+        wsTemplate['!dataValidation'].push({ 
+            sqref: `C2:C${maxRows}`, 
+            opts: { type: 'list', formula1: '"L,P"', prompt: 'Pilih L atau P', showErrorMessage: true } 
+        });
+        
+        // KU Dropdown (Referencing DataMaster sheet)
+        wsTemplate['!dataValidation'].push({ 
+            sqref: `D2:D${maxRows}`, 
+            opts: { type: 'list', formula1: `DataMaster!$A$2:$A$${allKUs.length + 1}`, prompt: 'Pilih Kelompok Umur', showErrorMessage: true } 
+        });
+        
+        // Nomor Lomba Dropdown (Referencing DataMaster sheet)
+        wsTemplate['!dataValidation'].push({ 
+            sqref: `E2:E${maxRows}`, 
+            opts: { type: 'list', formula1: `DataMaster!$B$2:$B$${localEvents.length + 1}`, prompt: 'Pilih Nomor Lomba', showErrorMessage: true } 
+        });
 
         XLSX.utils.book_append_sheet(workbook, wsTemplate, "Form Pendaftaran");
         XLSX.writeFile(workbook, `Template_Kolektif_${teamFormData.clubName || 'Klub'}.xlsx`);
