@@ -250,8 +250,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         
         // 1. Prepare DataMaster Sheet
         const allKUs = [...ageOptions];
-        
-        // Group events by category (KU) for easier reference
         const eventsByCategory: { [key: string]: string[] } = {};
         allKUs.forEach(ku => {
             eventsByCategory[ku] = localEvents
@@ -259,20 +257,44 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 .map(e => formatEventName(e));
         });
 
-        const masterAOA: any[][] = [["DAFTAR KU", "DAFTAR NOMOR LOMBA"]];
+        const masterAOA: any[][] = [];
+        const maxLen = Math.max(allKUs.length, ...Object.values(eventsByCategory).map(arr => arr.length));
         
-        // Create a flat master list for the dropdowns
-        const maxLen = Math.max(allKUs.length, localEvents.length);
+        // Header for DataMaster
+        // Column A: Daftar KU
+        // Columns B+: Events per KU
+        const masterHeaders = ["DAFTAR_KU", ...allKUs];
+        masterAOA.push(masterHeaders);
+
         for (let i = 0; i < maxLen; i++) {
-            masterAOA.push([
-                allKUs[i] || "",
-                localEvents[i] ? formatEventName(localEvents[i]) : ""
-            ]);
+            const row = [allKUs[i] || ""];
+            allKUs.forEach(ku => {
+                row.push(eventsByCategory[ku][i] || "");
+            });
+            masterAOA.push(row);
         }
 
         const wsMaster = XLSX.utils.aoa_to_sheet(masterAOA);
-        wsMaster['!cols'] = [{ wch: 20 }, { wch: 50 }];
         XLSX.utils.book_append_sheet(workbook, wsMaster, "DataMaster");
+
+        // Define Names for dependent dropdowns
+        const names: any[] = [
+            { Name: "DAFTAR_KU_LIST", Ref: `DataMaster!$A$2:$A$${allKUs.length + 1}` }
+        ];
+
+        allKUs.forEach((ku, idx) => {
+            const safeName = "KU_" + ku.replace(/[^a-zA-Z0-9]/g, "_");
+            const colLetter = XLSX.utils.encode_col(idx + 1);
+            const eventCount = eventsByCategory[ku].length;
+            if (eventCount > 0) {
+                names.push({
+                    Name: safeName,
+                    Ref: `DataMaster!$${colLetter}$2:$${colLetter}$${eventCount + 1}`
+                });
+            }
+        });
+
+        workbook.Workbook = { Names: names };
 
         // 2. Prepare Form Pendaftaran Sheet
         const headers = [
@@ -286,14 +308,14 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
         const templateAOA = [
             headers,
-            ["CONTOH ATLET 1", 2012, "L", allKUs[0] || "", eventsByCategory[allKUs[0]]?.[0] || "", "01:15.50"],
-            ["CONTOH ATLET 2", 2013, "P", allKUs[0] || "", eventsByCategory[allKUs[0]]?.[1] || "", "00:45.00"]
+            ["AISYAH WIJAYANTI AQRAM", 2012, "P", allKUs[0] || "", eventsByCategory[allKUs[0]]?.[0] || "", "00:35.50"],
+            ["CONTOH ATLET 2", 2013, "L", allKUs[0] || "", eventsByCategory[allKUs[0]]?.[1] || "", "00:45.00"]
         ];
 
         const wsTemplate = XLSX.utils.aoa_to_sheet(templateAOA);
         
         // Column widths
-        wsTemplate['!cols'] = [
+        wsTemplate["!cols"] = [
             { wch: 35 }, // Nama
             { wch: 15 }, // Tahun
             { wch: 20 }, // Gender
@@ -302,47 +324,35 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             { wch: 30 }  // Waktu
         ];
 
-        // Add help comments to headers
-        if (!wsTemplate['!comments']) wsTemplate['!comments'] = [];
-        
-        const columnComments = [
-            "Wajib diisi. Sesuai Akta Kelahiran.",
-            "Wajib diisi. Format: YYYY (Contoh: 2010).",
-            "Pilih 'L' untuk Laki-laki atau 'P' untuk Perempuan.",
-            "Pilih Kelompok Umur yang sesuai dari daftar dropdown.",
-            "Pilih Nomor Lomba dari daftar dropdown. Pastikan sesuai dengan KU atlet.",
-            "Wajib diisi. Format Menit:Detik.Mili (Contoh: 01:25.50). Jika tidak ada waktu, isi 00:00.00."
-        ];
-
-        headers.forEach((_, i) => {
-            const cellAddr = XLSX.utils.encode_cell({ r: 0, c: i });
-            wsTemplate[cellAddr].c = [{ a: "Panitia", t: columnComments[i] }];
-        });
-
         // Data Validation (Dropdowns)
         const maxRows = 500;
-        if (!wsTemplate['!dataValidation']) wsTemplate['!dataValidation'] = [];
+        if (!wsTemplate["!dataValidation"]) wsTemplate["!dataValidation"] = [];
         
         // Gender Dropdown
-        wsTemplate['!dataValidation'].push({ 
+        wsTemplate["!dataValidation"].push({ 
             sqref: `C2:C${maxRows}`, 
-            opts: { type: 'list', formula1: '"L,P"', prompt: 'Pilih L atau P', showErrorMessage: true } 
+            opts: { type: "list", formula1: "\"L,P\"" } 
         });
         
-        // KU Dropdown (Referencing DataMaster sheet)
-        wsTemplate['!dataValidation'].push({ 
+        // KU Dropdown
+        wsTemplate["!dataValidation"].push({ 
             sqref: `D2:D${maxRows}`, 
-            opts: { type: 'list', formula1: `DataMaster!$A$2:$A$${allKUs.length + 1}`, prompt: 'Pilih Kelompok Umur', showErrorMessage: true } 
+            opts: { type: "list", formula1: "DAFTAR_KU_LIST" } 
         });
         
-        // Nomor Lomba Dropdown (Referencing DataMaster sheet)
-        wsTemplate['!dataValidation'].push({ 
+        // Dependent Dropdown for Nomor Lomba
+        // Formula: =INDIRECT("KU_" & SUBSTITUTE(SUBSTITUTE(SUBSTITUTE($D2," ","_"),"-","_"),"(","_"))
+        // We'll use a slightly safer version for Excel naming compatibility
+        wsTemplate["!dataValidation"].push({ 
             sqref: `E2:E${maxRows}`, 
-            opts: { type: 'list', formula1: `DataMaster!$B$2:$B$${localEvents.length + 1}`, prompt: 'Pilih Nomor Lomba', showErrorMessage: true } 
+            opts: { 
+                type: "list", 
+                formula1: "INDIRECT(\"KU_\"&SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE($D2,\" \",\"_\"),\"-\",\"_\"),\"(\",\"_\"),\")\",\"_\"))" 
+            } 
         });
 
         XLSX.utils.book_append_sheet(workbook, wsTemplate, "Form Pendaftaran");
-        XLSX.writeFile(workbook, `Template_Kolektif_${teamFormData.clubName || 'Klub'}.xlsx`);
+        XLSX.writeFile(workbook, `Template_Kolektif_${teamFormData.clubName || "Klub"}.xlsx`);
     };
 
     const handleTeamExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -354,34 +364,41 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         reader.onload = (evt) => {
             try {
                 const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheet = workbook.Sheets[workbook.SheetNames.find(n => n.includes('Form')) || workbook.SheetNames[0]];
+                const workbook = XLSX.read(data, { type: "array" });
+                const sheet = workbook.Sheets[workbook.SheetNames.find(n => n.includes("Form")) || workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(sheet);
 
                 const processed = json.map((row: any) => {
-                    const eventName = row["Nomor Lomba"];
+                    // Support both new and old header names
+                    const name = row["* Nama Atlet"] || row["Nama Atlet"];
+                    const birthYear = row["* Tahun Lahir"] || row["Tahun Lahir"];
+                    const gender = row["* Jenis Kelamin (L/P)"] || row["Jenis Kelamin (L/P)"];
+                    const ku = row["* KU (Kelompok Umur)"] || row["KU (Kelompok Umur)"] || row["KU"];
+                    const eventName = row["* Nomor Lomba"] || row["Nomor Lomba"];
+                    const timeHeader = row["* Waktu Unggulan (MM:SS.ss)"] || row["Waktu Unggulan (MM:SS.ss)"] || row["Waktu Unggulan (mm:ss.SS)"];
+
                     const event = localEvents.find(e => formatEventName(e) === eventName);
                     
-                    // Parse time string "mm:ss.SS"
+                    // Parse time string "MM:SS.ss"
                     let ms = 0;
-                    const timeStr = String(row["Waktu Unggulan (mm:ss.SS)"] || "99:99.99");
-                    if (timeStr.includes(':')) {
-                        const [min, rest] = timeStr.split(':');
-                        const [sec, centi] = rest.split('.');
+                    const timeStr = String(timeHeader || "99:99.99");
+                    if (timeStr.includes(":")) {
+                        const [min, rest] = timeStr.split(":");
+                        const [sec, centi] = rest.split(".");
                         ms = (parseInt(min) * 60000) + (parseInt(sec) * 1000) + (parseInt(centi) * 10);
                     }
 
                     return {
-                        name: toTitleCase(String(row["Nama Atlet"] || "")),
-                        birthYear: parseInt(row["Tahun Lahir"]),
-                        gender: String(row["Jenis Kelamin (L/P)"]).toUpperCase() === 'L' ? 'L' : 'P',
-                        ageGroup: row["KU"],
+                        name: toTitleCase(String(name || "")),
+                        birthYear: parseInt(birthYear),
+                        gender: String(gender || "").toUpperCase() === "L" ? "L" : "P",
+                        ageGroup: ku,
                         eventName: eventName,
                         eventId: event?.id,
                         seedTimeMs: ms,
                         displayTime: timeStr
                     };
-                }).filter(p => p.name && p.eventId);
+                }).filter((p: any) => p.name && p.eventId);
 
                 setTeamParticipants(processed);
                 
