@@ -10,6 +10,7 @@ import { formatEventName, toTitleCase, translateSwimStyle, AGE_GROUP_OPTIONS, fo
 import { SwimStyle } from '../types';
 
 declare var XLSX: any;
+declare var ExcelJS: any;
 
 interface OnlineRegistrationViewProps {
     competitionInfo: CompetitionInfo | null;
@@ -240,15 +241,16 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     };
 
     // Collective Registration Helpers
-    const downloadTeamTemplate = () => {
-        if (typeof XLSX === 'undefined') {
-            alert('Pustaka Excel belum termuat.');
+    const downloadTeamTemplate = async () => {
+        if (typeof ExcelJS === 'undefined') {
+            alert('Pustaka ExcelJS belum termuat. Silakan tunggu sebentar atau muat ulang halaman.');
             return;
         }
 
-        const workbook = XLSX.utils.book_new();
+        const workbook = new ExcelJS.Workbook();
         
         // 1. Prepare DataMaster Sheet
+        const wsMaster = workbook.addWorksheet('DataMaster');
         const allKUs = [...ageOptions];
         const eventsByCategory: { [key: string]: string[] } = {};
         allKUs.forEach(ku => {
@@ -257,46 +259,50 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 .map(e => formatEventName(e));
         });
 
-        const masterAOA: any[][] = [];
-        const maxLen = Math.max(allKUs.length, ...Object.values(eventsByCategory).map(arr => arr.length));
-        
         // Header for DataMaster
-        // Column A: Daftar KU
-        // Columns B+: Events per KU
+        // A1: DAFTAR_KU, B1...: KU Names
         const masterHeaders = ["DAFTAR_KU", ...allKUs];
-        masterAOA.push(masterHeaders);
+        wsMaster.addRow(masterHeaders);
 
+        const maxLen = Math.max(allKUs.length, ...Object.values(eventsByCategory).map(arr => arr.length));
         for (let i = 0; i < maxLen; i++) {
-            const row = [allKUs[i] || ""];
+            const rowData = [allKUs[i] || ""];
             allKUs.forEach(ku => {
-                row.push(eventsByCategory[ku][i] || "");
+                rowData.push(eventsByCategory[ku][i] || "");
             });
-            masterAOA.push(row);
+            wsMaster.addRow(rowData);
         }
 
-        const wsMaster = XLSX.utils.aoa_to_sheet(masterAOA);
-        XLSX.utils.book_append_sheet(workbook, wsMaster, "DataMaster");
-
-        // Define Names for dependent dropdowns
-        const names: any[] = [
-            { Name: "DAFTAR_KU_LIST", Ref: `DataMaster!$A$2:$A$${allKUs.length + 1}` }
-        ];
+        // Add Named Ranges for dropdowns
+        workbook.addDefinedName({
+            name: 'DAFTAR_KU_LIST',
+            ranges: [`DataMaster!$A$2:$A$${allKUs.length + 1}`]
+        });
 
         allKUs.forEach((ku, idx) => {
+            // Create a safe name for Excel (A-Z, 0-9, _)
             const safeName = "KU_" + ku.replace(/[^a-zA-Z0-9]/g, "_");
-            const colLetter = XLSX.utils.encode_col(idx + 1);
+            
+            // Get column letter (B, C, D...)
+            // 65 is 'A', so 65 + 1 is 'B'
+            let colLetter = "";
+            let tempIdx = idx + 1;
+            while (tempIdx >= 0) {
+                colLetter = String.fromCharCode((tempIdx % 26) + 65) + colLetter;
+                tempIdx = Math.floor(tempIdx / 26) - 1;
+            }
+            
             const eventCount = eventsByCategory[ku].length;
             if (eventCount > 0) {
-                names.push({
-                    Name: safeName,
-                    Ref: `DataMaster!$${colLetter}$2:$${colLetter}$${eventCount + 1}`
+                workbook.addDefinedName({
+                    name: safeName,
+                    ranges: [`DataMaster!$${colLetter}$2:$${colLetter}$${eventCount + 1}`]
                 });
             }
         });
 
-        workbook.Workbook = { Names: names };
-
         // 2. Prepare Form Pendaftaran Sheet
+        const wsForm = workbook.addWorksheet('Form Pendaftaran');
         const headers = [
             "* Nama Atlet", 
             "* Tahun Lahir", 
@@ -306,53 +312,57 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             "* Waktu Unggulan (MM:SS.ss)"
         ];
 
-        const templateAOA = [
-            headers,
-            ["AISYAH WIJAYANTI AQRAM", 2012, "P", allKUs[0] || "", eventsByCategory[allKUs[0]]?.[0] || "", "00:35.50"],
-            ["CONTOH ATLET 2", 2013, "L", allKUs[0] || "", eventsByCategory[allKUs[0]]?.[1] || "", "00:45.00"]
-        ];
+        const headerRow = wsForm.addRow(headers);
+        headerRow.font = { bold: true };
+        headerRow.alignment = { horizontal: 'center' };
 
-        const wsTemplate = XLSX.utils.aoa_to_sheet(templateAOA);
-        
+        // Sample data
+        wsForm.addRow(["AISYAH WIJAYANTI AQRAM", 2012, "P", allKUs[0] || "", eventsByCategory[allKUs[0]]?.[0] || "", "00:35.50"]);
+        wsForm.addRow(["CONTOH ATLET 2", 2013, "L", allKUs[0] || "", eventsByCategory[allKUs[0]]?.[1] || "", "00:45.00"]);
+
         // Column widths
-        wsTemplate["!cols"] = [
-            { wch: 35 }, // Nama
-            { wch: 15 }, // Tahun
-            { wch: 20 }, // Gender
-            { wch: 25 }, // KU
-            { wch: 55 }, // Nomor Lomba
-            { wch: 30 }  // Waktu
-        ];
+        wsForm.getColumn(1).width = 35;
+        wsForm.getColumn(2).width = 15;
+        wsForm.getColumn(3).width = 20;
+        wsForm.getColumn(4).width = 25;
+        wsForm.getColumn(5).width = 55;
+        wsForm.getColumn(6).width = 30;
 
         // Data Validation (Dropdowns)
         const maxRows = 500;
-        if (!wsTemplate["!dataValidation"]) wsTemplate["!dataValidation"] = [];
-        
-        // Gender Dropdown
-        wsTemplate["!dataValidation"].push({ 
-            sqref: `C2:C${maxRows}`, 
-            opts: { type: "list", formula1: "\"L,P\"" } 
-        });
-        
-        // KU Dropdown
-        wsTemplate["!dataValidation"].push({ 
-            sqref: `D2:D${maxRows}`, 
-            opts: { type: "list", formula1: "DAFTAR_KU_LIST" } 
-        });
-        
-        // Dependent Dropdown for Nomor Lomba
-        // Formula: =INDIRECT("KU_" & SUBSTITUTE(SUBSTITUTE(SUBSTITUTE($D2," ","_"),"-","_"),"(","_"))
-        // We'll use a slightly safer version for Excel naming compatibility
-        wsTemplate["!dataValidation"].push({ 
-            sqref: `E2:E${maxRows}`, 
-            opts: { 
-                type: "list", 
-                formula1: "INDIRECT(\"KU_\"&SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE($D2,\" \",\"_\"),\"-\",\"_\"),\"(\",\"_\"),\")\",\"_\"))" 
-            } 
-        });
+        for (let i = 2; i <= maxRows; i++) {
+            // Gender Dropdown
+            wsForm.getCell(`C${i}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: ['"L,P"']
+            };
 
-        XLSX.utils.book_append_sheet(workbook, wsTemplate, "Form Pendaftaran");
-        XLSX.writeFile(workbook, `Template_Kolektif_${teamFormData.clubName || "Klub"}.xlsx`);
+            // KU Dropdown
+            wsForm.getCell(`D${i}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: ['DAFTAR_KU_LIST']
+            };
+
+            // Nomor Lomba Dropdown (Dependent)
+            // Use INDIRECT to point to the named range based on KU selection in column D
+            wsForm.getCell(`E${i}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: [`INDIRECT("KU_"&SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE($D${i}," ","_"),"-","_"),"(","_"),")","_"))`]
+            };
+        }
+
+        // Generate and download the file
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `Template_Kolektif_${teamFormData.clubName || "Klub"}.xlsx`;
+        anchor.click();
+        window.URL.revokeObjectURL(url);
     };
 
     const handleTeamExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
