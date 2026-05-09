@@ -49,6 +49,79 @@ const UserGroupIcon = () => (
     </svg>
 );
 
+const CountdownTimer = ({ deadline }: { deadline: string }) => {
+    const [timeLeft, setTimeLeft] = useState<{
+        days: number;
+        hours: number;
+        minutes: number;
+        seconds: number;
+        isExpired: boolean;
+    } | null>(null);
+
+    useEffect(() => {
+        const calculateTimeLeft = () => {
+            const targetDate = new Date(deadline).getTime();
+            const now = new Date().getTime();
+            const difference = targetDate - now;
+
+            if (difference <= 0) {
+                setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: true });
+                return;
+            }
+
+            setTimeLeft({
+                days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+                hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+                minutes: Math.floor((difference / 1000 / 60) % 60),
+                seconds: Math.floor((difference / 1000) % 60),
+                isExpired: false
+            });
+        };
+
+        calculateTimeLeft();
+        const timer = setInterval(calculateTimeLeft, 1000);
+        return () => clearInterval(timer);
+    }, [deadline]);
+
+    if (!timeLeft) return null;
+
+    if (timeLeft.isExpired) {
+        return (
+            <div className="inline-block mt-3 bg-red-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black animate-pulse shadow-md border border-red-400">
+                PENDAFTARAN SUDAH DITUTUP
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col items-center mt-4">
+            <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] mb-2 opacity-70">Batas Waktu Pendaftaran</p>
+            <div className="flex gap-2 items-center justify-center">
+                <div className="flex flex-col items-center bg-white/40 dark:bg-slate-700/40 backdrop-blur-md min-w-[50px] px-2 py-1.5 rounded-xl border border-white/50 dark:border-white/10 shadow-sm">
+                    <span className="text-xl font-black text-primary leading-tight">{timeLeft.days}</span>
+                    <span className="text-[7px] font-bold uppercase tracking-widest opacity-60">Hari</span>
+                </div>
+                <span className="text-primary font-black animate-pulse">:</span>
+                <div className="flex flex-col items-center bg-white/40 dark:bg-slate-700/40 backdrop-blur-md min-w-[50px] px-2 py-1.5 rounded-xl border border-white/50 dark:border-white/10 shadow-sm">
+                    <span className="text-xl font-black text-primary leading-tight">{timeLeft.hours}</span>
+                    <span className="text-[7px] font-bold uppercase tracking-widest opacity-60">Jam</span>
+                </div>
+                <span className="text-primary font-black animate-pulse">:</span>
+                <div className="flex flex-col items-center bg-white/40 dark:bg-slate-700/40 backdrop-blur-md min-w-[50px] px-2 py-1.5 rounded-xl border border-white/50 dark:border-white/10 shadow-sm">
+                    <span className="text-xl font-black text-primary leading-tight">{timeLeft.minutes}</span>
+                    <span className="text-[7px] font-bold uppercase tracking-widest opacity-60">Menit</span>
+                </div>
+                <span className="text-primary font-black animate-pulse">:</span>
+                <div className="flex flex-col items-center bg-white/40 dark:bg-slate-700/40 backdrop-blur-md min-w-[50px] px-2 py-1.5 rounded-xl border border-white/50 dark:border-white/10 shadow-sm">
+                    <span className="text-xl font-black text-primary leading-tight">{timeLeft.seconds}</span>
+                    <span className="text-[7px] font-bold uppercase tracking-widest opacity-60">Detik</span>
+                </div>
+            </div>
+            {deadline && <p className="text-[9px] text-text-secondary mt-2 opacity-50 font-medium italic">Sampai: {new Date(deadline).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</p>}
+        </div>
+    );
+};
+
 export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     competitionInfo,
     onBackToLogin,
@@ -605,6 +678,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                     <h1 className="text-3xl font-extrabold text-primary tracking-tight">{competitionInfo?.eventName.split('\n')[0]}</h1>
                     <h3 className="text-xl font-bold mt-2 opacity-80 uppercase tracking-widest">Pendaftaran Online</h3>
                     {isFree && <span className="inline-block mt-2 bg-green-500 text-white px-4 py-1 rounded-full text-xs font-black animate-pulse">PENDAFTARAN GRATIS</span>}
+                    {competitionInfo?.registrationDeadline && (
+                        <CountdownTimer deadline={competitionInfo.registrationDeadline} />
+                    )}
                 </header>
 
                 {regType === 'CHOICE' && (
