@@ -155,7 +155,7 @@ export const deleteSwimmer = async (id: string): Promise<void> => {
 };
 
 export const deleteAllSwimmers = async (): Promise<void> => {
-    const { error } = await supabase.from('swimmers').delete().neq('id', '0');
+    const { error } = await supabase.from('swimmers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
 };
 
@@ -189,7 +189,7 @@ export const deleteEvent = async (id: string): Promise<void> => {
 };
 
 export const deleteAllEvents = async (): Promise<void> => {
-    const { error } = await supabase.from('events').delete().neq('id', '0');
+    const { error } = await supabase.from('events').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
 };
 
@@ -257,7 +257,7 @@ export const deleteRecord = async (id: string): Promise<void> => {
 };
 
 export const deleteAllRecords = async (): Promise<void> => {
-    const { error } = await supabase.from('records').delete().neq('id', '0');
+    const { error } = await supabase.from('records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
 };
 
@@ -406,7 +406,10 @@ export const processRecordUpload = async (json: any[]) => {
                 time = (parseInt(min) * 60000) + (parseInt(sec) * 1000) + (parseInt(centi) * 10);
             }
 
+            const recordId = `${type.toUpperCase()}_${gender}_${distance}_${style}${category ? `_${category}` : ''}`;
+
             await addOrUpdateRecord({
+                id: recordId,
                 type: type as RecordType,
                 distance,
                 style,
@@ -445,10 +448,11 @@ export const backupDatabase = async () => {
 
 export const clearAllData = async () => {
     await Promise.all([
-        supabase.from('event_results').delete().neq('event_id', '0'),
-        supabase.from('event_entries').delete().neq('event_id', '0'),
-        supabase.from('swimmers').delete().neq('id', '0'),
-        supabase.from('events').delete().neq('id', '0'),
+        supabase.from('event_results').delete().neq('event_id', '00000000-0000-0000-0000-000000000000'),
+        supabase.from('event_entries').delete().neq('event_id', '00000000-0000-0000-0000-000000000000'),
+        supabase.from('swimmers').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+        supabase.from('events').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+        supabase.from('records').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
     ]);
 };
 
