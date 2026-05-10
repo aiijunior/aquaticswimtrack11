@@ -545,7 +545,7 @@ export const clearAllData = async (): Promise<void> => {
     }
 
     // 5. Delete records
-    const records = await supabase.from('records').delete().isNot('id', null);
+    const records = await supabase.from('records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (records.error) {
         console.error("Error clearing records:", records.error);
         throw new Error(`Gagal menghapus rekor: ${records.error.message}`);

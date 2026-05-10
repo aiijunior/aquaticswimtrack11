@@ -9,7 +9,7 @@ import { Select } from './ui/Select';
 import { Spinner } from './ui/Spinner';
 import { ToggleSwitch } from './ui/ToggleSwitch';
 import { Modal } from './ui/Modal';
-import { translateGender, translateSwimStyle, formatEventName, toTitleCase } from '../constants';
+import { translateGender, translateSwimStyle, formatEventName, toTitleCase, romanize } from '../constants';
 import { useNotification } from './ui/NotificationManager';
 
 declare var XLSX: any;
@@ -18,6 +18,7 @@ interface EventSettingsViewProps {
     competitionInfo: CompetitionInfo | null;
     events: SwimEvent[];
     onDataUpdate: () => void;
+    isLoading?: boolean;
 }
 
 const EditIcon = () => (
@@ -64,20 +65,7 @@ const SmallInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { label
 );
 
 // --- Main Component ---
-export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitionInfo, events, onDataUpdate }) => {
-    const romanize = (num: number): string => {
-        if (isNaN(num) || num <= 0) return '';
-        const lookup: {[key: string]: number} = {M:1000,CM:900,D:500,CD:400,C:100,XC:90,L:50,XL:40,X:10,IX:9,V:5,IV:4,I:1};
-        let roman = '';
-        for (let i in lookup ) {
-            while ( num >= lookup[i] ) {
-                roman += i;
-                num -= lookup[i];
-            }
-        }
-        return roman;
-    }
-    
+export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitionInfo, events, onDataUpdate, isLoading }) => {
     const getErrorMessage = (error: unknown): string => {
         if (error instanceof Error) return error.message;
         if (typeof error === 'string') return error;
@@ -115,9 +103,22 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     const [isRestoring, setIsRestoring] = useState(false);
 
     useEffect(() => {
-        setInfo(competitionInfo);
+        if (competitionInfo) {
+            setInfo(competitionInfo);
+        } else {
+            setInfo({
+                eventName: '',
+                eventDate: new Date().toISOString().split('T')[0],
+                eventLogo: null,
+                sponsorLogo: null,
+                isRegistrationOpen: false,
+                numberOfLanes: 8,
+                isFree: true
+            });
+        }
+        
         if (competitionInfo?.eventName) {
-            const lines = competitionInfo.eventName.split('\n');
+            const lines = String(competitionInfo.eventName).split('\n');
             setEventNameLines([
                 lines[0] || '',
                 lines[1] || '',
@@ -412,6 +413,8 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         reader.readAsText(restoreFile);
     };
 
+    // Main render
+    if (isLoading && !info) return <div className="flex justify-center items-center h-full"><Spinner /></div>;
     if (!info) return <div className="flex justify-center items-center h-full"><Spinner /></div>;
     
     const renderTabs = () => (

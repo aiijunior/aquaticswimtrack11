@@ -224,7 +224,7 @@ const App: React.FC = () => {
     
     switch (currentView) {
       case View.ADMIN_DASHBOARD: return <AdminDashboard swimmers={swimmers} events={events} competitionInfo={competitionInfo} isLoading={isLoading} navigateTo={navigateTo} />;
-      case View.EVENT_SETTINGS: return <EventSettingsView competitionInfo={competitionInfo} events={events} onDataUpdate={refreshData} />;
+      case View.EVENT_SETTINGS: return <EventSettingsView competitionInfo={competitionInfo} events={events} onDataUpdate={refreshData} isLoading={isDataLoading} />;
       case View.RACES: return <EventsView events={events} isLoading={isLoading} onSelectEvent={handleSelectEvent} onStartTiming={handleStartTiming} onDataUpdate={refreshData} />;
       case View.PARTICIPANTS: return <ParticipantsView swimmers={swimmers} events={events} onUploadSuccess={refreshData} competitionInfo={competitionInfo} />;
       case View.SWIMMERS_LIST: return <SwimmersView swimmers={swimmers} events={events} isLoading={isLoading} onDataUpdate={refreshData} initialState={navigationState} competitionInfo={competitionInfo} />;
