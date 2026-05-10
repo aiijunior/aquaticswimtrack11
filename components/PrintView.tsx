@@ -352,11 +352,11 @@ const OnlineRegistrationReport: React.FC<{ data: any[] }> = ({ data }) => (
                                 <img 
                                     src={item.swimmer.paymentProof} 
                                     alt="Proof" 
-                                    className="h-16 w-full object-contain mx-auto" 
+                                    className="h-32 w-full object-contain mx-auto" 
                                 />
                             </div>
                         ) : (
-                            <span className="text-[8px] text-gray-400 italic">BELUM UNGGAH</span>
+                            <span className="text-[10px] text-gray-400 italic">BELUM UNGGAH</span>
                         )}
                     </td>
                     <td className="px-2 py-2 text-right font-black text-xs">
@@ -515,13 +515,17 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         return Array.from(set).sort((a, b) => a - b);
     }, [events]);
 
-    const baseEvents = useMemo(() => {
+    const eventsWithGlobalNumbers = useMemo(() => {
         return [...events]
             .filter(e => (e.sessionNumber || 0) > 0)
-            .filter(e => sessionFilter === 0 || e.sessionNumber === sessionFilter)
             .sort((a, b) => (Number(a.sessionNumber) || 0) - (Number(b.sessionNumber) || 0) || (Number(a.heatOrder) || 0) - (Number(b.heatOrder) || 0))
             .map((e, i) => ({ ...e, globalEventNumber: i + 1 }));
-    }, [events, sessionFilter]);
+    }, [events]);
+
+    const baseEvents = useMemo(() => {
+        return eventsWithGlobalNumbers
+            .filter(e => sessionFilter === 0 || e.sessionNumber === sessionFilter);
+    }, [eventsWithGlobalNumbers, sessionFilter]);
 
     const handleToggleAllEvents = (select: boolean) => {
         if (select) setSelectedEventIds(new Set(baseEvents.map(e => e.id)));
@@ -639,17 +643,23 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             .filter(s => !nameFilter || s.name.toLowerCase().includes(nameFilter.toLowerCase()))
             .sort((a, b) => a.name.localeCompare(b.name))
             .map(swimmer => {
-                const registeredEvents = baseEvents
+                // Use all events (eventsWithGlobalNumbers) instead of session-filtered baseEvents for this data mapping
+                // to ensure all registrations show up regardless of current session filter
+                const registeredEvents = eventsWithGlobalNumbers
                     .filter(e => e.entries.some(en => en.swimmerId === swimmer.id))
+                    .sort((a, b) => (a.sessionNumber || 0) - (b.sessionNumber || 0) || (a.heatOrder || 0) - (b.heatOrder || 0))
                     .map(e => {
+                        const entry = e.entries.find(en => en.swimmerId === swimmer.id);
                         return {
                             no: e.globalEventNumber,
                             name: formatEventName(e),
-                            session: e.sessionNumber
+                            session: e.sessionNumber,
+                            time: entry ? formatTime(entry.seedTime) : '99:99.99'
                         };
                     });
                 return { swimmer, registeredEvents };
-            });
+            })
+            .filter(item => item.registeredEvents.length > 0 || item.swimmer.paymentProof); // Show only those who registered or paid
 
         // FIX: Rewrote sort function to be type-safe and avoid arithmetic operations on potentially non-numeric types.
         const sortFn = (a: { gold: number; silver: number; bronze: number }, b: { gold: number; silver: number; bronze: number }) => {
@@ -713,6 +723,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                         "NO": idx + 1,
                         "NAMA ATLET": item.swimmer.name,
                         "KLUB": item.swimmer.club,
+                        "BUKTI BAYAR": item.swimmer.paymentProof ? "TERLAMPIR" : "BELUM UNGGAH",
                         "NOMINAL BAYAR": item.swimmer.paymentAmount || 0,
                         "NOMOR LOMBA": item.registeredEvents.map(re => re.name).join(', '),
                         "WAKTU UNGGULAN": item.registeredEvents.map(re => re.time).join(', ')

@@ -579,7 +579,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
                 if (result.success) {
                     setSuccessMessage(
-                        <div className="space-y-4">
+                        <div className="space-y-4 text-black">
                             <p className="text-xl font-medium">Pendaftaran atlet <span className="font-black text-primary uppercase">{formData.name}</span> berhasil!</p>
                             <div className="text-left mt-6 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-[2rem] border border-border shadow-inner">
                                 <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] mb-4 opacity-70">Nomor Lomba & Waktu Unggulan:</p>
@@ -621,7 +621,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
                 if (result.success) {
                     setSuccessMessage(
-                        <div className="space-y-4">
+                        <div className="space-y-4 text-black">
                             <p className="text-xl font-medium">Berhasil mendaftarkan tim <span className="font-black text-primary uppercase">{teamFormData.clubName}</span>!</p>
                             <div className="text-left mt-6 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-[2rem] border border-border shadow-inner max-h-[400px] overflow-y-auto">
                                 <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] mb-4 opacity-70">Ringkasan Pendaftaran Kolektif:</p>
@@ -1060,7 +1060,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                         <div className="bg-green-100 h-32 w-32 rounded-full flex items-center justify-center mx-auto mb-8 border-8 border-green-500 shadow-2xl animate-bounce">
                             <span className="text-green-500 text-7xl font-bold">✓</span>
                         </div>
-                        <h2 className="text-4xl font-black text-text-primary mb-4 italic tracking-tighter uppercase">BERHASIL!</h2>
+                        <h2 className="text-4xl font-black text-black mb-4 italic tracking-tighter uppercase">BERHASIL!</h2>
                         <div className="max-w-2xl mx-auto">{successMessage}</div>
                         <div className="mt-12 flex flex-col gap-5 max-w-sm mx-auto">
                             <Button onClick={() => { setSuccessMessage(''); setRegType('CHOICE'); setTeamParticipants([]); }} className="py-6 font-black text-xl rounded-2xl shadow-xl">PENDAFTARAN BARU</Button>
