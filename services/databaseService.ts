@@ -128,6 +128,8 @@ export const addSwimmer = async (swimmer: Omit<Swimmer, 'id'>): Promise<Swimmer>
         gender: swimmer.gender,
         club: swimmer.club,
         age_group: swimmer.ageGroup || null,
+        payment_proof: swimmer.paymentProof || null,
+        payment_amount: swimmer.paymentAmount || 0,
         pic_name: swimmer.picName || null,
         pic_phone: swimmer.picPhone || null
     } as any).select('*').single();
@@ -142,6 +144,8 @@ export const updateSwimmer = async (id: string, swimmer: Partial<Omit<Swimmer, '
         gender: swimmer.gender,
         club: swimmer.club,
         age_group: swimmer.ageGroup || null,
+        payment_proof: swimmer.paymentProof,
+        payment_amount: swimmer.paymentAmount,
         pic_name: swimmer.picName || null,
         pic_phone: swimmer.picPhone || null
     } as any).eq('id', id).select('*').single();

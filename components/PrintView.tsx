@@ -331,10 +331,10 @@ const OnlineRegistrationReport: React.FC<{ data: any[] }> = ({ data }) => (
         <thead>
             <tr className="bg-gray-200 text-black border-y-2 border-black font-bold">
                 <th className="w-8 text-center py-2">#</th>
-                <th className="w-1/3 text-left px-2">PESERTA & NOMOR LOMBA</th>
-                <th className="w-1/4 text-center">BUKTI BAYAR</th>
+                <th className="w-1/4 text-left px-2">NAMA ATLET / TIM</th>
+                <th className="w-24 text-center">BUKTI BAYAR</th>
                 <th className="w-28 text-right px-2">NOMINAL</th>
-                <th className="w-1/4 text-left px-2">INFO KONTAK / KLUB</th>
+                <th className="text-left px-2">DAFTAR NOMOR LOMBA & SEED TIME</th>
             </tr>
         </thead>
         <tbody>
@@ -342,57 +342,41 @@ const OnlineRegistrationReport: React.FC<{ data: any[] }> = ({ data }) => (
                 <tr key={i} className="border-b border-gray-300 align-top">
                     <td className="text-center py-2 font-bold bg-gray-50">{i + 1}</td>
                     <td className="px-2 py-2">
-                        <div className="space-y-4">
-                            {item.swimmers.map((sEntry: any, sIdx: number) => (
-                                <div key={sIdx} className="border-b border-gray-100 last:border-0 pb-2">
-                                    <p className="font-bold uppercase text-[11px] mb-1">{sEntry.swimmer.name}</p>
-                                    <div className="space-y-0.5 pl-2 border-l-2 border-primary/20">
-                                        {sEntry.registeredEvents.map((ev: any, evIdx: number) => (
-                                            <div key={evIdx} className="flex justify-between items-start text-[8px] leading-tight">
-                                                <span className="uppercase font-medium opacity-80">{ev.no}. {ev.name}</span>
-                                                <span className="font-mono font-bold ml-2">{ev.time}</span>
-                                            </div>
-                                        ))}
-                                        {sEntry.registeredEvents.length === 0 && <span className="text-gray-400 italic text-[8px]">TIDAK ADA NOMOR LOMBA</span>}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <p className="font-bold uppercase text-[11px]">{item.swimmer.name}</p>
+                        <p className="text-[9px] text-gray-600 font-medium uppercase">{item.swimmer.club}</p>
+                        <p className="text-[8px] text-primary mt-1 font-mono">{item.swimmer.picPhone || '-'}</p>
                     </td>
-                    <td className="p-2 text-center">
-                        {item.paymentProof ? (
-                            <div className="border border-gray-300 rounded-[1rem] overflow-hidden bg-white shadow-sm max-w-[150px] mx-auto">
+                    <td className="p-1 text-center">
+                        {item.swimmer.paymentProof ? (
+                            <div className="border border-gray-200 rounded overflow-hidden bg-white shadow-sm">
                                 <img 
-                                    src={item.paymentProof} 
+                                    src={item.swimmer.paymentProof} 
                                     alt="Proof" 
-                                    className="h-40 w-full object-contain mx-auto bg-slate-50" 
+                                    className="h-32 w-full object-contain mx-auto" 
                                 />
-                                <div className="bg-gray-100 py-1 text-[7px] font-bold text-gray-500 uppercase border-t border-gray-100 italic">Klik untuk Detail</div>
                             </div>
                         ) : (
-                            <div className="p-4 bg-red-50 text-red-500 rounded-xl border border-red-100 text-center">
-                                <span className="text-[10px] font-black italic block">BELUM UNGGAH</span>
-                                <span className="text-[8px] opacity-70">BUKTI TRANSFER</span>
-                            </div>
+                            <span className="text-[10px] text-gray-400 italic">BELUM UNGGAH</span>
                         )}
                     </td>
-                    <td className="px-2 py-4 text-right font-black text-[13px] text-primary">
-                        {item.paymentAmount ? `Rp ${item.paymentAmount.toLocaleString('id-ID')}` : 'Rp 0'}
+                    <td className="px-2 py-2 text-right font-black text-xs">
+                        {item.swimmer.paymentAmount ? `Rp ${item.swimmer.paymentAmount.toLocaleString('id-ID')}` : 'Rp 0'}
                     </td>
                     <td className="px-2 py-2">
-                        <div className="bg-gray-50 p-2 rounded-xl border border-gray-100 space-y-1">
-                            <p className="text-[9px] font-black text-gray-800 uppercase tracking-tight">{item.club || item.picName || '-'}</p>
-                            <p className="text-[8px] text-primary font-mono bg-white inline-block px-1.5 rounded-full border border-primary/10 shadow-sm">{item.picPhone || '-'}</p>
-                            <div className="mt-2 pt-1 border-t border-gray-200">
-                                <p className="text-[7px] uppercase font-bold text-gray-400">Total Atlet:</p>
-                                <p className="text-[9px] font-bold">{item.swimmers.length} Orang</p>
-                            </div>
+                        <div className="space-y-1">
+                            {item.registeredEvents.map((ev: any, idx: number) => (
+                                <div key={idx} className="flex justify-between items-center border-b border-gray-100 last:border-0 pb-0.5">
+                                    <span className="uppercase text-[8px] leading-tight font-medium max-w-[70%]">{ev.name}</span>
+                                    <span className="font-mono text-[9px] font-black bg-gray-100 px-1 rounded">{ev.time}</span>
+                                </div>
+                            ))}
+                            {item.registeredEvents.length === 0 && <span className="text-gray-400 italic text-[8px]">TIDAK ADA NOMOR LOMBA</span>}
                         </div>
                     </td>
                 </tr>
             ))}
             {data.length === 0 && (
-                <tr><td colSpan={5} className="text-center py-20 text-gray-400 italic">BELUM ADA DATA PENDAFTARAN ONLINE</td></tr>
+                <tr><td colSpan={5} className="text-center py-10 text-gray-400 italic">BELUM ADA DATA PENDAFTARAN ONLINE</td></tr>
             )}
         </tbody>
     </table>
@@ -654,13 +638,13 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
             });
         });
 
-        // Online Registration Data Mapping (Grouped by Payment)
-        const groupedRegistrationMap = new Map<string, any>();
-        
-        swimmers
+        const registrationData = swimmers
             .filter(s => s.birthYear !== 0)
             .filter(s => !nameFilter || s.name.toLowerCase().includes(nameFilter.toLowerCase()))
-            .forEach(swimmer => {
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(swimmer => {
+                // Use all events (eventsWithGlobalNumbers) instead of session-filtered baseEvents for this data mapping
+                // to ensure all registrations show up regardless of current session filter
                 const registeredEvents = eventsWithGlobalNumbers
                     .filter(e => e.entries.some(en => en.swimmerId === swimmer.id))
                     .sort((a, b) => (a.sessionNumber || 0) - (b.sessionNumber || 0) || (a.heatOrder || 0) - (b.heatOrder || 0))
@@ -673,31 +657,9 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                             time: entry ? formatTime(entry.seedTime) : '99:99.99'
                         };
                     });
-                
-                if (registeredEvents.length === 0 && !swimmer.paymentProof) return;
-
-                // Grouping key: Proof URL + PIC Phone (to handle multiple kids from same family/club sharing same proof)
-                const groupKey = swimmer.paymentProof 
-                    ? `${swimmer.paymentProof}_${swimmer.picPhone || 'unknown'}`
-                    : `unpaid_${swimmer.id}`;
-
-                if (!groupedRegistrationMap.has(groupKey)) {
-                    groupedRegistrationMap.set(groupKey, {
-                        swimmers: [],
-                        paymentProof: swimmer.paymentProof,
-                        paymentAmount: swimmer.paymentAmount || 0,
-                        picPhone: swimmer.picPhone,
-                        picName: swimmer.picName,
-                        club: swimmer.club
-                    });
-                }
-                
-                const group = groupedRegistrationMap.get(groupKey);
-                group.swimmers.push({ swimmer, registeredEvents });
-            });
-
-        const registrationData = Array.from(groupedRegistrationMap.values())
-            .sort((a, b) => (a.club || '').localeCompare(b.club || ''));
+                return { swimmer, registeredEvents };
+            })
+            .filter(item => item.registeredEvents.length > 0 || item.swimmer.paymentProof); // Show only those who registered or paid
 
         // FIX: Rewrote sort function to be type-safe and avoid arithmetic operations on potentially non-numeric types.
         const sortFn = (a: { gold: number; silver: number; bronze: number }, b: { gold: number; silver: number; bronze: number }) => {
@@ -759,12 +721,12 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 processedData.registrationData.forEach((item, idx) => {
                     data.push({
                         "NO": idx + 1,
-                        "KLUB / PIC": item.club || item.picName || '-',
-                        "JUMLAH ATLET": item.swimmers.length,
-                        "BUKTI BAYAR": item.paymentProof ? "TERLAMPIR" : "BELUM UNGGAH",
-                        "NOMINAL BAYAR": item.paymentAmount || 0,
-                        "KONTAK PIC": item.picPhone || '-',
-                        "DAFTAR PESERTA": item.swimmers.map((s: any) => s.swimmer.name).join(', ')
+                        "NAMA ATLET": item.swimmer.name,
+                        "KLUB": item.swimmer.club,
+                        "BUKTI BAYAR": item.swimmer.paymentProof ? "TERLAMPIR" : "BELUM UNGGAH",
+                        "NOMINAL BAYAR": item.swimmer.paymentAmount || 0,
+                        "NOMOR LOMBA": item.registeredEvents.map(re => re.name).join(', '),
+                        "WAKTU UNGGULAN": item.registeredEvents.map(re => re.time).join(', ')
                     });
                 });
                 break;

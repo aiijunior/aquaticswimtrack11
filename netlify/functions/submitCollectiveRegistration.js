@@ -27,9 +27,23 @@ export const handler = async (event) => {
 
         // 1. Process each unique swimmer from the participants list
         const uniqueSwimmersMap = new Map();
+        
+        // Predetermine fee per event if we can
+        // We actually need the competition info to know the fee, but we can also use the proportional share of teamData.paymentAmount
+        const totalEvents = participants.filter(p => p.eventId).length;
+        const feePerEvent = totalEvents > 0 ? (teamData.paymentAmount || 0) / totalEvents : 0;
+
         participants.forEach(p => {
             const key = `${p.name.trim().toLowerCase()}_${p.birthYear}_${p.gender}`;
             if (!uniqueSwimmersMap.has(key)) {
+                // Calculate events for this swimmer
+                const swimmerEvents = participants.filter(x => 
+                    x.name.trim().toLowerCase() === p.name.trim().toLowerCase() && 
+                    x.birthYear === p.birthYear && 
+                    x.gender === p.gender &&
+                    x.eventId
+                ).length;
+
                 uniqueSwimmersMap.set(key, {
                     name: p.name,
                     birthYear: p.birthYear,
@@ -37,7 +51,7 @@ export const handler = async (event) => {
                     club: teamData.clubName,
                     age_group: p.ageGroup || null,
                     payment_proof: teamData.paymentProof,
-                    payment_amount: teamData.paymentAmount,
+                    payment_amount: swimmerEvents * feePerEvent,
                     pic_name: teamData.picName,
                     pic_phone: teamData.picPhone
                 });
@@ -59,11 +73,11 @@ export const handler = async (event) => {
             let swimmerId;
             if (existing && existing.length > 0) {
                 swimmerId = existing[0].id;
-                // Update info with PIC contact
+                // Update info with PIC contact and payment data
                 await supabaseAdmin.from('swimmers').update({
                     club: teamData.clubName,
                     payment_proof: teamData.paymentProof,
-                    payment_amount: teamData.paymentAmount,
+                    payment_amount: swimmerData.payment_amount,
                     pic_name: teamData.picName,
                     pic_phone: teamData.picPhone
                 }).eq('id', swimmerId);

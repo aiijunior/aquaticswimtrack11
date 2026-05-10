@@ -31,6 +31,10 @@ const toSwimmer = (data) => ({
     gender: data.gender,
     club: data.club,
     ageGroup: data.age_group,
+    paymentProof: data.payment_proof,
+    paymentAmount: data.payment_amount,
+    picName: data.pic_name,
+    picPhone: data.pic_phone,
 });
 
 const toEventEntry = (data) => ({
