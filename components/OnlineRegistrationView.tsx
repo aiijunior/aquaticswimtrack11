@@ -578,7 +578,31 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 }, registrationsToSubmit);
 
                 if (result.success) {
-                    setSuccessMessage(`Pendaftaran atlet ${formData.name} berhasil!`);
+                    setSuccessMessage(
+                        <div className="space-y-4">
+                            <p className="text-xl font-medium">Pendaftaran atlet <span className="font-black text-primary uppercase">{formData.name}</span> berhasil!</p>
+                            <div className="text-left mt-6 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-[2rem] border border-border shadow-inner">
+                                <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] mb-4 opacity-70">Nomor Lomba & Waktu Unggulan:</p>
+                                <div className="space-y-3">
+                                    {summaryList.map((item, idx) => (
+                                        <div key={idx} className="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-2xl border border-border shadow-sm">
+                                            <span className="font-black text-sm text-text-primary tracking-tight">{item.name}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] text-text-secondary font-bold uppercase tracking-tighter">Waktu:</span>
+                                                <span className="font-mono text-sm bg-primary/5 text-primary font-black px-3 py-1 rounded-lg border border-primary/20">{item.time}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-6 pt-4 border-t border-dashed border-primary/30 flex justify-between items-center px-2">
+                                    <span className="text-xs font-bold text-text-secondary uppercase">Total Bayar:</span>
+                                    <span className="text-xl font-black text-primary">
+                                        {competitionInfo?.isFree ? 'GRATIS' : `Rp ${parseInt(formData.paymentAmount || '0').toLocaleString('id-ID')}`}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    );
                     onRegistrationSuccess();
                 } else {
                     setError(result.message);
@@ -596,7 +620,42 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 }, teamParticipants);
 
                 if (result.success) {
-                    setSuccessMessage(`Berhasil mendaftarkan tim ${teamFormData.clubName}!`);
+                    setSuccessMessage(
+                        <div className="space-y-4">
+                            <p className="text-xl font-medium">Berhasil mendaftarkan tim <span className="font-black text-primary uppercase">{teamFormData.clubName}</span>!</p>
+                            <div className="text-left mt-6 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-[2rem] border border-border shadow-inner max-h-[400px] overflow-y-auto">
+                                <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] mb-4 opacity-70">Ringkasan Pendaftaran Kolektif:</p>
+                                <div className="grid grid-cols-2 gap-4 mb-6">
+                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-border shadow-sm text-center">
+                                        <p className="text-[9px] font-black text-text-secondary uppercase">Atlet</p>
+                                        <p className="text-xl font-black text-primary">{new Set(teamParticipants.map(p => p.name)).size}</p>
+                                    </div>
+                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-border shadow-sm text-center">
+                                        <p className="text-[9px] font-black text-text-secondary uppercase">Nomor</p>
+                                        <p className="text-xl font-black text-primary">{teamParticipants.length}</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    {teamParticipants.slice(0, 10).map((p, idx) => (
+                                        <div key={idx} className="flex justify-between items-center bg-white dark:bg-slate-800 px-4 py-3 rounded-xl border border-border shadow-sm">
+                                            <div className="flex flex-col">
+                                                <span className="font-black text-[11px] text-text-primary leading-tight">{p.name}</span>
+                                                <span className="text-[9px] text-text-secondary opacity-70 truncate max-w-[150px]">{p.eventName}</span>
+                                            </div>
+                                            <span className="font-mono text-[11px] bg-primary/5 text-primary font-black px-2 py-0.5 rounded border border-primary/10">{p.displayTime}</span>
+                                        </div>
+                                    ))}
+                                    {teamParticipants.length > 10 && <p className="text-[10px] text-center italic opacity-50 pt-2">... dan {teamParticipants.length - 10} entri lainnya</p>}
+                                </div>
+                                <div className="mt-6 pt-4 border-t border-dashed border-primary/30 flex justify-between items-center px-2">
+                                    <span className="text-xs font-bold text-text-secondary uppercase">Total Bayar:</span>
+                                    <span className="text-xl font-black text-primary">
+                                        {competitionInfo?.isFree ? 'GRATIS' : `Rp ${parseInt(teamFormData.paymentAmount || '0').toLocaleString('id-ID')}`}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    );
                     onRegistrationSuccess();
                 } else {
                     setError(result.message);
@@ -1002,8 +1061,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                             <span className="text-green-500 text-7xl font-bold">✓</span>
                         </div>
                         <h2 className="text-4xl font-black text-text-primary mb-4 italic tracking-tighter uppercase">BERHASIL!</h2>
-                        <p className="text-xl text-text-secondary font-medium leading-relaxed max-w-md mx-auto">{successMessage}</p>
-                        <div className="mt-12 flex flex-col gap-5">
+                        <div className="max-w-2xl mx-auto">{successMessage}</div>
+                        <div className="mt-12 flex flex-col gap-5 max-w-sm mx-auto">
                             <Button onClick={() => { setSuccessMessage(''); setRegType('CHOICE'); setTeamParticipants([]); }} className="py-6 font-black text-xl rounded-2xl shadow-xl">PENDAFTARAN BARU</Button>
                             <Button variant="secondary" onClick={onBackToLogin} className="py-4 rounded-xl opacity-70 hover:opacity-100 transition-opacity">KEMBALI KE BERANDA</Button>
                         </div>
