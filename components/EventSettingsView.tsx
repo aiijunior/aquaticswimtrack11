@@ -5,6 +5,7 @@ import type { CompetitionInfo, SwimEvent } from '../types';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
+import { Select } from './ui/Select';
 import { Spinner } from './ui/Spinner';
 import { ToggleSwitch } from './ui/ToggleSwitch';
 import { Modal } from './ui/Modal';
