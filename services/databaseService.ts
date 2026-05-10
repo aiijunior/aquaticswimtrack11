@@ -281,15 +281,25 @@ export const updateCompetitionInfo = async (info: CompetitionInfo): Promise<void
 };
 
 export const updateEventSchedule = async (events: SwimEvent[]): Promise<void> => {
+    if (events.length === 0) return;
+    
     const { error } = await supabase.from('events').upsert(
         events.map(e => ({
             id: e.id,
-            session_number: e.sessionNumber,
-            heat_order: e.heatOrder,
-            session_date_time: e.sessionDateTime
+            distance: e.distance,
+            style: e.style,
+            gender: e.gender,
+            session_number: e.sessionNumber ?? null,
+            heat_order: e.heatOrder ?? null,
+            session_date_time: e.sessionDateTime || null,
+            relay_legs: e.relayLegs || null,
+            category: e.category || null
         })) as any[]
     );
-    if (error) throw error;
+    if (error) {
+        console.error("Supabase Error in updateEventSchedule:", error);
+        throw error;
+    }
 };
 
 export const processEventUpload = async (json: any[]) => {

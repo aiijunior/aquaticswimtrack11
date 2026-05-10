@@ -98,6 +98,16 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     
     const getErrorMessage = (error: unknown): string => {
         if (error instanceof Error) return error.message;
+        if (typeof error === 'string') return error;
+        if (error && typeof error === 'object') {
+            if ('message' in error && typeof error.message === 'string') return error.message;
+            if ('error_description' in error && typeof error.error_description === 'string') return error.error_description;
+            try {
+                return JSON.stringify(error);
+            } catch (e) {
+                return 'Terjadi kesalahan pada objek error.';
+            }
+        }
         return 'Terjadi kesalahan.';
     };
 
@@ -262,7 +272,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                         ...event,
                         sessionNumber: sessionNum,
                         heatOrder: index,
-                        sessionDateTime: sessionNum > 0 ? sessionDT : undefined,
+                        sessionDateTime: sessionNum > 0 ? (sessionDT || null) : null,
                     });
                 });
             });
@@ -284,7 +294,11 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     const handleImageClear = (field: 'eventLogo' | 'sponsorLogo') => setInfo(prev => prev ? { ...prev, [field]: null } : null);
     
     const addSession = () => {
-        const nextSessionNum = (Object.keys(schedule).filter(k => k.startsWith('session')).length) + 1;
+        const sessionKeys = Object.keys(schedule).filter(k => k.startsWith('session-'));
+        const sessionNums = sessionKeys.map(k => parseInt(k.split('-')[1])).filter(n => !isNaN(n));
+        const maxSessionNum = sessionNums.length > 0 ? Math.max(...sessionNums) : 0;
+        const nextSessionNum = maxSessionNum + 1;
+        
         const sessionKey = `session-${nextSessionNum}`;
         setSchedule(prev => ({ ...prev, [sessionKey]: [] }));
         setSessionNames(prev => ({...prev, [sessionKey]: `Sesi ${romanize(nextSessionNum)}`}));
