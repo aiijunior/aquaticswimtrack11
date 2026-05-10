@@ -204,15 +204,45 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                teamFormData.picPhone.trim() !== '';
     }, [teamFormData.clubName, teamFormData.picName, teamFormData.picPhone]);
 
-    const isFormValid = useMemo(() => {
+    const validationErrors = useMemo(() => {
+        const errors: string[] = [];
         if (regType === 'INDIVIDUAL') {
-            const hasPersonalInfo = formData.name.trim() !== '' && formData.club.trim() !== '' && formData.ageGroup !== '' && formData.picPhone.trim() !== '';
-            const hasSelectedEvent = selectedEventCount > 0 && (competitionInfo?.isFree || selectedEventCount <= maxAllowedEvents);
-            return hasPersonalInfo && isPaymentStepValid && hasSelectedEvent;
+            if (!formData.name.trim()) errors.push("Nama Lengkap belum diisi");
+            if (!formData.club.trim()) errors.push("Nama Tim/Klub belum diisi");
+            if (!formData.ageGroup) errors.push("Kelompok Umur belum dipilih");
+            if (!formData.picPhone.trim()) errors.push("Nomor HP/WA belum diisi");
+            
+            if (!competitionInfo?.isFree) {
+                if (!formData.paymentProof) errors.push("Bukti bayar belum diunggah");
+                const amount = parseInt(formData.paymentAmount) || 0;
+                const feePerNo = competitionInfo?.feePerEvent || 0;
+                if (amount < feePerNo) errors.push("Nominal bayar belum mencukupi untuk minimal 1 nomor");
+            }
+            
+            if (selectedEventCount === 0) {
+                errors.push("Belum memilih nomor lomba");
+            } else if (!competitionInfo?.isFree && selectedEventCount > maxAllowedEvents) {
+                errors.push("Jumlah nomor lomba melebihi kuota pembayaran");
+            }
         } else {
-            return teamFormData.clubName.trim() !== '' && teamFormData.picName.trim() !== '' && teamFormData.picPhone.trim() !== '' && isPaymentStepValid && teamParticipants.length > 0;
+            if (!teamFormData.clubName.trim()) errors.push("Nama Tim/Klub belum diisi");
+            if (!teamFormData.picName.trim()) errors.push("Nama PIC belum diisi");
+            if (!teamFormData.picPhone.trim()) errors.push("Nomor HP/WA PIC belum diisi");
+            
+            if (!competitionInfo?.isFree) {
+                if (!teamFormData.paymentProof) errors.push("Bukti bayar belum diunggah");
+                const amount = parseInt(teamFormData.paymentAmount) || 0;
+                if (amount <= 0) errors.push("Nominal bayar belum diisi");
+            }
+            
+            if (teamParticipants.length === 0) {
+                errors.push("Belum ada data atlet (Unggah Excel)");
+            }
         }
+        return errors;
     }, [formData, teamFormData, regType, selectedEventCount, maxAllowedEvents, isPaymentStepValid, teamParticipants, competitionInfo]);
+
+    const isFormValid = validationErrors.length === 0;
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -1008,6 +1038,22 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
                         {error && <div className="p-5 bg-red-100 border-2 border-red-300 text-red-700 rounded-2xl font-black text-center animate-bounce shadow-lg">{error}</div>}
                         
+                        {!isFormValid && (
+                            <div className="p-6 bg-yellow-50 border-2 border-yellow-200 rounded-3xl shadow-sm animate-in fade-in slide-in-from-bottom-2">
+                                <h4 className="text-sm font-black text-yellow-800 uppercase mb-3 flex items-center gap-2">
+                                    <span>⚠️</span> DATA BELUM LENGKAP:
+                                </h4>
+                                <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                                    {validationErrors.map((err, i) => (
+                                        <li key={i} className="text-xs font-bold text-yellow-700 flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full"></span>
+                                            {err}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
                         <div className="pt-6">
                             <Button 
                                 type="submit" 
