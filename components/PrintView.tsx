@@ -716,12 +716,12 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 break;
             case 'program':
                 processedData.detailedEvents.forEach(e => {
+                    data.push({ "LINTASAN": `ACARA ${e.globalEventNumber} - ${formatEventName(e).toUpperCase()}` });
                     e.heatsWithTimes?.forEach(h => {
+                        data.push({ "LINTASAN": `SERI ${h.heatNumber} DARI ${e.heatsWithTimes?.length}` });
+                        data.push({ "LINTASAN": "LANE", "NAMA ATLET": "NAMA ATLET", "TAHUN": "THN", "KLUB / TIM": "KLUB / TIM", "SEED TIME": "SEED TIME" });
                         h.assignments.forEach(ass => {
                             data.push({
-                                "NO ACARA": e.globalEventNumber,
-                                "NOMOR LOMBA": formatEventName(e),
-                                "SERI": h.heatNumber,
                                 "LINTASAN": ass.lane,
                                 "NAMA ATLET": ass.entry.swimmer.name,
                                 "TAHUN": ass.entry.swimmer.birthYear,
@@ -729,21 +729,24 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                                 "SEED TIME": formatTime(ass.entry.seedTime)
                             });
                         });
+                        data.push({});
                     });
+                    data.push({});
                 });
                 break;
             case 'results':
                 processedData.detailedEvents.forEach(e => {
+                    data.push({ "PERINGKAT": `ACARA ${e.globalEventNumber} - ${formatEventName(e).toUpperCase()}` });
+                    data.push({ "PERINGKAT": "RANK", "NAMA ATLET": "NAMA ATLET", "TAHUN": "THN", "TIM / KLUB": "TIM / KLUB", "WAKTU": "HASIL", "STATUS": "MEDALI" });
                     e.detailedResults?.forEach(r => data.push({
-                        "NO ACARA": e.globalEventNumber, 
-                        "NOMOR LOMBA": formatEventName(e), 
                         "PERINGKAT": r.rank || '-', 
                         "NAMA ATLET": r.swimmer?.name, 
                         "TAHUN": r.swimmer?.birthYear,
                         "TIM / KLUB": r.swimmer?.club, 
                         "WAKTU": formatTime(r.time),
-                        "STATUS": r.time === -1 ? 'DQ' : r.time === -2 ? 'NS' : (r.time > 0 ? 'OK' : '-')
+                        "STATUS": r.rank === 1 ? '🥇 EMAS' : r.rank === 2 ? '🥈 PERAK' : r.rank === 3 ? '🥉 PERUNGGU' : '-'
                     }));
+                    data.push({});
                 });
                 break;
             case 'clubMedals':
@@ -772,31 +775,71 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 });
                 break;
             case 'swimmerTotal':
-                processedData.individuals.forEach((i: any, idx) => data.push({
-                    "PERINGKAT": idx+1, 
-                    "NAMA ATLET": i.swimmer.name, 
-                    "TIM": i.swimmer.club, 
-                    "JENIS KELAMIN": i.swimmer.gender === 'Male' ? 'PUTRA' : 'PUTRI', 
-                    "KU": i.swimmer.ageGroup || '-', 
-                    "EMAS": i.gold, 
-                    "PERAK": i.silver, 
-                    "PERUNGGU": i.bronze, 
-                    "TOTAL": i.gold+i.silver+i.bronze
-                }));
-                break;
-            case 'swimmerCategory':
-                processedData.categoryLeaderboard.forEach(cat => {
-                    cat.leaders.forEach((i: any, idx) => data.push({
-                        "KATEGORI": cat.ku,
+                const individuals = processedData.individuals;
+                const totalMale = individuals.filter(i => i.swimmer?.gender === 'Male');
+                const totalFemale = individuals.filter(i => i.swimmer?.gender === 'Female');
+                
+                if (totalMale.length > 0) {
+                    data.push({ "PERINGKAT": "REKAPITULASI MEDALI ATLET - PUTRA" });
+                    data.push({ "PERINGKAT": "#", "NAMA ATLET": "NAMA ATLET", "TIM": "TIM / KLUB", "EMAS": "G", "PERAK": "S", "PERUNGGU": "B", "TOTAL": "TOT" });
+                    totalMale.forEach((i, idx) => data.push({
                         "PERINGKAT": idx+1, 
                         "NAMA ATLET": i.swimmer.name, 
                         "TIM": i.swimmer.club, 
-                        "JENIS KELAMIN": i.swimmer.gender === 'Male' ? 'PUTRA' : 'PUTRI', 
                         "EMAS": i.gold, 
                         "PERAK": i.silver, 
                         "PERUNGGU": i.bronze, 
                         "TOTAL": i.gold+i.silver+i.bronze
                     }));
+                }
+                if (totalFemale.length > 0) {
+                    data.push({});
+                    data.push({ "PERINGKAT": "REKAPITULASI MEDALI ATLET - PUTRI" });
+                    data.push({ "PERINGKAT": "#", "NAMA ATLET": "NAMA ATLET", "TIM": "TIM / KLUB", "EMAS": "G", "PERAK": "S", "PERUNGGU": "B", "TOTAL": "TOT" });
+                    totalFemale.forEach((i, idx) => data.push({
+                        "PERINGKAT": idx+1, 
+                        "NAMA ATLET": i.swimmer.name, 
+                        "TIM": i.swimmer.club, 
+                        "EMAS": i.gold, 
+                        "PERAK": i.silver, 
+                        "PERUNGGU": i.bronze, 
+                        "TOTAL": i.gold+i.silver+i.bronze
+                    }));
+                }
+                break;
+            case 'swimmerCategory':
+                processedData.categoryLeaderboard.forEach(cat => {
+                    data.push({ "PERINGKAT": `KATEGORI: ${cat.ku}` });
+                    const catMale = cat.leaders.filter(i => i.swimmer?.gender === 'Male');
+                    const catFemale = cat.leaders.filter(i => i.swimmer?.gender === 'Female');
+                    
+                    if (catMale.length > 0) {
+                        data.push({ "PERINGKAT": "PUTRA" });
+                        data.push({ "PERINGKAT": "#", "NAMA ATLET": "NAMA ATLET", "TIM": "TIM / KLUB", "EMAS": "G", "PERAK": "S", "PERUNGGU": "B", "TOTAL": "TOT" });
+                        catMale.forEach((i, idx) => data.push({
+                            "PERINGKAT": idx+1, 
+                            "NAMA ATLET": i.swimmer.name, 
+                            "TIM": i.swimmer.club, 
+                            "EMAS": i.gold, 
+                            "PERAK": i.silver, 
+                            "PERUNGGU": i.bronze, 
+                            "TOTAL": i.gold+i.silver+i.bronze
+                        }));
+                    }
+                    if (catFemale.length > 0) {
+                        data.push({ "PERINGKAT": "PUTRI" });
+                        data.push({ "PERINGKAT": "#", "NAMA ATLET": "NAMA ATLET", "TIM": "TIM / KLUB", "EMAS": "G", "PERAK": "S", "PERUNGGU": "B", "TOTAL": "TOT" });
+                        catFemale.forEach((i, idx) => data.push({
+                            "PERINGKAT": idx+1, 
+                            "NAMA ATLET": i.swimmer.name, 
+                            "TIM": i.swimmer.club, 
+                            "EMAS": i.gold, 
+                            "PERAK": i.silver, 
+                            "PERUNGGU": i.bronze, 
+                            "TOTAL": i.gold+i.silver+i.bronze
+                        }));
+                    }
+                    data.push({});
                 });
                 break;
             case 'onlineRegistration':
