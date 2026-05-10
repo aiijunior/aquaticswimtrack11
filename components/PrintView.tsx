@@ -702,25 +702,102 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
     const handleExportExcel = () => {
         if (!XLSX) return alert("Pustaka Excel belum siap.");
         let data: any[] = [];
-        let fileName = "Laporan";
+        let fileName = reportTitles[reportType] || "Laporan";
 
         switch(reportType) {
             case 'schedule':
-                data = renderEvents.map(e => ({ "NO ACARA": e.globalEventNumber, "NOMOR LOMBA": formatEventName(e), "JUMLAH PESERTA": e.entries.length }));
+                data = renderEvents.map(e => ({ 
+                    "NO ACARA": e.globalEventNumber, 
+                    "NOMOR LOMBA": formatEventName(e), 
+                    "SESI": e.sessionNumber,
+                    "JUMLAH SERI": Math.ceil((e.entries?.length || 0) / (competitionInfo?.numberOfLanes || 8)),
+                    "JUMLAH PESERTA": e.entries.length 
+                }));
+                break;
+            case 'program':
+                processedData.detailedEvents.forEach(e => {
+                    e.heatsWithTimes?.forEach(h => {
+                        h.assignments.forEach(ass => {
+                            data.push({
+                                "NO ACARA": e.globalEventNumber,
+                                "NOMOR LOMBA": formatEventName(e),
+                                "SERI": h.heatNumber,
+                                "LINTASAN": ass.lane,
+                                "NAMA ATLET": ass.entry.swimmer.name,
+                                "TAHUN": ass.entry.swimmer.birthYear,
+                                "KLUB / TIM": ass.entry.swimmer.club,
+                                "SEED TIME": formatTime(ass.entry.seedTime)
+                            });
+                        });
+                    });
+                });
                 break;
             case 'results':
-                processedData.detailedEvents.forEach(e => e.detailedResults?.forEach(r => data.push({
-                    "NOMOR": e.globalEventNumber, "EVENT": formatEventName(e), "RANK": r.rank || '-', "NAMA ATLET": r.swimmer?.name, "TIM": r.swimmer?.club, "WAKTU": formatTime(r.time)
-                })));
+                processedData.detailedEvents.forEach(e => {
+                    e.detailedResults?.forEach(r => data.push({
+                        "NO ACARA": e.globalEventNumber, 
+                        "NOMOR LOMBA": formatEventName(e), 
+                        "PERINGKAT": r.rank || '-', 
+                        "NAMA ATLET": r.swimmer?.name, 
+                        "TAHUN": r.swimmer?.birthYear,
+                        "TIM / KLUB": r.swimmer?.club, 
+                        "WAKTU": formatTime(r.time),
+                        "STATUS": r.time === -1 ? 'DQ' : r.time === -2 ? 'NS' : (r.time > 0 ? 'OK' : '-')
+                    }));
+                });
                 break;
             case 'clubMedals':
-                data = processedData.clubs.map((c, i) => ({ "PERINGKAT": i+1, "KLUB": c.name, "EMAS": c.gold, "PERAK": c.silver, "PERUNGGU": c.bronze, "TOTAL": c.gold+c.silver+c.bronze }));
+                data = processedData.clubs.map((c, i) => ({ 
+                    "PERINGKAT": i+1, 
+                    "KLUB": c.name, 
+                    "EMAS": c.gold, 
+                    "PERAK": c.silver, 
+                    "PERUNGGU": c.bronze, 
+                    "TOTAL": c.gold+c.silver+c.bronze 
+                }));
+                break;
+            case 'clubSwimmerMedals':
+                processedData.clubs.forEach(club => {
+                    club.individualDetails.forEach((swimmer: any) => {
+                        swimmer.medals.forEach((m: any) => {
+                            data.push({
+                                "KLUB": club.name,
+                                "NAMA ATLET": swimmer.name,
+                                "NOMOR LOMBA": m.eventName,
+                                "MEDALI": m.rank === 1 ? 'EMAS' : m.rank === 2 ? 'PERAK' : 'PERUNGGU',
+                                "WAKTU": formatTime(m.time)
+                            });
+                        });
+                    });
+                });
                 break;
             case 'swimmerTotal':
-            case 'swimmerCategory':
                 processedData.individuals.forEach((i: any, idx) => data.push({
-                    "NO": idx+1, "NAMA ATLET": i.swimmer.name, "TIM": i.swimmer.club, "JENIS KELAMIN": i.swimmer.gender === 'Male' ? 'PUTRA' : 'PUTRI', "KU": i.swimmer.ageGroup || '-', "EMAS": i.gold, "PERAK": i.silver, "PERUNGGU": i.bronze, "TOTAL": i.gold+i.silver+i.bronze
+                    "PERINGKAT": idx+1, 
+                    "NAMA ATLET": i.swimmer.name, 
+                    "TIM": i.swimmer.club, 
+                    "JENIS KELAMIN": i.swimmer.gender === 'Male' ? 'PUTRA' : 'PUTRI', 
+                    "KU": i.swimmer.ageGroup || '-', 
+                    "EMAS": i.gold, 
+                    "PERAK": i.silver, 
+                    "PERUNGGU": i.bronze, 
+                    "TOTAL": i.gold+i.silver+i.bronze
                 }));
+                break;
+            case 'swimmerCategory':
+                processedData.categoryLeaderboard.forEach(cat => {
+                    cat.leaders.forEach((i: any, idx) => data.push({
+                        "KATEGORI": cat.ku,
+                        "PERINGKAT": idx+1, 
+                        "NAMA ATLET": i.swimmer.name, 
+                        "TIM": i.swimmer.club, 
+                        "JENIS KELAMIN": i.swimmer.gender === 'Male' ? 'PUTRA' : 'PUTRI', 
+                        "EMAS": i.gold, 
+                        "PERAK": i.silver, 
+                        "PERUNGGU": i.bronze, 
+                        "TOTAL": i.gold+i.silver+i.bronze
+                    }));
+                });
                 break;
             case 'onlineRegistration':
                 processedData.registrationData.forEach((item, idx) => {
@@ -728,10 +805,43 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                         "NO": idx + 1,
                         "NAMA ATLET": item.swimmer.name,
                         "KLUB": item.swimmer.club,
-                        "BUKTI BAYAR": item.swimmer.paymentProof ? "TERLAMPIR" : "BELUM UNGGAH",
+                        "JENIS KELAMIN": item.swimmer.gender === 'Male' ? 'PUTRA' : 'PUTRI',
+                        "TAHUN LAHIR": item.swimmer.birthYear,
+                        "WA PIC": item.swimmer.picPhone || '-',
+                        "NAMA PIC": item.swimmer.picName || '-',
+                        "BUKTI BAYAR": item.swimmer.paymentProof ? "TERDOKUMENTASI" : "BELUM UNGGAH",
                         "NOMINAL BAYAR": item.swimmer.paymentAmount || 0,
-                        "NOMOR LOMBA": item.registeredEvents.map(re => re.name).join(', '),
-                        "WAKTU UNGGULAN": item.registeredEvents.map(re => re.time).join(', ')
+                        "JUMLAH NOMOR": item.registeredEvents.length,
+                        "DAFTAR NOMOR": item.registeredEvents.map(re => `#${re.no} ${re.name}`).join('; '),
+                        "DAFTAR WAKTU": item.registeredEvents.map(re => re.time).join('; ')
+                    });
+                });
+                break;
+            case 'brokenRecords':
+                processedData.broken.forEach((br, i) => {
+                    data.push({
+                        "NO": i+1,
+                        "NOMOR LOMBA": br.newEventName,
+                        "NAMA ATLET": br.newHolder.name,
+                        "KLUB": br.newHolder.club,
+                        "WAKTU BARU": formatTime(br.newTime),
+                        "REKOR LAMA": formatTime(br.record.time),
+                        "PEMEGANG LAMA": br.record.holderName,
+                        "TIPE REKOR": br.record.type
+                    });
+                });
+                break;
+            case 'participantCards':
+                processedData.registrationData.forEach((item, idx) => {
+                    data.push({
+                        "NO": idx+1,
+                        "ID ATLET": item.swimmer.id,
+                        "NAMA ATLET": item.swimmer.name,
+                        "KLUB": item.swimmer.club,
+                        "TAHUN": item.swimmer.birthYear,
+                        "KU": item.swimmer.ageGroup,
+                        "JUMLAH NOMOR": item.registeredEvents.length,
+                        "DAFTAR NOMOR": item.registeredEvents.map(re => `${re.no}.${re.name}`).join('; ')
                     });
                 });
                 break;
@@ -740,7 +850,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Laporan");
-        XLSX.writeFile(wb, `${fileName}_${new Date().getTime()}.xlsx`);
+        XLSX.writeFile(wb, `${fileName}_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
     if (isLoading || !competitionInfo) return <div className="flex justify-center p-20"><Spinner /></div>;

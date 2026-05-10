@@ -242,10 +242,20 @@ Jika Anda ingin memindahkan atau menginstal ulang aplikasi ini di akun Supabase 
     *   Buka file `schema.sql` yang ada di root folder aplikasi ini atau salin dari bagian **Langkah 1** di atas.
     *   Salin seluruh isi SQL tersebut dan tempelkan ke SQL Editor Supabase.
     *   Klik **Run**. Ini akan membuat tabel, tipe data (enum), trigger admin otomatis, dan kebijakan keamanan (RLS).
-3.  **Ambil Kredensial**:
-    *   Pergi ke **Project Settings** > **API**.
-    *   Catat **Project URL** dan **anon (public) key**.
-    *   Catat juga **service_role (secret) key** (Hanya untuk digunakan di Netlify Environment Variables).
+3.  **Mendapatkan Kredensial API**:
+    *   Di dasbor Supabase, klik ikon Gerigi (**Project Settings**) di bagian paling bawah sidebar kiri.
+    *   Pilih menu **API**.
+    *   Di bagian **Project API Keys**, Anda akan menemukan:
+        *   `URL`: Ini adalah **SUPABASE_URL**. Gunakan ini di `config.ts` dan Netlify.
+        *   `anon (public)` key: Ini adalah **SUPABASE_ANON_KEY**. Gunakan ini di `config.ts`.
+        *   `service_role (secret)` key: Klik tombol "Reveal" untuk melihatnya. Ini adalah **SUPABASE_SERVICE_KEY**. **PENTING**: Jangan pernah bagikan key ini atau menggunakannya di kode sisi klien. Gunakan hanya di Environment Variables Netlify.
+4.  **Manajemen Admin (Authentication)**:
+    *   Klik ikon Orang (**Authentication**) di sidebar kiri.
+    *   Pilih menu **Users**. Di sini Anda bisa melihat daftar user yang sudah mendaftar.
+    *   Jika Anda ingin memberikan akses Admin secara manual:
+        1. Catat **User ID** (UUID) dari user yang ingin dijadikan admin.
+        2. Buka **Table Editor** > pilih tabel `users`.
+        3. Masukkan ID tadi dan set kolom `role` menjadi `ADMIN` atau `SUPER_ADMIN`.
 
 ### 2. Konfigurasi Kode Lokal
 1.  **Ganti Nama File**: Cari file `config.ts.txt` di root folder aplikasi. Ubah namanya menjadi `config.ts`.
