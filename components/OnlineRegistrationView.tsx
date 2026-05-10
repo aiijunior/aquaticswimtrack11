@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, FormattableEvent } from '../types';
-import { getEventsForRegistration, processOnlineRegistration, processCollectiveRegistration, searchExternalSwimmer } from '../services/databaseService';
+import { getEventsForRegistration, processOnlineRegistration, processCollectiveRegistration, findSwimmerByName, getSwimmerBestTime } from '../services/databaseService';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -142,6 +142,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         paymentProof: null as string | null,
         paymentAmount: '' as string
     });
+    const [existingSwimmerId, setExistingSwimmerId] = useState<string | null>(null);
     const [selectedEvents, setSelectedEvents] = useState<SelectedEvents>({});
     
     // Team form states
@@ -154,10 +155,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     });
     const [teamParticipants, setTeamParticipants] = useState<any[]>([]);
     const [isParsingExcel, setIsParsingExcel] = useState(false);
-
-    const [isSearchingExternal, setIsSearchingExternal] = useState(false);
-    const [externalResults, setExternalResults] = useState<any[]>([]);
-    const [showExternalModal, setShowExternalModal] = useState(false);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -225,7 +222,30 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             setSelectedEvents({});
         }
 
+        if (name === 'name') {
+            setExistingSwimmerId(null); // Reset when name changes
+        }
+
         setFormData(prev => ({ ...prev, [name]: (name === 'name' || name === 'club') ? toTitleCase(value) : value }));
+    };
+
+    const handleNameBlur = async () => {
+        if (!formData.name.trim()) return;
+        try {
+            const swimmer = await findSwimmerByName(formData.name.trim());
+            if (swimmer) {
+                setExistingSwimmerId(swimmer.id);
+                setFormData(prev => ({
+                    ...prev,
+                    club: swimmer.club,
+                    gender: swimmer.gender,
+                    birthYear: swimmer.birthYear,
+                    ageGroup: swimmer.ageGroup || prev.ageGroup,
+                }));
+            }
+        } catch (err) {
+            console.error("Lookup swimmer failed:", err);
+        }
     };
 
     const handleTeamFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -246,71 +266,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             };
             reader.readAsDataURL(file);
         }
-    };
-
-    const handleSearchExternal = async () => {
-        if (!formData.name.trim() || formData.name.length < 3) {
-            alert('Masukkan minimal 3 karakter nama untuk mencari.');
-            return;
-        }
-
-        setIsSearchingExternal(true);
-        try {
-            const data = await searchExternalSwimmer(formData.name);
-            setExternalResults(data.swimmers || []);
-            setShowExternalModal(true);
-        } catch (err) {
-            alert('Gagal mencari data di database Sulawesi Selatan.');
-        } finally {
-            setIsSearchingExternal(false);
-        }
-    };
-
-    const applyExternalSwimmer = (extSwimmer: any) => {
-        setFormData(prev => ({
-            ...prev,
-            name: extSwimmer.name,
-            birthYear: extSwimmer.birthYear,
-            gender: extSwimmer.gender,
-            club: extSwimmer.club,
-            ageGroup: extSwimmer.ageGroup || prev.ageGroup
-        }));
-
-        // Auto-fill times for events
-        const newSelectedEvents: SelectedEvents = {};
-        
-        extSwimmer.bestTimes.forEach((bt: any) => {
-            // Find current competition event that matches external event distance/style/gender
-            const matchingEvent = localEvents.find(le => 
-                le.distance === bt.distance && 
-                le.style === bt.style && 
-                (le.gender === 'Mixed' || 
-                 (extSwimmer.gender === 'Male' && le.gender === "Men's") || 
-                 (extSwimmer.gender === 'Female' && le.gender === "Women's"))
-                && (!le.category || le.category === extSwimmer.ageGroup || formData.ageGroup === le.category)
-            );
-
-            if (matchingEvent) {
-                const totalSecs = Math.floor(bt.time / 1000);
-                const min = Math.floor(totalSecs / 60);
-                const sec = totalSecs % 60;
-                const ms = Math.floor((bt.time % 1000) / 10);
-
-                newSelectedEvents[matchingEvent.id] = {
-                    selected: true,
-                    time: {
-                        min: min.toString(),
-                        sec: sec.toString().padStart(2, '0'),
-                        ms: ms.toString().padStart(2, '0')
-                    }
-                };
-            }
-        });
-
-        setSelectedEvents(newSelectedEvents);
-        setShowExternalModal(false);
-        setSuccessMessage(`Berhasil memuat data ${extSwimmer.name}.`);
-        setTimeout(() => setSuccessMessage(''), 3000);
     };
 
     // Collective Registration Helpers
@@ -672,20 +627,50 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         setOpenAccordion(prev => (prev === style ? null : style));
     };
 
-    const handleEventSelectionChange = (eventId: string) => {
+    const handleEventSelectionChange = async (eventId: string) => {
         const isCurrentlySelected = !!selectedEvents[eventId]?.selected;
         if (!isCurrentlySelected && selectedEventCount >= maxAllowedEvents && !competitionInfo?.isFree) {
             alert(`Kuota pemilihan nomor sudah habis sesuai nominal transfer Rp ${parseInt(formData.paymentAmount).toLocaleString('id-ID')}.`);
             return;
         }
 
-        setSelectedEvents(prev => ({
-            ...prev,
-            [eventId]: {
-                selected: !isCurrentlySelected,
-                time: prev[eventId]?.time || { min: '99', sec: '99', ms: '99' },
-            },
-        }));
+        const newSelectedEvents = { ...selectedEvents };
+        const newIsSelected = !isCurrentlySelected;
+
+        if (newIsSelected) {
+            let seedTimeData = { min: '99', sec: '99', ms: '99' };
+
+            // AUTO ADAPT: Ambil data & waktu terbaik otomatis
+            if (existingSwimmerId) {
+                const event = localEvents.find(e => e.id === eventId);
+                if (event) {
+                    const bestTimeMs = await getSwimmerBestTime(existingSwimmerId, event.distance, event.style);
+                    if (bestTimeMs > 0) {
+                        const totalSeconds = Math.floor(bestTimeMs / 1000);
+                        const min = Math.floor(totalSeconds / 60);
+                        const sec = totalSeconds % 60;
+                        const ms = Math.floor((bestTimeMs % 1000) / 10);
+                        seedTimeData = {
+                            min: String(min).padStart(2, '0'),
+                            sec: String(sec).padStart(2, '0'),
+                            ms: String(ms).padStart(2, '0')
+                        };
+                    }
+                }
+            }
+
+            newSelectedEvents[eventId] = {
+                selected: true,
+                time: seedTimeData
+            };
+        } else {
+            newSelectedEvents[eventId] = {
+                ...newSelectedEvents[eventId],
+                selected: false
+            };
+        }
+
+        setSelectedEvents(newSelectedEvents);
     };
 
     const handleTimeChange = (eventId: string, part: keyof RegistrationTime, value: string) => {
@@ -769,24 +754,8 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                         <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
                                         Profil Atlet & Kontak
                                     </h2>
-                                    <div className="mb-4 bg-primary/5 p-4 rounded-xl border border-primary/20 flex flex-col md:flex-row items-center justify-between gap-4">
-                                        <div className="text-center md:text-left">
-                                            <p className="text-xs font-bold text-primary uppercase tracking-wider">Cari Data di Database Sulawesi Selatan</p>
-                                            <p className="text-[10px] text-text-secondary italic">Ambil otomatis data & waktu terbaik dari kompetisi regional sebelumnya.</p>
-                                        </div>
-                                        <Button 
-                                            type="button" 
-                                            variant="outline" 
-                                            onClick={handleSearchExternal}
-                                            disabled={isSearchingExternal || formData.name.length < 3}
-                                            className="whitespace-nowrap flex items-center gap-2"
-                                        >
-                                            {isSearchingExternal ? <Spinner size="sm" /> : <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>}
-                                            {isSearchingExternal ? 'MENCARI...' : 'CARI DATA ATLET'}
-                                        </Button>
-                                    </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <Input label="Nama Lengkap" id="name" name="name" value={formData.name} onChange={handleFormChange} placeholder="Sesuai Akta Kelahiran" required />
+                                        <Input label="Nama Lengkap" id="name" name="name" value={formData.name} onChange={handleFormChange} onBlur={handleNameBlur} placeholder="Sesuai Akta Kelahiran" required />
                                         <Input label="Nama Tim / Klub" id="club" name="club" value={formData.club} onChange={handleFormChange} placeholder="Contoh: Sidoarjo Swim Club" required />
                                         <Input label="Tahun Lahir" id="birthYear" name="birthYear" type="number" value={formData.birthYear} onChange={handleFormChange} required />
                                         <Select label="Jenis Kelamin" id="gender" name="gender" value={formData.gender} onChange={handleFormChange}>
@@ -877,7 +846,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                                                                                     <span className="text-primary">⏱</span>
                                                                                     <p className="text-[10px] font-black uppercase text-text-secondary tracking-widest italic">Waktu Unggulan (Seed Time)</p>
                                                                                 </div>
-                                                                                <Input label="Menit" type="number" min="0" value={selectedEvents[event.id].time.min} onChange={e => handleTimeChange(event.id, 'min', e.target.value)} />
+                                                                                <Input label="Menit" type="number" min="0" max="99" value={selectedEvents[event.id].time.min} onChange={e => handleTimeChange(event.id, 'min', e.target.value)} />
                                                                                 <Input label="Detik" type="number" min="0" max="99" value={selectedEvents[event.id].time.sec} onChange={e => handleTimeChange(event.id, 'sec', e.target.value)} />
                                                                                 <Input label="ss/100" type="number" min="0" max="99" value={selectedEvents[event.id].time.ms} onChange={e => handleTimeChange(event.id, 'ms', e.target.value)} />
                                                                             </div>
@@ -1069,49 +1038,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                     </Card>
                 )}
 
-                {showExternalModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                        <div className="bg-surface w-full max-w-2xl rounded-[2rem] shadow-2xl border border-border overflow-hidden animate-in zoom-in-95 duration-300">
-                            <div className="p-6 border-b border-border bg-primary/5 flex justify-between items-center">
-                                <div>
-                                    <h3 className="text-xl font-black text-primary uppercase tracking-tight">Hasil Pencarian Database Sulsel</h3>
-                                    <p className="text-xs text-text-secondary italic">Ketemu {externalResults.length} atlet yang mirip.</p>
-                                </div>
-                                <button onClick={() => setShowExternalModal(false)} className="p-2 hover:bg-red-100 text-text-secondary hover:text-red-600 rounded-full transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-                            <div className="p-6 max-h-[60vh] overflow-y-auto space-y-4">
-                                {externalResults.length === 0 ? (
-                                    <div className="text-center py-10 opacity-50 italic">Tidak menemukan atlet dengan nama "{formData.name}" di database Sulawesi Selatan.</div>
-                                ) : (
-                                    externalResults.map((ext: any, idx) => (
-                                        <div key={idx} className="p-5 border border-border rounded-2xl hover:border-primary/50 transition-all bg-background group cursor-pointer" onClick={() => applyExternalSwimmer(ext)}>
-                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                                <div>
-                                                    <h4 className="text-lg font-black text-text-primary group-hover:text-primary transition-colors">{ext.name}</h4>
-                                                    <div className="flex flex-wrap gap-2 mt-1">
-                                                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">{ext.club}</span>
-                                                        <span className="text-[10px] bg-sky-100 text-sky-700 px-2 py-0.5 rounded font-bold">{ext.birthYear}</span>
-                                                        <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-bold uppercase">{ext.gender === 'Male' ? 'Laki-laki' : 'Perempuan'}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right flex flex-col items-end">
-                                                    <p className="text-[10px] font-bold text-text-secondary uppercase">Catatan Waktu</p>
-                                                    <p className="text-lg font-black text-primary">{ext.bestTimes.length} Event</p>
-                                                    <button type="button" className="text-[10px] bg-primary text-white px-4 py-1.5 rounded-full font-black mt-2 shadow-sm group-hover:shadow-md active:scale-95 transition-all">PILIH & ISI OTOMATIS &rarr;</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                            <div className="p-6 bg-background border-t border-border text-center">
-                                <Button variant="secondary" onClick={() => setShowExternalModal(false)} className="px-10">TUTUP</Button>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );

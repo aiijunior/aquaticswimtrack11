@@ -1,17 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getRecords, processRecordUpload, updateCompetitionInfo, updateEventSchedule, addOrUpdateRecord, deleteRecord, backupDatabase, clearAllData, restoreDatabase, deleteAllRecords } from '../services/databaseService';
+import { updateCompetitionInfo, updateEventSchedule, backupDatabase, clearAllData, restoreDatabase } from '../services/databaseService';
 import { login } from '../services/authService';
-import type { CompetitionInfo, SwimEvent, SwimRecord } from '../types';
-import { RecordType, SwimStyle, Gender } from '../types';
-import { SWIM_STYLE_OPTIONS, GENDER_OPTIONS } from '../constants';
+import type { CompetitionInfo, SwimEvent } from '../types';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
 import { Spinner } from './ui/Spinner';
 import { ToggleSwitch } from './ui/ToggleSwitch';
 import { Modal } from './ui/Modal';
-import { Select } from './ui/Select';
-import { translateGender, translateSwimStyle, GENDER_TRANSLATIONS, SWIM_STYLE_TRANSLATIONS, formatEventName, formatTime, toTitleCase } from '../constants';
+import { translateGender, translateSwimStyle, formatEventName, toTitleCase } from '../constants';
 import { useNotification } from './ui/NotificationManager';
 
 declare var XLSX: any;
@@ -65,22 +62,6 @@ const SmallInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { label
     </div>
 );
 
-const initialRecordFormState = {
-    type: RecordType.PORPROV,
-    distance: 50,
-    style: SwimStyle.FREESTYLE,
-    gender: Gender.MALE,
-    min: '0',
-    sec: '0',
-    ms: '00',
-    holderName: '',
-    yearSet: new Date().getFullYear(),
-    isRelay: false,
-    relayLegs: 4,
-    locationSet: '',
-    category: '',
-};
-
 // --- Main Component ---
 export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitionInfo, events, onDataUpdate }) => {
     const romanize = (num: number): string => {
@@ -111,7 +92,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         return 'Terjadi kesalahan.';
     };
 
-    const [activeTab, setActiveTab] = useState<'settings' | 'schedule' | 'records' | 'data'>('settings');
+    const [activeTab, setActiveTab] = useState<'settings' | 'schedule' | 'data'>('settings');
     const [info, setInfo] = useState<CompetitionInfo | null>(null);
     const [eventNameLines, setEventNameLines] = useState<string[]>(['', '', '']);
     const [ageGroupsInput, setAgeGroupsInput] = useState('');
@@ -121,28 +102,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     const [unscheduledSearchQuery, setUnscheduledSearchQuery] = useState('');
     const { addNotification } = useNotification();
 
-    // Record states
-    const [currentRecords, setCurrentRecords] = useState<SwimRecord[]>([]);
-    const [isRecordsLoading, setIsRecordsLoading] = useState(false);
-    const [recordFile, setRecordFile] = useState<File | null>(null);
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [uploadResult, setUploadResult] = useState<{ success: number, errors: string[] } | null>(null);
-    
-    // Manual record form states
-    const [editingRecord, setEditingRecord] = useState<SwimRecord | null>(null);
-    const [isDeleteRecordModalOpen, setIsDeleteRecordModalOpen] = useState(false);
-    const [isDeleteAllRecordsModalOpen, setIsDeleteAllRecordsModalOpen] = useState(false);
-    const [recordToDelete, setRecordToDelete] = useState<SwimRecord | null>(null);
-    const [recordForm, setRecordForm] = useState(initialRecordFormState);
-
-    // Record filter states
-    const [recordFilters, setRecordFilters] = useState({
-        holderName: '',
-        type: 'all',
-        gender: 'all',
-        style: 'all',
-    });
-
+    // Record stats removed as they moved to RecordManagementView
     // Data Management states
     const [isBackupLoading, setIsBackupLoading] = useState(false);
     const [isClearDataModalOpen, setIsClearDataModalOpen] = useState(false);
@@ -216,18 +176,10 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         setSessionDetails(newSessionDetails);
     }, [events]);
     
-    const fetchRecords = async () => {
-        setIsRecordsLoading(true);
-        getRecords().then(data => {
-            setCurrentRecords(data);
-            setIsRecordsLoading(false);
-        });
-    }
+    const fetchRecords = () => {} // Removed
 
      useEffect(() => {
-        if (activeTab === 'records') {
-            fetchRecords();
-        }
+        // Record fetching removed
     }, [activeTab]);
 
 
@@ -327,180 +279,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         }));
     };
 
-    const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setRecordFilters(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleResetFilters = () => {
-        setRecordFilters({ holderName: '', type: 'all', gender: 'all', style: 'all' });
-    };
-    
-    const filteredRecords = useMemo(() => {
-        return currentRecords
-            .filter(record => {
-                const { holderName, type, gender, style } = recordFilters;
-                if (holderName && !record.holderName.toLowerCase().includes(holderName.toLowerCase().trim())) {
-                    return false;
-                }
-                if (type !== 'all' && record.type.toUpperCase() !== type.toUpperCase()) {
-                    return false;
-                }
-                if (gender !== 'all' && record.gender !== gender) {
-                    return false;
-                }
-                if (style !== 'all' && record.style !== style) {
-                    return false;
-                }
-                return true;
-            })
-            .sort((a,b) => a.type.localeCompare(b.type) || a.distance - b.distance);
-    }, [currentRecords, recordFilters]);
-
-    const handleRecordFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setRecordFile(e.target.files[0]);
-            setUploadResult(null);
-        }
-    };
-    
-    const handleRecordUpload = () => {
-        if (!recordFile) return;
-        setIsProcessing(true);
-        setUploadResult(null);
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const data = new Uint8Array(e.target?.result as ArrayBuffer);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet);
-                const result = await processRecordUpload(json);
-                setUploadResult(result);
-                if (result.errors.length === 0 && result.success > 0) {
-                    onDataUpdate(); 
-                    fetchRecords();
-                    setRecordFile(null);
-                    addNotification(`${result.success} data rekor berhasil diperbarui!`, 'info');
-                } else if (result.errors.length > 0) {
-                    addNotification('Impor selesai dengan galat.', 'error');
-                }
-            } catch (error) {
-                const errorMessage = getErrorMessage(error);
-                setUploadResult({ success: 0, errors: [errorMessage] });
-                addNotification(`Gagal memproses unggahan: ${errorMessage}`, 'error');
-            } finally {
-                setIsProcessing(false);
-            }
-        };
-        reader.readAsArrayBuffer(recordFile);
-    };
-
-    const handleRecordFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value, type } = e.target;
-        const isCheckbox = type === 'checkbox';
-        // @ts-ignore
-        let val: string | number | boolean = isCheckbox ? e.target.checked : value;
-        if (!isCheckbox && (name === 'holderName' || name === 'locationSet' || name === 'category')) {
-            val = toTitleCase(value);
-        }
-        setRecordForm(prev => ({...prev, [name]: val}));
-    };
-    
-    const handleEditRecord = (record: SwimRecord) => {
-        setEditingRecord(record);
-        const totalMs = record.time;
-        const minutes = Math.floor(totalMs / 60000);
-        const seconds = Math.floor((totalMs % 60000) / 1000);
-        const milliseconds = totalMs % 1000;
-
-        setRecordForm({
-            type: record.type,
-            distance: record.distance,
-            style: record.style,
-            gender: record.gender,
-            min: String(minutes),
-            sec: String(seconds),
-            ms: String(milliseconds).padStart(3, '0').slice(0, 2),
-            holderName: record.holderName,
-            yearSet: record.yearSet,
-            isRelay: !!record.relayLegs,
-            relayLegs: record.relayLegs || 4,
-            locationSet: record.locationSet || '',
-            category: record.category || '',
-        });
-    };
-
-    const handleCancelEdit = () => {
-        setEditingRecord(null);
-        setRecordForm(initialRecordFormState);
-    };
-    
-    const handleDeleteRecord = (record: SwimRecord) => {
-        setRecordToDelete(record);
-        setIsDeleteRecordModalOpen(true);
-    };
-
-    const confirmDeleteRecord = async () => {
-        if (!recordToDelete) return;
-        try {
-            await deleteRecord(recordToDelete.id);
-            setIsDeleteRecordModalOpen(false);
-            setRecordToDelete(null);
-            fetchRecords();
-            onDataUpdate();
-            addNotification('Rekor berhasil dihapus.', 'error');
-        } catch (error) {
-             addNotification(`Gagal menghapus rekor: ${getErrorMessage(error)}`, 'error');
-        }
-    };
-
-    const handleConfirmDeleteAllRecords = async () => {
-        try {
-            await deleteAllRecords();
-            setIsDeleteAllRecordsModalOpen(false);
-            fetchRecords();
-            onDataUpdate();
-            addNotification('Semua rekor berhasil dihapus.', 'error');
-        } catch (error) {
-            addNotification(`Gagal menghapus semua rekor: ${getErrorMessage(error)}`, 'error');
-        }
-    };
-
-    const handleRecordFormSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            const time = ((parseInt(recordForm.min, 10) || 0) * 60000) + 
-                         ((parseInt(recordForm.sec, 10) || 0) * 1000) + 
-                         ((parseInt(recordForm.ms, 10) || 0) * 10);
-            
-            const recordId = editingRecord?.id || 
-                `${recordForm.type.toUpperCase()}_${recordForm.gender}_${recordForm.distance}_${recordForm.style}` + (recordForm.category ? `_${recordForm.category}` : '') + (recordForm.isRelay ? `_R${recordForm.relayLegs}` : '');
-    
-            const recordData: Partial<SwimRecord> = {
-                id: recordId,
-                type: recordForm.type as RecordType,
-                gender: recordForm.gender,
-                distance: Number(recordForm.distance),
-                style: recordForm.style,
-                time: time,
-                holderName: recordForm.holderName,
-                yearSet: Number(recordForm.yearSet),
-                relayLegs: recordForm.isRelay ? Number(recordForm.relayLegs) : null,
-                locationSet: recordForm.locationSet,
-                category: recordForm.category || null,
-            };
-            await addOrUpdateRecord(recordData);
-            handleCancelEdit();
-            fetchRecords();
-            onDataUpdate();
-            addNotification(`Rekor berhasil ${editingRecord ? 'diperbarui' : 'ditambahkan'}.`, editingRecord ? 'info' : 'success');
-        } catch (error) {
-            addNotification(`Gagal menyimpan rekor: ${getErrorMessage(error)}`, 'error');
-        }
-    };
-
 
     const handleMoveEvent = (eventId: string, sourceSessionKey: string, targetSessionKey: string) => {
         if (sourceSessionKey === targetSessionKey) return;
@@ -560,13 +338,18 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         setIsBackupLoading(true);
         try {
             const data = await backupDatabase();
-            const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, 2))}`;
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.href = jsonString;
+            link.href = url;
             link.download = `backup-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
             link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
             addNotification('Backup berhasil diunduh.', 'success');
         } catch (error) {
+            console.error("Backup failed:", error);
             addNotification(`Gagal membuat backup.`, 'error');
         } finally {
             setIsBackupLoading(false);
@@ -591,6 +374,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 setIsClearingData(false);
             }
         } catch (error) {
+            console.error("Clear data failed:", error);
             const errorMessage = getErrorMessage(error);
             setClearDataError(errorMessage);
             setIsClearingData(false);
@@ -600,6 +384,7 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
     const handleRestoreFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setRestoreFile(e.target.files[0]);
+            setIsRestoreModalOpen(true); // Auto open modal when file selected
         }
     };
     
@@ -614,12 +399,13 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 await restoreDatabase(data); 
                 addNotification('Data berhasil dipulihkan!', 'info');
                 onDataUpdate();
-            } catch (error) {
-                addNotification(`Gagal memulihkan data.`, 'error');
-            } finally {
-                setIsRestoring(false);
                 setIsRestoreModalOpen(false);
                 setRestoreFile(null);
+            } catch (error) {
+                console.error("Restore failed:", error);
+                addNotification(`Gagal memulihkan data: ${getErrorMessage(error)}`, 'error');
+            } finally {
+                setIsRestoring(false);
             }
         };
         reader.readAsText(restoreFile);
@@ -631,7 +417,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
         <div className="flex border-b border-border mb-6 no-print">
             <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 -mb-px border-b-2 ${activeTab === 'settings' ? 'border-primary text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'}`}>Pengaturan Umum</button>
             <button onClick={() => setActiveTab('schedule')} className={`px-4 py-2 -mb-px border-b-2 ${activeTab === 'schedule' ? 'border-primary text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'}`}>Pengaturan Jadwal</button>
-            <button onClick={() => setActiveTab('records')} className={`px-4 py-2 -mb-px border-b-2 ${activeTab === 'records' ? 'border-primary text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'}`}>Manajemen Rekor</button>
             <button onClick={() => setActiveTab('data')} className={`px-4 py-2 -mb-px border-b-2 ${activeTab === 'data' ? 'border-primary text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'}`}>Manajemen Data</button>
         </div>
     );
@@ -835,40 +620,6 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                 </Card>
             )}
 
-            {activeTab === 'records' && (
-                <Card>
-                    <h2 className="text-xl font-bold mb-2">Manajemen Rekor</h2>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div>
-                            <form onSubmit={handleRecordFormSubmit} className="bg-background/50 p-4 rounded-lg border border-border space-y-3 mb-4">
-                                <Select label="Tipe Rekor" id="record-type" name="type" value={recordForm.type} onChange={handleRecordFormChange}>
-                                    <option value={RecordType.PORPROV}>PORPROV</option>
-                                    <option value={RecordType.NASIONAL}>Nasional</option>
-                                </Select>
-                                <div className="flex gap-4">
-                                    <Input label="Jarak (m)" id="distance" name="distance" type="number" value={recordForm.distance} onChange={handleRecordFormChange} required />
-                                    <Select label="Gaya" id="style" name="style" value={recordForm.style} onChange={handleRecordFormChange}>
-                                        {SWIM_STYLE_OPTIONS.map(s => <option key={s} value={s}>{translateSwimStyle(s)}</option>)}
-                                    </Select>
-                                </div>
-                                <Input label="Kategori" id="category" name="category" type="text" value={recordForm.category} onChange={handleRecordFormChange} />
-                                <Select label="Jenis Kelamin" id="gender" name="gender" value={recordForm.gender} onChange={handleRecordFormChange}>
-                                    {GENDER_OPTIONS.map(g => <option key={g} value={g}>{translateGender(g)}</option>)}
-                                </Select>
-                                <div className="grid grid-cols-3 gap-2">
-                                    <Input label="Min" id="min" name="min" type="number" value={recordForm.min} onChange={handleRecordFormChange} />
-                                    <Input label="Sec" id="sec" name="sec" type="number" value={recordForm.sec} onChange={handleRecordFormChange} />
-                                    <Input label="ms" id="ms" name="ms" type="number" value={recordForm.ms} onChange={handleRecordFormChange} />
-                                </div>
-                                <Input label="Pemegang Rekor" id="holderName" name="holderName" value={recordForm.holderName} onChange={handleRecordFormChange} required />
-                                <Input label="Tahun" id="yearSet" name="yearSet" type="number" value={recordForm.yearSet} onChange={handleRecordFormChange} required />
-                                <Button type="submit" className="w-full">Simpan Rekor</Button>
-                            </form>
-                        </div>
-                    </div>
-                </Card>
-            )}
-
             {activeTab === 'data' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Card>
@@ -886,6 +637,68 @@ export const EventSettingsView: React.FC<EventSettingsViewProps> = ({ competitio
                     </Card>
                 </div>
             )}
+
+            {/* --- MODALS --- */}
+            
+            {/* Modal Pulihkan Data */}
+            <Modal
+                isOpen={isRestoreModalOpen}
+                onClose={() => setIsRestoreModalOpen(false)}
+                title="Pulihkan Data"
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-text-secondary">
+                        Apakah Anda yakin ingin memulihkan data dari file <span className="font-bold text-text-primary">{restoreFile?.name}</span>?
+                        <br /><br />
+                        <span className="text-red-500 font-bold">PERINGATAN:</span> Tindakan ini akan menghapus semua data yang ada saat ini dan menggantinya dengan data dari file backup.
+                    </p>
+                    <div className="flex gap-3">
+                        <Button variant="secondary" onClick={() => setIsRestoreModalOpen(false)} className="flex-1">Batal</Button>
+                        <Button onClick={handleRestore} disabled={isRestoring} className="flex-1">
+                            {isRestoring ? <Spinner /> : 'Ya, Pulihkan'}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Hapus Semua Data */}
+            <Modal
+                isOpen={isClearDataModalOpen}
+                onClose={() => setIsClearDataModalOpen(false)}
+                title="Hapus Semua Data"
+            >
+                <form onSubmit={handleConfirmClearData} className="space-y-4">
+                    <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm border border-red-300">
+                        <p className="font-bold underline mb-2 italic tracking-tight">TINDAKAN BERBAHAYA!</p>
+                        <p>Anda akan menghapus SELURUH data di database (atlet, lomba, pendaftaran, hasil, rekor, dsb).</p>
+                        <p className="mt-2 font-bold">Masukkan kredensial login Anda untuk mengonfirmasi:</p>
+                    </div>
+
+                    <Input
+                        label="Email Terdaftar"
+                        type="email"
+                        required
+                        value={clearDataCredentials.email}
+                        onChange={(e) => setClearDataCredentials(prev => ({ ...prev, email: e.target.value }))}
+                    />
+                    <Input
+                        label="Kata Sandi"
+                        type="password"
+                        required
+                        value={clearDataCredentials.password}
+                        onChange={(e) => setClearDataCredentials(prev => ({ ...prev, password: e.target.value }))}
+                    />
+                    
+                    {clearDataError && <p className="text-xs text-red-500 font-bold">{clearDataError}</p>}
+
+                    <div className="flex gap-3 pt-4">
+                        <Button type="button" variant="secondary" onClick={() => setIsClearDataModalOpen(false)} className="flex-1">Batal</Button>
+                        <Button type="submit" variant="danger" disabled={isClearingData} className="flex-1">
+                            {isClearingData ? <Spinner /> : 'Hapus Permanen'}
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 };

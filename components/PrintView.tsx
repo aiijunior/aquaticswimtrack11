@@ -344,7 +344,10 @@ const OnlineRegistrationReport: React.FC<{ data: any[] }> = ({ data }) => (
                     <td className="px-2 py-2">
                         <p className="font-bold uppercase text-[11px]">{item.swimmer.name}</p>
                         <p className="text-[9px] text-gray-600 font-medium uppercase">{item.swimmer.club}</p>
-                        <p className="text-[8px] text-primary mt-1 font-mono">{item.swimmer.picPhone || '-'}</p>
+                        <div className="mt-1 space-y-0.5">
+                            <p className="text-[8px] text-primary font-bold uppercase tracking-tight">PIC: {item.swimmer.picName || '-'}</p>
+                            <p className="text-[8px] text-gray-500 font-mono">{item.swimmer.picPhone || '-'}</p>
+                        </div>
                     </td>
                     <td className="p-1 text-center">
                         {item.swimmer.paymentProof ? (
@@ -360,7 +363,9 @@ const OnlineRegistrationReport: React.FC<{ data: any[] }> = ({ data }) => (
                         )}
                     </td>
                     <td className="px-2 py-2 text-right font-black text-xs">
-                        {item.swimmer.paymentAmount ? `Rp ${item.swimmer.paymentAmount.toLocaleString('id-ID')}` : 'Rp 0'}
+                        {item.swimmer.paymentAmount && Number(item.swimmer.paymentAmount) > 0 
+                            ? `Rp ${Number(item.swimmer.paymentAmount).toLocaleString('id-ID')}` 
+                            : <span className="text-gray-400">Rp 0</span>}
                     </td>
                     <td className="px-2 py-2">
                         <div className="space-y-1">

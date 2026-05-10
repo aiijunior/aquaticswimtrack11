@@ -16,22 +16,6 @@ R.E.A.C.T adalah platform modern, real-time, dan komprehensif untuk manajemen ko
 - **Otentikasi Aman**: Kontrol akses berbasis peran (Admin, Super Admin) yang didukung oleh Supabase Auth.
 
 ---
-## Pembaruan Aplikasi (Changelog)
-
-### **Versi 1.2.6 (Pembaruan Terkini): Integrasi Database Regional**
-*Tanggal Rilis: April 2024*
-
-Pembaruan ini mempermudah pendaftar dengan mengintegrasikan data dari database kompetisi regional lainnya.
-
-- **Fitur Baru: Pencarian Atlet Eksternal (Database Sulsel)**
-  - **Auto-Fill Data**: Pendaftar cukup memasukkan nama atlet dan mencari di database Sulawesi Selatan. Sistem akan menarik data Nama, Tahun Lahir, Jenis Kelamin, dan Klub secara otomatis.
-  - **Sinkronisasi Waktu Terbaik (Best Times)**: Mengambil catatan waktu terbaik atlet dari event-event sebelumnya untuk mengisi kolom *Seed Time* secara otomatis, mengurangi kesalahan input manual.
-  - **Proxy Server Aman**: Pencarian dilakukan melalui Netlify Function untuk menjamin keamanan dan performa.
-
-- **Peningkatan Visual: Tabel Hasil Lomba**
-  - Perbaikan kontras warna pada kolom waktu dan hasil agar tercetak lebih tajam baik dalam mode terang maupun gelap.
-
----
 ## Tindakan yang Diperlukan
 
 ### **1. Untuk Pengguna Baru**
@@ -246,12 +230,80 @@ SET event_name = EXCLUDED.event_name,
 
 ---
 
-## Langkah Deployment Lengkap
+## 🚀 Panduan Lengkap Re-Deploy (Ke Akun/Email Lain)
 
-1.  **Supabase**: Jalankan SQL di atas, ambil `URL` dan `Anon Key`.
-2.  **Konfigurasi**: Ubah nama `config.ts.txt` menjadi `config.ts` dan masukkan kredensial Supabase.
-3.  **Netlify**: Unggah kode ke GitHub, hubungkan ke Netlify.
-4.  **Environment Variables**: Tambahkan `SUPABASE_URL` dan `SUPABASE_SERVICE_KEY` di Netlify Dashboard.
-5.  **Site URL**: Update Site URL di dasbor Supabase (Authentication -> URL Configuration) agar sesuai dengan domain Netlify Anda.
+Jika Anda ingin memindahkan atau menginstal ulang aplikasi ini di akun Supabase dan Netlify yang baru, ikuti panduan langkah-demi-langkah ini agar tidak terjadi error.
 
+### 1. Persiapan Database (Supabase)
+1.  **Buat Project Baru**: Masuk ke [Supabase](https://supabase.com/), buat project baru, dan tunggu hingga proses inisialisasi selesai.
+2.  **SQL Editor**:
+    *   Klik menu **SQL Editor** di sidebar kiri.
+    *   Klik **New Query**.
+    *   Buka file `schema.sql` yang ada di root folder aplikasi ini atau salin dari bagian **Langkah 1** di atas.
+    *   Salin seluruh isi SQL tersebut dan tempelkan ke SQL Editor Supabase.
+    *   Klik **Run**. Ini akan membuat tabel, tipe data (enum), trigger admin otomatis, dan kebijakan keamanan (RLS).
+3.  **Ambil Kredensial**:
+    *   Pergi ke **Project Settings** > **API**.
+    *   Catat **Project URL** dan **anon (public) key**.
+    *   Catat juga **service_role (secret) key** (Hanya untuk digunakan di Netlify Environment Variables).
+
+### 2. Konfigurasi Kode Lokal
+1.  **Ganti Nama File**: Cari file `config.ts.txt` di root folder aplikasi. Ubah namanya menjadi `config.ts`.
+2.  **Isi Kredensial**: Buka `config.ts` dan ganti bagian berikut dengan data dari Supabase Anda:
+    ```typescript
+    supabase: {
+      url: "URL_SUPABASE_ANDA", 
+      anonKey: "ANON_KEY_ANDA",
+    },
+    superAdmin: {
+      email: "email-admin@anda.com", // Email bebas untuk login admin pertama kali
+      password: "password-anda",      // Password kuat pilihan Anda
+    }
+    ```
+
+### 3. Pengaturan Autentikasi (PENTING)
+Agar tidak terjadi error saat login atau pendaftaran:
+1.  Di Supabase, buka menu **Authentication** > **URL Configuration**.
+2.  Di bagian **Site URL**, masukkan URL domain aplikasi Anda (misal: `https://nama-app-anda.netlify.app`).
+3.  Di bagian **Redirect URLs**, tambahkan juga URL yang sama.
+4.  Buka **Authentication** > **Providers** > **Email**. 
+5.  **MATIKAN/DISABLE** pilihan berikut:
+    *   **Confirm Email** (Agar pendaftaran admin langsung aktif)
+    *   **Secure email Change** (Agar perubahan email lebih mudah jika diperlukan)
+6.  Pastikan **External Providers** (Google, dsb) belum diaktifkan kecuali Anda sudah melakukan konfigurasi tambahan.
+
+### 4. Deployment (Netlify)
+Jika Anda menggunakan Netlify:
+1.  **Hubungkan Repository**: Upload kode Anda ke GitHub/GitLab, lalu hubungkan ke Netlify.
+2.  **Setting Environment Variables**:
+    Di Dashboard Netlify, buka **Site Settings** > **Environment variables**, lalu tambahkan:
+    *   `SUPABASE_URL`: (Gunakan Project URL dari Supabase)
+    *   `SUPABASE_SERVICE_KEY`: (Gunakan service_role secret key dari Supabase)
+3.  **Build Settings**:
+    *   Build Command: `npm run build`
+    *   Publish directory: `dist`
+4.  **Menambahkan Fungsi Backend**:
+    Aplikasi ini menggunakan Netlify Functions. Pastikan folder `netlify/functions` ada di root project Anda saat diupload.
+
+### 5. Cara Login Pertama Kali sebagai Admin
+1.  Buka aplikasi yang sudah dijalankan/dideploy.
+2.  Klik tombol **Login Admin**.
+3.  Pilih tab **Daftar** atau klik **Belum punya akun? Daftar**.
+4.  Daftar menggunakan email yang Anda tentukan di `config.ts` (atau email lain).
+5.  **Pemberian Akses Super Admin**:
+    Jika akun pertama belum otomatis jadi admin, Anda bisa masuk ke Supabase **Table Editor**, pilih tabel `users`, lalu tambahkan ID user Anda (ambil dari menu Authentication) dan set role-nya menjadi `SUPER_ADMIN`.
+
+### 6. Tips Menghindari Error Common
+*   **Error 500 / Database Error**: Pastikan variabel `SUPABASE_URL` dan `SUPABASE_SERVICE_KEY` sudah terpasang di Netlify Environment Variables.
+*   **Error Permission Denied**: Pastikan Anda sudah menjalankan seluruh skrip SQL di `schema.sql` termasuk bagian RLS dan Policies.
+*   **Logo Tidak Muncul**: Logo disimpan di tabel `competition_info`. Anda bisa mengupload ulang logo melalui menu Pengaturan Admin di aplikasi.
+*   **Fungsi Netlify Tidak Jalan**: Pastikan Anda telah menginstal `netlify-cli` secara lokal jika ingin mencoba `netlify dev`. Di cloud, Netlify otomatis mendeteksi folder `netlify/functions`.
+
+### 7. Pengolahan Data Cadangan (Backup & Restore)
+Jika fungsi Backup/Restore tidak bekerja:
+1. Pastikan Anda sudah login sebagai Admin.
+2. Periksa apakah `SUPABASE_SERVICE_KEY` di Netlify memiliki akses yang cukup (harus menggunakan `service_role` key, bukan `anon` key untuk operasi tertentu jika RLS sangat ketat).
+3. Pastikan file JSON backup mengikuti struktur yang diekspor oleh aplikasi ini.
+
+---
 **Selamat Menggunakan R.E.A.C.T!** platform renang paling modern dan akurat untuk kompetisi Anda.

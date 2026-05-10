@@ -107,6 +107,53 @@ export const getSwimmerById = async (id: string): Promise<Swimmer | null> => {
     return toSwimmer(data);
 };
 
+export const findSwimmerByName = async (name: string): Promise<Swimmer | null> => {
+    const { data, error } = await supabase
+        .from('swimmers')
+        .select('*')
+        .ilike('name', name)
+        .limit(1)
+        .maybeSingle(); // Better than single() which errors if no rows
+    if (error) return null;
+    return data ? toSwimmer(data) : null;
+};
+
+export const getSwimmerBestTime = async (swimmerId: string, distance: number, style: SwimStyle): Promise<number> => {
+    // Cari semua event yang sesuai dengan jarak dan gaya
+    const { data: events, error: eventError } = await supabase
+        .from('events')
+        .select('id')
+        .eq('distance', distance)
+        .eq('style', style);
+    
+    if (eventError || !events || events.length === 0) return 0;
+
+    const eventIds = events.map(e => e.id);
+
+    // Cari waktu terbaik di antara event-event tersebut
+    const { data: results, error: resultError } = await supabase
+        .from('event_results')
+        .select('time')
+        .eq('swimmer_id', swimmerId)
+        .in('event_id', eventIds)
+        .gt('time', 0) // Pastikan bukan DQ, NS, atau NT
+        .order('time', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+    if (resultError || !results) return 0;
+    return results.time;
+};
+
+export const getSwimmerResults = async (swimmerId: string): Promise<Result[]> => {
+    const { data, error } = await supabase
+        .from('event_results')
+        .select('*')
+        .eq('swimmer_id', swimmerId);
+    if (error) return [];
+    return data.map(toResult);
+};
+
 // --- CHECKIN SERVICE ---
 export const updateCheckinStatus = async (eventId: string, swimmerId: string, status: boolean) => {
     const { error } = await supabase
@@ -460,24 +507,95 @@ export const backupDatabase = async () => {
     };
 };
 
-export const clearAllData = async () => {
-    await Promise.all([
-        supabase.from('event_results').delete().neq('event_id', '00000000-0000-0000-0000-000000000000'),
-        supabase.from('event_entries').delete().neq('event_id', '00000000-0000-0000-0000-000000000000'),
-        supabase.from('swimmers').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-        supabase.from('events').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-        supabase.from('records').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-    ]);
+export const clearAllData = async (): Promise<void> => {
+    // SECURITY: Ensure user is still authenticated before wiping data
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+        throw new Error("Sesi berakhir. Silakan login kembali untuk menghapus data.");
+    }
+
+    console.log("Starting full database wipe...");
+
+    // 1. Delete results first (references swimmers and events)
+    const results = await supabase.from('event_results').delete().neq('swimmer_id', '00000000-0000-0000-0000-000000000000');
+    if (results.error) {
+        console.error("Error clearing event_results:", results.error);
+        throw new Error(`Gagal menghapus hasil lomba: ${results.error.message}`);
+    }
+
+    // 2. Delete entries (references swimmers and events)
+    const entries = await supabase.from('event_entries').delete().neq('swimmer_id', '00000000-0000-0000-0000-000000000000');
+    if (entries.error) {
+        console.error("Error clearing event_entries:", entries.error);
+        throw new Error(`Gagal menghapus entri pendaftaran: ${entries.error.message}`);
+    }
+
+    // 3. Delete swimmers
+    const swimmers = await supabase.from('swimmers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (swimmers.error) {
+        console.error("Error clearing swimmers:", swimmers.error);
+        throw new Error(`Gagal menghapus atlet: ${swimmers.error.message}`);
+    }
+
+    // 4. Delete events
+    const events = await supabase.from('events').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (events.error) {
+        console.error("Error clearing events:", events.error);
+        throw new Error(`Gagal menghapus nomor lomba: ${events.error.message}`);
+    }
+
+    // 5. Delete records
+    const records = await supabase.from('records').delete().isNot('id', null);
+    if (records.error) {
+        console.error("Error clearing records:", records.error);
+        throw new Error(`Gagal menghapus rekor: ${records.error.message}`);
+    }
+
+    console.log("Full database wipe completed successfully.");
 };
 
 export const restoreDatabase = async (data: any) => {
+    // SECURITY: Ensure user is still authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+        throw new Error("Sesi berakhir. Silakan login kembali untuk memulihkan data.");
+    }
+
     await clearAllData();
-    if (data.competition_info) await supabase.from('competition_info').upsert(data.competition_info);
-    if (data.swimmers) await supabase.from('swimmers').insert(data.swimmers);
-    if (data.events) await supabase.from('events').insert(data.events);
-    if (data.event_entries) await supabase.from('event_entries').insert(data.event_entries);
-    if (data.event_results) await supabase.from('event_results').insert(data.event_results);
-    if (data.records) await supabase.from('records').insert(data.records);
+    console.log("Starting data restoration...");
+
+    const tables = [
+        { name: 'competition_info', payload: data.competition_info, op: 'upsert' },
+        { name: 'swimmers', payload: data.swimmers, op: 'insert' },
+        { name: 'events', payload: data.events, op: 'insert' },
+        { name: 'event_entries', payload: data.event_entries, op: 'insert' },
+        { name: 'event_results', payload: data.event_results, op: 'insert' },
+        { name: 'records', payload: data.records, op: 'insert' }
+    ];
+
+    for (const table of tables) {
+        if (table.payload && table.payload.length > 0) {
+            console.log(`Restoring table: ${table.name} (${table.payload.length} rows)`);
+            
+            // Supabase supports up to ~1000 rows per request usually, but let's chunk if very large
+            const CHUNK_SIZE = 500;
+            for (let i = 0; i < table.payload.length; i += CHUNK_SIZE) {
+                const chunk = table.payload.slice(i, i + CHUNK_SIZE);
+                let res;
+                if (table.op === 'upsert') {
+                    res = await supabase.from(table.name).upsert(chunk);
+                } else {
+                    res = await supabase.from(table.name).insert(chunk);
+                }
+                
+                if (res.error) {
+                    console.error(`Error restoring ${table.name}:`, res.error);
+                    throw new Error(`Gagal memulihkan tabel ${table.name} pada baris ${i}: ${res.error.message}`);
+                }
+            }
+        }
+    }
+    console.log("Data restoration completed successfully.");
 };
 
 export const processOnlineRegistration = async (
@@ -532,16 +650,7 @@ export const processCollectiveRegistration = async (
     }
 };
 
-export const searchExternalSwimmer = async (name: string): Promise<any> => {
-    try {
-        const response = await fetch(`/.netlify/functions/searchExternalSwimmer?name=${encodeURIComponent(name)}`);
-        if (!response.ok) throw new Error('Gagal mencari data atlet eksternal');
-        return await response.json();
-    } catch (error) {
-        console.error('Error searching external swimmer:', error);
-        return { swimmers: [] };
-    }
-};
+
 
 export const getUsers = async (): Promise<User[]> => { 
     const { data, error } = await supabase.from('users').select('*'); 

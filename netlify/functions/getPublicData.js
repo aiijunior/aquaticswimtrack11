@@ -39,7 +39,7 @@ const toSwimmer = (data) => ({
 
 const toEventEntry = (data) => ({
     swimmerId: data.swimmer_id,
-    seed_time: data.seed_time
+    seedTime: data.seed_time
 });
 
 const toResult = (data) => ({

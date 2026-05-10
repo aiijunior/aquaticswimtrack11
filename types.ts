@@ -96,6 +96,7 @@ export enum View {
   ONLINE_REGISTRATION,
   CHECKIN,
   SCANNER, // NEW
+  RECORD_MANAGEMENT,
 }
 
 export interface User {
