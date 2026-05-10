@@ -37,7 +37,7 @@ export const handler = async (event) => {
                     club: teamData.clubName,
                     age_group: p.ageGroup || null,
                     payment_proof: teamData.paymentProof,
-                    payment_amount: 0, // Individual portion 0 for bulk
+                    payment_amount: teamData.paymentAmount,
                     pic_name: teamData.picName,
                     pic_phone: teamData.picPhone
                 });
@@ -63,6 +63,7 @@ export const handler = async (event) => {
                 await supabaseAdmin.from('swimmers').update({
                     club: teamData.clubName,
                     payment_proof: teamData.paymentProof,
+                    payment_amount: teamData.paymentAmount,
                     pic_name: teamData.picName,
                     pic_phone: teamData.picPhone
                 }).eq('id', swimmerId);
