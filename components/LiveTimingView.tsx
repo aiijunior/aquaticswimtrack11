@@ -438,7 +438,7 @@ export const LiveTimingView: React.FC<LiveTimingViewProps> = ({ eventId, onBack,
                             <div className="col-span-8 sm:col-span-4 flex items-center bg-background rounded-md p-1 border border-border">
                                 <Input aria-label="Minutes" className="w-1/3" label="" id={`min-${entry.swimmer.id}`} type="number" min="0" value={times[entry.swimmer.id]?.min || '0'} onChange={e => handleTimeChange(entry.swimmer.id, 'min', e.target.value)} disabled={isDisabled} />
                                 <span className="px-1 text-text-secondary">:</span>
-                                <Input aria-label="Seconds" className="w-1/3" label="" id={`sec-${entry.swimmer.id}`} type="number" min="0" max="59" value={times[entry.swimmer.id]?.sec || '0'} onChange={e => handleTimeChange(entry.swimmer.id, 'sec', e.target.value)} disabled={isDisabled} />
+                                <Input aria-label="Seconds" className="w-1/3" label="" id={`sec-${entry.swimmer.id}`} type="number" min="0" max="99" value={times[entry.swimmer.id]?.sec || '0'} onChange={e => handleTimeChange(entry.swimmer.id, 'sec', e.target.value)} disabled={isDisabled} />
                                 <span className="px-1 text-text-secondary">.</span>
                                 <Input aria-label="Milliseconds" className="w-1/3" label="" id={`ms-${entry.swimmer.id}`} type="number" min="0" max="999" value={times[entry.swimmer.id]?.ms || '0'} onChange={e => handleTimeChange(entry.swimmer.id, 'ms', e.target.value)} disabled={isDisabled} />
                             </div>

@@ -209,7 +209,7 @@ export const EventDetailView: React.FC<EventDetailViewProps> = ({ eventId, onBac
                              <Input label="Min" id={`min-${entry.swimmerId}`} type="number" min="0" value={times[entry.swimmerId]?.min || '0'} onChange={e => handleTimeChange(entry.swimmerId, 'min', e.target.value)} />
                            </div>
                            <div className="col-span-1">
-                            <Input label="Sec" id={`sec-${entry.swimmerId}`} type="number" min="0" max="59" value={times[entry.swimmerId]?.sec || '0'} onChange={e => handleTimeChange(entry.swimmerId, 'sec', e.target.value)} />
+                            <Input label="Sec" id={`sec-${entry.swimmerId}`} type="number" min="0" max="99" value={times[entry.swimmerId]?.sec || '0'} onChange={e => handleTimeChange(entry.swimmerId, 'sec', e.target.value)} />
                            </div>
                            <div className="col-span-1">
                             <Input label="ms" id={`ms-${entry.swimmerId}`} type="number" min="0" max="999" value={times[entry.swimmerId]?.ms || '0'} onChange={e => handleTimeChange(entry.swimmerId, 'ms', e.target.value)} />
