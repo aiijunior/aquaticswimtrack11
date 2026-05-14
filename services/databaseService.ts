@@ -666,3 +666,12 @@ export const getRegistrationLogs = async () => {
     if (error) throw error;
     return data;
 };
+
+export const getSwimmerEntries = async (swimmerId: string): Promise<string[]> => {
+    const { data, error } = await supabase
+        .from('event_entries')
+        .select('event_id')
+        .eq('swimmer_id', swimmerId);
+    if (error) return [];
+    return data.map(d => d.event_id);
+};

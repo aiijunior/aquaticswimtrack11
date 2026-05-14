@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { CompetitionInfo, SwimEvent, Swimmer, FormattableEvent } from '../types';
-import { getEventsForRegistration, processOnlineRegistration, processCollectiveRegistration, findSwimmerByName, getSwimmerBestTime } from '../services/databaseService';
+import { getEventsForRegistration, processOnlineRegistration, processCollectiveRegistration, findSwimmerByName, getSwimmerBestTime, getSwimmerEntries } from '../services/databaseService';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -143,6 +143,7 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
         paymentAmount: '' as string
     });
     const [existingSwimmerId, setExistingSwimmerId] = useState<string | null>(null);
+    const [existingEntries, setExistingEntries] = useState<string[]>([]);
     const [selectedEvents, setSelectedEvents] = useState<SelectedEvents>({});
     
     // Team form states
@@ -265,6 +266,11 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             const swimmer = await findSwimmerByName(formData.name.trim());
             if (swimmer) {
                 setExistingSwimmerId(swimmer.id);
+                
+                // Fetch existing entries to filter them out
+                const entries = await getSwimmerEntries(swimmer.id);
+                setExistingEntries(entries);
+
                 setFormData(prev => ({
                     ...prev,
                     club: swimmer.club,
@@ -272,6 +278,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                     birthYear: swimmer.birthYear,
                     ageGroup: swimmer.ageGroup || prev.ageGroup,
                 }));
+            } else {
+                setExistingSwimmerId(null);
+                setExistingEntries([]);
             }
         } catch (err) {
             console.error("Lookup swimmer failed:", err);
@@ -719,14 +728,17 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 const genderMatch = e.gender === "Mixed" || 
                                    (formData.gender === "Male" && e.gender === "Men's") || 
                                    (formData.gender === "Female" && e.gender === "Women's");
-                return genderMatch && (!e.category || e.category === formData.ageGroup);
+                
+                const isAlreadyRegistered = existingEntries.includes(e.id);
+                
+                return genderMatch && (!e.category || e.category === formData.ageGroup) && !isAlreadyRegistered;
             })
             .reduce((acc, event) => {
                 if (!acc[event.style]) acc[event.style] = [];
                 acc[event.style].push(event);
                 return acc;
             }, {} as Record<string, SwimEvent[]>);
-    }, [localEvents, formData.gender, formData.ageGroup]);
+    }, [localEvents, formData.gender, formData.ageGroup, existingEntries]);
 
     const summaryList = useMemo(() => {
         return (Object.entries(selectedEvents) as [string, any][])
