@@ -78,6 +78,20 @@ export const handler = async (event) => {
             if (entriesError) throw entriesError;
         }
 
+        // 4. Create Registration Log (History)
+        await supabaseAdmin.from('registration_logs').insert({
+            registration_type: 'INDIVIDUAL',
+            registrant_name: swimmerData.name,
+            amount: swimmerData.paymentAmount || 0,
+            proof: swimmerData.paymentProof,
+            details: {
+                swimmer_id: swimmer.id,
+                club: swimmerData.club,
+                events_count: registrations.length,
+                events: registrations.map(r => r.eventId)
+            }
+        });
+
         return {
             statusCode: 200,
             body: JSON.stringify({ success: true, swimmer }),

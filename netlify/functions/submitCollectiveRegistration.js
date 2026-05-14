@@ -113,6 +113,20 @@ export const handler = async (event) => {
             if (entriesError) throw entriesError;
         }
 
+        // 3. Create Registration Log (History)
+        await supabaseAdmin.from('registration_logs').insert({
+            registration_type: 'COLLECTIVE',
+            registrant_name: teamData.clubName,
+            amount: teamData.paymentAmount || 0,
+            proof: teamData.paymentProof,
+            details: {
+                pic: teamData.picName,
+                phone: teamData.picPhone,
+                swimmers_count: uniqueSwimmersMap.size,
+                events_count: allEventEntries.length
+            }
+        });
+
         return {
             statusCode: 200,
             body: JSON.stringify({ success: true, message: `Berhasil mendaftarkan ${uniqueSwimmersMap.size} atlet dan ${allEventEntries.length} nomor lomba.` }),

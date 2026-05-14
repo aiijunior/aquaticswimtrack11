@@ -657,3 +657,12 @@ export const getUsers = async (): Promise<User[]> => {
     if (error) throw error; 
     return data.map(toUser); 
 };
+
+export const getRegistrationLogs = async () => {
+    const { data, error } = await supabase
+        .from('registration_logs')
+        .select('*')
+        .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+};

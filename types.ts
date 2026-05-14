@@ -97,6 +97,7 @@ export enum View {
   CHECKIN,
   SCANNER, // NEW
   RECORD_MANAGEMENT,
+  REGISTRATION_LOGS,
 }
 
 export interface User {

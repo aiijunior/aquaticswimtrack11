@@ -19,6 +19,7 @@ import { CheckinView } from './components/CheckinView';
 import { ScannerView } from './components/ScannerView';
 import { SqlEditorView } from './components/SqlEditorView';
 import { RecordManagementView } from './components/RecordManagementView';
+import { RegistrationLogsView } from './components/RegistrationLogsView';
 import { logout, getCurrentUser } from './services/authService';
 import { getPublicData } from './services/databaseService';
 import { Button } from './components/ui/Button';
@@ -230,6 +231,7 @@ const App: React.FC = () => {
       case View.SWIMMERS_LIST: return <SwimmersView swimmers={swimmers} events={events} isLoading={isLoading} onDataUpdate={refreshData} initialState={navigationState} competitionInfo={competitionInfo} />;
       case View.RESULTS: return <ResultsView events={events} swimmers={swimmers} isLoading={isLoading} />;
       case View.RECORD_MANAGEMENT: return <RecordManagementView />;
+      case View.REGISTRATION_LOGS: return <RegistrationLogsView />;
       case View.PRINT_MENU: return <PrintView events={events} swimmers={swimmers} competitionInfo={competitionInfo} isLoading={isLoading} />;
       case View.USER_MANAGEMENT:
           if (currentUser.role === 'SUPER_ADMIN') return <SqlEditorView />;
@@ -271,6 +273,7 @@ const App: React.FC = () => {
                 <NavLink label="Nomor Lomba" icon={<ClipboardListIcon />} isActive={currentView === View.RACES || currentView === View.LIVE_TIMING} onClick={() => navigateTo(View.RACES)}/>
                 <NavLink label="Unggah Peserta" icon={<UploadIcon />} isActive={currentView === View.PARTICIPANTS} onClick={() => navigateTo(View.PARTICIPANTS)}/>
                 <NavLink label="Daftar Atlet" icon={<UsersIcon />} isActive={currentView === View.SWIMMERS_LIST} onClick={() => navigateTo(View.SWIMMERS_LIST)}/>
+                <NavLink label="Log Pendaftaran" icon={<ClipboardListIcon />} isActive={currentView === View.REGISTRATION_LOGS} onClick={() => navigateTo(View.REGISTRATION_LOGS)}/>
                 <NavLink label="Manajemen Rekor" icon={<MedalIcon />} isActive={currentView === View.RECORD_MANAGEMENT} onClick={() => navigateTo(View.RECORD_MANAGEMENT)}/>
                 <NavLink label="Hasil Lomba" icon={<MedalIcon />} isActive={currentView === View.RESULTS} onClick={() => navigateTo(View.RESULTS)}/>
                 <NavLink label="Unduh Laporan" icon={<PrintIcon />} isActive={currentView === View.PRINT_MENU} onClick={() => navigateTo(View.PRINT_MENU)}/>

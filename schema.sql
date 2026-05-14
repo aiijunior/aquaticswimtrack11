@@ -193,3 +193,25 @@ VALUES (1, 'R.E.A.C.T Championship', CURRENT_DATE, 8, true)
 ON CONFLICT (id) DO UPDATE 
 SET event_name = EXCLUDED.event_name,
     is_free = COALESCE(competition_info.is_free, EXCLUDED.is_free);
+
+-- 14. Table for Registration Logs (Transaction History)
+CREATE TABLE IF NOT EXISTS public.registration_logs (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    registration_type text NOT NULL, -- 'INDIVIDUAL' or 'COLLECTIVE'
+    registrant_name text NOT NULL, -- Swimmer name or Club name
+    amount integer NOT NULL DEFAULT 0,
+    proof text,
+    details jsonb, -- { swimmers: [...], events: [...] }
+    created_at timestamp with time zone DEFAULT now()
+);
+
+-- Setup RLS for registration_logs
+ALTER TABLE public.registration_logs ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admin full access' AND tablename = 'registration_logs') THEN
+        CREATE POLICY "Admin full access" ON public.registration_logs FOR ALL USING (auth.role() = 'authenticated');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access' AND tablename = 'registration_logs') THEN
+        CREATE POLICY "Public read access" ON public.registration_logs FOR SELECT USING (true);
+    END IF;
+END $$;
