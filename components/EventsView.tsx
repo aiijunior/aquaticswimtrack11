@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { SwimEvent } from '../types';
 import { SwimStyle, Gender } from '../types';
-import { addEvent, deleteEvent, processEventUpload, deleteAllEvents } from '../services/databaseService';
+import { addEvent, updateEvent, deleteEvent, processEventUpload, deleteAllEvents } from '../services/databaseService';
 import { SWIM_STYLE_OPTIONS, GENDER_OPTIONS, translateGender, translateSwimStyle, GENDER_TRANSLATIONS, SWIM_STYLE_TRANSLATIONS, formatEventName, romanize } from '../constants';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
@@ -27,6 +27,12 @@ const TrashIcon = () => (
     </svg>
 );
 
+const PencilIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+    </svg>
+);
+
 const StopwatchIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -47,12 +53,22 @@ const CheckCircleIcon = () => (
 
 export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSelectEvent, onStartTiming, onDataUpdate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<SwimEvent | null>(null);
+  const [eventToEdit, setEventToEdit] = useState<SwimEvent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSession, setSelectedSession] = useState<number>(0); // 0 for all, -1 for unscheduled
   const [newEvent, setNewEvent] = useState({
+    distance: 100,
+    style: SwimStyle.FREESTYLE,
+    gender: Gender.MALE,
+    isRelay: false,
+    relayLegs: 4,
+    category: '',
+  });
+  const [editEventData, setEditEventData] = useState({
     distance: 100,
     style: SwimStyle.FREESTYLE,
     gender: Gender.MALE,
@@ -162,6 +178,47 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
         }
         addNotification(errorMessage, 'error');
     }
+  };
+
+  const handleEditEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!eventToEdit) return;
+    if (editEventData.distance <= 0) {
+        addNotification("Jarak lomba harus lebih besar dari 0.", 'error');
+        return;
+    }
+
+    try {
+        await updateEvent(eventToEdit.id, {
+            distance: editEventData.distance,
+            style: editEventData.style,
+            gender: editEventData.gender,
+            relayLegs: editEventData.isRelay ? editEventData.relayLegs : null,
+            category: editEventData.category || null,
+        });
+        setIsEditModalOpen(false);
+        onDataUpdate();
+        addNotification('Nomor lomba berhasil diperbarui.', 'success');
+    } catch (error) {
+        let errorMessage = "Terjadi kesalahan saat memperbarui.";
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        }
+        addNotification(errorMessage, 'error');
+    }
+  };
+  
+  const openEditModal = (event: SwimEvent) => {
+    setEventToEdit(event);
+    setEditEventData({
+        distance: event.distance,
+        style: event.style,
+        gender: event.gender,
+        isRelay: !!event.relayLegs,
+        relayLegs: event.relayLegs || 4,
+        category: event.category || '',
+    });
+    setIsEditModalOpen(true);
   };
   
   const openDeleteConfirm = (event: SwimEvent) => {
@@ -482,6 +539,9 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
                                             <StopwatchIcon />
                                             <span className="ml-1">Timing</span>
                                         </Button>
+                                        <button onClick={() => openEditModal(event)} className="p-2 text-primary hover:bg-primary/10 rounded-full transition-colors" title="Edit Nomor Lomba">
+                                            <PencilIcon />
+                                        </button>
                                         <button onClick={() => openDeleteConfirm(event)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-full transition-colors" title="Hapus Nomor Lomba">
                                             <TrashIcon />
                                         </button>
@@ -575,6 +635,83 @@ export const EventsView: React.FC<EventsViewProps> = ({ events, isLoading, onSel
             </Select>
             <div className="flex justify-end pt-2">
                 <Button type="submit">Buat Nomor Lomba</Button>
+            </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={isEditModalOpen} onClose={() => { setIsEditModalOpen(false); }} title="Edit Nomor Lomba">
+        <form onSubmit={handleEditEvent} className="space-y-4">
+            <div className="flex items-center p-2 bg-background rounded-md space-x-3">
+                <input 
+                    type="checkbox" 
+                    id="edit-isRelay" 
+                    className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
+                    checked={editEventData.isRelay} 
+                    onChange={e => {
+                        const isRelay = e.target.checked;
+                        setEditEventData(prev => ({
+                            ...prev, 
+                            isRelay,
+                            gender: !isRelay && prev.gender === Gender.MIXED ? Gender.MALE : prev.gender
+                        }));
+                    }} 
+                />
+                <label htmlFor="edit-isRelay" className="font-medium text-text-primary">Nomor Estafet (Relay)</label>
+            </div>
+
+            {editEventData.isRelay && (
+                <Input
+                    label="Jumlah Atlet per Tim"
+                    id="edit-event-relay-legs"
+                    type="number"
+                    value={editEventData.relayLegs}
+                    onChange={(e) => setEditEventData({ ...editEventData, relayLegs: parseInt(e.target.value) || 4 })}
+                    required
+                />
+            )}
+            <Input
+                label={editEventData.isRelay ? 'Jarak per Atlet (meter)' : 'Jarak (meter)'}
+                id="edit-event-distance"
+                type="number"
+                value={editEventData.distance}
+                onChange={(e) => {
+                    setEditEventData({ ...editEventData, distance: parseInt(e.target.value) || 0 });
+                }}
+                required
+            />
+             <Input
+                label="Kategori (Opsional, cth: KU 1-2, SMP)"
+                id="edit-event-category"
+                type="text"
+                value={editEventData.category}
+                onChange={(e) => setEditEventData({ ...editEventData, category: e.target.value.toUpperCase() })}
+            />
+            <Select
+                label="Gaya"
+                id="edit-event-style"
+                value={editEventData.style}
+                onChange={(e) => setEditEventData({ ...editEventData, style: e.target.value as SwimStyle })}
+            >
+                {styleOptions.map((style) => (
+                <option key={style} value={style}>
+                    {translateSwimStyle(style)}
+                </option>
+                ))}
+            </Select>
+            <Select
+                label="Jenis Kelamin"
+                id="edit-event-gender"
+                value={editEventData.gender}
+                onChange={(e) => setEditEventData({ ...editEventData, gender: e.target.value as Gender })}
+            >
+                {genderOptions.filter((gender) => editEventData.isRelay || gender !== Gender.MIXED).map((gender) => (
+                <option key={gender} value={gender}>
+                    {translateGender(gender)}
+                </option>
+                ))}
+            </Select>
+            <div className="flex justify-end pt-2">
+                <Button type="submit">Simpan Perubahan</Button>
             </div>
         </form>
       </Modal>

@@ -234,6 +234,21 @@ export const addEvent = async (event: Omit<SwimEvent, 'id' | 'entries' | 'result
     return toSwimEvent(data);
 };
 
+export const updateEvent = async (id: string, event: Partial<Omit<SwimEvent, 'id' | 'entries' | 'results'>>): Promise<SwimEvent> => {
+    const { data, error } = await supabase.from('events').update({
+        distance: event.distance,
+        style: event.style,
+        gender: event.gender,
+        relay_legs: event.relayLegs,
+        category: event.category,
+        session_number: event.sessionNumber,
+        heat_order: event.heatOrder,
+        session_date_time: event.sessionDateTime
+    } as any).eq('id', id).select('*, event_entries(*), event_results(*)').single();
+    if (error) throw error;
+    return toSwimEvent(data);
+};
+
 export const deleteEvent = async (id: string): Promise<void> => {
     const { error } = await supabase.from('events').delete().eq('id', id);
     if (error) throw error;
