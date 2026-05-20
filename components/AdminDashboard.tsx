@@ -27,6 +27,11 @@ const DocumentTextIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
 );
+const DatabaseIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+    </svg>
+);
 
 const SortIcon: React.FC<{ direction: 'asc' | 'desc' | 'none' }> = ({ direction }) => {
   if (direction === 'none') {
@@ -140,6 +145,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
     }
     setSortConfig({ key, direction });
   };
+
+  const [diagResults, setDiagResults] = useState<Record<string, number | string>>({});
+  const [isDiagLoading, setIsDiagLoading] = useState(false);
+
+  const runDiagnostics = async () => {
+      setIsDiagLoading(true);
+      const { supabase } = await import('../services/supabaseClient');
+      const tables = ['competition_info', 'swimmers', 'events', 'event_entries', 'records', 'registration_logs'];
+      const results: Record<string, number | string> = {};
+      
+      for (const table of tables) {
+          try {
+              const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true });
+              results[table] = error ? `Error: ${error.message}` : (count || 0);
+          } catch (e: any) {
+              results[table] = `Failed: ${e.message}`;
+          }
+      }
+      setDiagResults(results);
+      setIsDiagLoading(false);
+  };
   
   const chartData = useMemo(() => {
     const topClubs = [...clubAnalysisData].sort((a,b) => b.total - a.total).slice(0, 7);
@@ -236,7 +262,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
     <div>
       <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Dashboard Admin</h1>
+          <Button onClick={runDiagnostics} variant="outline" size="sm" className="flex items-center gap-2">
+              {isDiagLoading ? <Spinner size="sm" /> : <DatabaseIcon />}
+              Diagnostik Database
+          </Button>
       </div>
+
+      {Object.keys(diagResults).length > 0 && (
+          <Card className="mb-6 border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10 dark:border-yellow-800">
+              <h3 className="text-sm font-bold text-yellow-800 dark:text-yellow-400 uppercase mb-3">Hasil Pemeriksaan Tabel Suppabase</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  {Object.entries(diagResults).map(([table, result]) => (
+                      <div key={table} className="bg-white dark:bg-surface p-2 rounded border border-yellow-200 dark:border-yellow-800">
+                          <p className="text-[10px] text-text-secondary uppercase font-bold truncate" title={table}>{table}</p>
+                          <p className={`text-sm font-black ${typeof result === 'string' ? 'text-red-500' : 'text-primary'}`}>
+                              {result}
+                          </p>
+                      </div>
+                  ))}
+              </div>
+              <p className="mt-4 text-[11px] text-yellow-700 dark:text-yellow-500 italic">
+                  * Jika semua angka adalah 0, berarti data memang belum dimasukkan atau Anda perlu menjalankan kembali skrip di schema.sql.
+              </p>
+          </Card>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center mt-8">

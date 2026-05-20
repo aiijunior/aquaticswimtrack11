@@ -117,7 +117,8 @@ const App: React.FC = () => {
     };
 
     checkUserAndLoadData();
-  }, []);
+    refreshData(); // Ensure data is fetched even if realtime fails
+  }, [refreshData]);
 
   useEffect(() => {
       const channel = supabase.channel('schema-db-changes');

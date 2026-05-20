@@ -88,9 +88,31 @@ const toRecord = (data: any): SwimRecord => ({
 // --- PUBLIC DATA ---
 
 export const getPublicData = async () => {
-    const response = await fetch('/.netlify/functions/getPublicData');
-    if (!response.ok) throw new Error('Failed to fetch public data');
-    return response.json();
+    try {
+        const [infoRes, swimmersRes, eventsRes, recordsRes] = await Promise.all([
+            supabase.from('competition_info').select('*').eq('id', 1).maybeSingle(),
+            supabase.from('swimmers').select('*'),
+            supabase.from('events').select('*, event_entries(*), event_results(*)').order('session_number').order('heat_order'),
+            supabase.from('records').select('*')
+        ]);
+
+        if (infoRes.error) console.error("Error fetching competition_info:", infoRes.error);
+        if (swimmersRes.error) throw swimmersRes.error;
+        if (eventsRes.error) throw eventsRes.error;
+        if (recordsRes.error) throw recordsRes.error;
+
+        return {
+            competitionInfo: toCompetitionInfo(infoRes.data),
+            swimmers: swimmersRes.data.map(toSwimmer),
+            events: eventsRes.data.map(toSwimEvent),
+            records: recordsRes.data.map(toRecord)
+        };
+    } catch (error) {
+        console.error("Direct fetch failed, trying Netlify fallback:", error);
+        const response = await fetch('/.netlify/functions/getPublicData');
+        if (!response.ok) throw new Error('Failed to fetch public data from both direct and fallback routes');
+        return response.json();
+    }
 };
 
 // --- SWIMMER SERVICES ---
