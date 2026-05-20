@@ -215,3 +215,45 @@ DO $$ BEGIN
         CREATE POLICY "Public read access" ON public.registration_logs FOR SELECT USING (true);
     END IF;
 END $$;
+
+-- 15. Explicit Grants for Supabase Data API (Rollout May 30, 2026)
+-- This ensures that tables are accessible via supabase-js and REST API.
+
+-- competition_info
+GRANT SELECT ON public.competition_info TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.competition_info TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.competition_info TO service_role;
+
+-- swimmers
+GRANT SELECT ON public.swimmers TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.swimmers TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.swimmers TO service_role;
+
+-- events
+GRANT SELECT ON public.events TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.events TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.events TO service_role;
+
+-- event_entries
+GRANT SELECT ON public.event_entries TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.event_entries TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.event_entries TO service_role;
+
+-- event_results
+GRANT SELECT ON public.event_results TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.event_results TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.event_results TO service_role;
+
+-- records
+GRANT SELECT ON public.records TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.records TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.records TO service_role;
+
+-- registration_logs
+GRANT SELECT ON public.registration_logs TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.registration_logs TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.registration_logs TO service_role;
+
+-- users (Limited access)
+GRANT SELECT ON public.users TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.users TO service_role;

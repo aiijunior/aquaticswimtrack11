@@ -204,7 +204,15 @@ DO $$ BEGIN
     END IF;
 END $$;
 
--- 11. Auth Trigger Function
+-- 11. Explicit Grants (PENTING untuk rollout Supabase Mei 2026)
+-- Memberikan izin akses eksplisit agar tabel bisa dibaca via API.
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+-- 12. Auth Trigger Function
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -305,7 +313,8 @@ Jika Anda menggunakan Netlify:
 
 ### 6. Tips Menghindari Error Common
 *   **Error 500 / Database Error**: Pastikan variabel `SUPABASE_URL` dan `SUPABASE_SERVICE_KEY` sudah terpasang di Netlify Environment Variables.
-*   **Error Permission Denied**: Pastikan Anda sudah menjalankan seluruh skrip SQL di `schema.sql` termasuk bagian RLS dan Policies.
+*   **Error Permission Denied**: Pastikan Anda sudah menjalankan seluruh skrip SQL di `schema.sql` termasuk bagian RLS, Policies, dan **Explicit Grants** (Bagian 11/15).
+*   **Update Proaktif Supabase**: Supabase merubah aturan keamanan per Mei 2026 yang mengharuskan perintah `GRANT` eksplisit. Skrip ini sudah menyertakan perintah tersebut untuk memastikan aplikasi tetap berjalan normal.
 *   **Logo Tidak Muncul**: Logo disimpan di tabel `competition_info`. Anda bisa mengupload ulang logo melalui menu Pengaturan Admin di aplikasi.
 *   **Fungsi Netlify Tidak Jalan**: Pastikan Anda telah menginstal `netlify-cli` secara lokal jika ingin mencoba `netlify dev`. Di cloud, Netlify otomatis mendeteksi folder `netlify/functions`.
 
