@@ -128,47 +128,43 @@ ALTER TABLE public.event_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.records ENABLE ROW LEVEL SECURITY;
 
--- 10. Policies with existence check (Idempotent)
+-- 10. Robust Policies (Consolidated)
 DO $$ BEGIN
-    -- Public Read Policies
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access' AND tablename = 'competition_info') THEN
-        CREATE POLICY "Public read access" ON public.competition_info FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access' AND tablename = 'swimmers') THEN
-        CREATE POLICY "Public read access" ON public.swimmers FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access' AND tablename = 'events') THEN
-        CREATE POLICY "Public read access" ON public.events FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access' AND tablename = 'event_entries') THEN
-        CREATE POLICY "Public read access" ON public.event_entries FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access' AND tablename = 'event_results') THEN
-        CREATE POLICY "Public read access" ON public.event_results FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access' AND tablename = 'records') THEN
-        CREATE POLICY "Public read access" ON public.records FOR SELECT USING (true);
-    END IF;
+    -- Drop existing policies to ensure clean state
+    DROP POLICY IF EXISTS "Public read access" ON public.competition_info;
+    DROP POLICY IF EXISTS "Public read access" ON public.swimmers;
+    DROP POLICY IF EXISTS "Public read access" ON public.events;
+    DROP POLICY IF EXISTS "Public read access" ON public.event_entries;
+    DROP POLICY IF EXISTS "Public read access" ON public.event_results;
+    DROP POLICY IF EXISTS "Public read access" ON public.records;
+    DROP POLICY IF EXISTS "Public read access" ON public.registration_logs;
+    DROP POLICY IF EXISTS "Admin full access" ON public.competition_info;
+    DROP POLICY IF EXISTS "Admin full access" ON public.swimmers;
+    DROP POLICY IF EXISTS "Admin full access" ON public.events;
+    DROP POLICY IF EXISTS "Admin full access" ON public.event_entries;
+    DROP POLICY IF EXISTS "Admin full access" ON public.event_results;
+    DROP POLICY IF EXISTS "Admin full access" ON public.records;
+    DROP POLICY IF EXISTS "Admin full access" ON public.registration_logs;
+    DROP POLICY IF EXISTS "Admin read users" ON public.users;
 
-    -- Admin Full Access Policies
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admin full access' AND tablename = 'competition_info') THEN
-        CREATE POLICY "Admin full access" ON public.competition_info FOR ALL USING (auth.role() = 'authenticated');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admin full access' AND tablename = 'swimmers') THEN
-        CREATE POLICY "Admin full access" ON public.swimmers FOR ALL USING (auth.role() = 'authenticated');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admin full access' AND tablename = 'events') THEN
-        CREATE POLICY "Admin full access" ON public.events FOR ALL USING (auth.role() = 'authenticated');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admin full access' AND tablename = 'event_entries') THEN
-        CREATE POLICY "Admin full access" ON public.event_entries FOR ALL USING (auth.role() = 'authenticated');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admin full access' AND tablename = 'event_results') THEN
-        CREATE POLICY "Admin full access" ON public.event_results FOR ALL USING (auth.role() = 'authenticated');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admin full access' AND tablename = 'records') THEN
-        CREATE POLICY "Admin full access" ON public.records FOR ALL USING (auth.role() = 'authenticated');
-    END IF;
+    -- 10a. Public Read Access (Anyone can see results and competition info)
+    CREATE POLICY "Public read access" ON public.competition_info FOR SELECT TO anon, authenticated USING (true);
+    CREATE POLICY "Public read access" ON public.swimmers FOR SELECT TO anon, authenticated USING (true);
+    CREATE POLICY "Public read access" ON public.events FOR SELECT TO anon, authenticated USING (true);
+    CREATE POLICY "Public read access" ON public.event_entries FOR SELECT TO anon, authenticated USING (true);
+    CREATE POLICY "Public read access" ON public.event_results FOR SELECT TO anon, authenticated USING (true);
+    CREATE POLICY "Public read access" ON public.records FOR SELECT TO anon, authenticated USING (true);
+    CREATE POLICY "Public read access" ON public.registration_logs FOR SELECT TO anon, authenticated USING (true);
+
+    -- 10b. Admin Full Access (Only authenticated users can modify data)
+    CREATE POLICY "Admin full access" ON public.competition_info FOR ALL TO authenticated USING (true) WITH CHECK (true);
+    CREATE POLICY "Admin full access" ON public.swimmers FOR ALL TO authenticated USING (true) WITH CHECK (true);
+    CREATE POLICY "Admin full access" ON public.events FOR ALL TO authenticated USING (true) WITH CHECK (true);
+    CREATE POLICY "Admin full access" ON public.event_entries FOR ALL TO authenticated USING (true) WITH CHECK (true);
+    CREATE POLICY "Admin full access" ON public.event_results FOR ALL TO authenticated USING (true) WITH CHECK (true);
+    CREATE POLICY "Admin full access" ON public.records FOR ALL TO authenticated USING (true) WITH CHECK (true);
+    CREATE POLICY "Admin full access" ON public.registration_logs FOR ALL TO authenticated USING (true) WITH CHECK (true);
+    CREATE POLICY "Admin read users" ON public.users FOR SELECT TO authenticated USING (true);
 END $$;
 
 -- 11. Auth Trigger Function
@@ -207,14 +203,6 @@ CREATE TABLE IF NOT EXISTS public.registration_logs (
 
 -- Setup RLS for registration_logs
 ALTER TABLE public.registration_logs ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admin full access' AND tablename = 'registration_logs') THEN
-        CREATE POLICY "Admin full access" ON public.registration_logs FOR ALL USING (auth.role() = 'authenticated');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access' AND tablename = 'registration_logs') THEN
-        CREATE POLICY "Public read access" ON public.registration_logs FOR SELECT USING (true);
-    END IF;
-END $$;
 
 -- 15. Explicit Grants for Supabase Data API (Rollout May 30, 2026)
 -- This ensures that tables are accessible via supabase-js and REST API.
