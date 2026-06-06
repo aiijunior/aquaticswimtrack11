@@ -21,7 +21,7 @@ import { SqlEditorView } from './components/SqlEditorView';
 import { RecordManagementView } from './components/RecordManagementView';
 import { RegistrationLogsView } from './components/RegistrationLogsView';
 import { logout, getCurrentUser } from './services/authService';
-import { getPublicData } from './services/databaseService';
+import { getPublicData, toCompetitionInfo, toSwimEvent } from './services/databaseService';
 import { Button } from './components/ui/Button';
 import { ThemeToggle } from './components/ui/ThemeToggle';
 import { supabase } from './services/supabaseClient';
@@ -78,8 +78,22 @@ const App: React.FC = () => {
   const [arduinoStatus, setArduinoStatus] = useState<ArduinoStatus>('unavailable');
 
   const refreshData = useCallback(async () => {
+    // Priority 1: Fetch competition info and events first for registration unblocking
+    try {
+      const infoPromise = supabase.from('competition_info').select('*').eq('id', 1).maybeSingle();
+      const eventsPromise = supabase.from('events').select('*, event_entries(*), event_results(*)').order('session_number').order('heat_order');
+      
+      const [infoRes, eventsRes] = await Promise.all([infoPromise, eventsPromise]);
+      
+      if (infoRes.data) setCompetitionInfo(toCompetitionInfo(infoRes.data));
+      if (eventsRes.data) setEvents(eventsRes.data.map(toSwimEvent));
+    } catch (e) {
+      console.error("Priority fetch failed", e);
+    }
+
     setIsDataLoading(true);
     try {
+      // Priority 2: Fetch full public data
       const { competitionInfo: infoData, swimmers: swimmersData, events: eventsData } = await getPublicData();
       setSwimmers(swimmersData);
       setEvents(eventsData);
@@ -214,7 +228,7 @@ const App: React.FC = () => {
     const isLoading = isDataLoading;
 
     if (currentView === View.PUBLIC_RESULTS) return <PublicResultsView onAdminLogin={handleBackToLogin} />;
-    if (currentView === View.ONLINE_REGISTRATION) return <OnlineRegistrationView competitionInfo={competitionInfo} onBackToLogin={handleBackToLogin} onRegistrationSuccess={refreshData} />;
+    if (currentView === View.ONLINE_REGISTRATION) return <OnlineRegistrationView competitionInfo={competitionInfo} events={events} onBackToLogin={handleBackToLogin} onRegistrationSuccess={refreshData} />;
     if (currentView === View.CHECKIN && selectedEventId) return <CheckinView swimmerId={selectedEventId} onBackToLogin={currentUser ? () => navigateTo(View.ADMIN_DASHBOARD) : handleBackToLogin} />;
     
     if (currentView === View.SCANNER) return <ScannerView onBack={() => navigateTo(View.ADMIN_DASHBOARD)} onDetected={handleScanDetected} />;

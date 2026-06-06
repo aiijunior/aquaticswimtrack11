@@ -135,12 +135,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onShowPubl
                     variant="primary" 
                     onClick={onShowRegistration} 
                     className="w-full py-4 text-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
-                    disabled={!isRegistrationOpen}
-                    title={!isRegistrationOpen ? "Pendaftaran online saat ini ditutup" : "Buka formulir pendaftaran"}
+                    disabled={competitionInfo !== null && !isRegistrationOpen}
+                    title={competitionInfo === null ? "Sedang memuat..." : (!isRegistrationOpen ? "Pendaftaran online saat ini ditutup" : "Buka formulir pendaftaran")}
                 >
-                    Daftar Lomba Online
+                    {competitionInfo === null ? (
+                        <div className="flex items-center justify-center gap-2">
+                           <Spinner size="sm" /> <span>Memuat Data...</span>
+                        </div>
+                    ) : 'Daftar Lomba Online'}
                 </Button>
-                {!isRegistrationOpen && <p className="text-xs text-yellow-500 mt-1">Pendaftaran online ditutup</p>}
+                {competitionInfo !== null && !isRegistrationOpen && <p className="text-xs text-yellow-500 mt-1">Pendaftaran online ditutup</p>}
             </div>
         </div>
       </div>

@@ -16,7 +16,7 @@ const toUser = (data: any): User => ({
     user_metadata: {},
 });
 
-const toCompetitionInfo = (data: any): CompetitionInfo | null => (data ? {
+export const toCompetitionInfo = (data: any): CompetitionInfo | null => (data ? {
     id: data.id,
     eventName: data.event_name,
     eventDate: data.event_date,
@@ -57,7 +57,7 @@ const toResult = (data: any): Result => ({
     time: data.time
 });
 
-const toSwimEvent = (data: any): SwimEvent => ({
+export const toSwimEvent = (data: any): SwimEvent => ({
     id: data.id,
     distance: data.distance,
     style: data.style as SwimStyle,

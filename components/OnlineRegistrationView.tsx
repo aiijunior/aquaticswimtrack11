@@ -14,6 +14,7 @@ declare var ExcelJS: any;
 
 interface OnlineRegistrationViewProps {
     competitionInfo: CompetitionInfo | null;
+    events?: SwimEvent[];
     onBackToLogin: () => void;
     onRegistrationSuccess: () => void;
 }
@@ -124,12 +125,13 @@ const CountdownTimer = ({ deadline }: { deadline: string }) => {
 
 export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
     competitionInfo,
+    events: initialEvents,
     onBackToLogin,
     onRegistrationSuccess,
 }) => {
     const [regType, setRegType] = useState<'CHOICE' | 'INDIVIDUAL' | 'TEAM'>('CHOICE');
-    const [localEvents, setLocalEvents] = useState<SwimEvent[]>([]);
-    const [isDataLoading, setIsDataLoading] = useState(true);
+    const [localEvents, setLocalEvents] = useState<SwimEvent[]>(initialEvents || []);
+    const [isDataLoading, setIsDataLoading] = useState(!initialEvents || initialEvents.length === 0);
     
     // Individual form states
     const [formData, setFormData] = useState({
@@ -171,13 +173,37 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
     useEffect(() => {
         const fetchEvents = async () => {
-            setIsDataLoading(true);
-            const onlineEvents = await getEventsForRegistration();
-            setLocalEvents(onlineEvents);
-            setIsDataLoading(false);
+            // If events provided by App, no need to fetch
+            if (initialEvents && initialEvents.length > 0) {
+                setLocalEvents(initialEvents);
+                setIsDataLoading(false);
+                return;
+            }
+
+            // Check Cache
+            const cached = localStorage.getItem('online_events_cache');
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+                        setLocalEvents(parsed);
+                        setIsDataLoading(false);
+                    }
+                } catch (e) {}
+            }
+
+            try {
+                const onlineEvents = await getEventsForRegistration();
+                setLocalEvents(onlineEvents);
+                localStorage.setItem('online_events_cache', JSON.stringify(onlineEvents));
+            } catch (err) {
+                console.error("Fetch events failed", err);
+            } finally {
+                setIsDataLoading(false);
+            }
         };
         fetchEvents();
-    }, []);
+    }, [initialEvents]);
 
     const maxAllowedEvents = useMemo(() => {
         if (competitionInfo?.isFree) return 999;
