@@ -216,6 +216,42 @@ export const RecordManagementView: React.FC = () => {
         }
     };
 
+    const handleDownloadTemplate = () => {
+        const wb = XLSX.utils.book_new();
+
+        const instructions = [
+            ["PANDUAN PENGISIAN TEMPLATE REKOR"],
+            ["1. Isi data pada sheet 'Template Rekor' mulai dari baris ke-2."],
+            ["2. Kolom yang Wajib Diisi: Tipe, Jarak (m), Gaya, Jenis Kelamin, Pemegang Rekor, Tahun, Waktu."],
+            ["3. Tipe: 'PORPROV' atau 'NASIONAL'."],
+            ["4. Gaya: 'Bebas', 'Dada', 'Kupu-Kupu', 'Punggung', 'Ganti'."],
+            ["5. Jenis Kelamin: 'Putra' atau 'Putri'."],
+            ["6. Waktu: Format mm:ss.SS (contoh: 01:23.45)."]
+        ];
+        const wsInstructions = XLSX.utils.aoa_to_sheet(instructions);
+        wsInstructions['!cols'] = [{ wch: 80 }];
+        XLSX.utils.book_append_sheet(wb, wsInstructions, "Panduan");
+
+        const templateData = [
+            ["Tipe", "Jarak (m)", "Gaya", "Jenis Kelamin", "Kategori", "Pemegang Rekor", "Tahun", "Waktu"],
+            ["PORPROV", 50, "Bebas", "Putra", "Senior", "Budi Santoso", 2022, "00:24.50"],
+            ["NASIONAL", 100, "Dada", "Putri", "", "Susi Susanti", 2019, "01:10.25"]
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(templateData);
+        ws['!cols'] = [
+            { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 30 }, { wch: 10 }, { wch: 15 }
+        ];
+
+        if (!ws['!dataValidation']) ws['!dataValidation'] = [];
+        const maxRows = 1000;
+        ws['!dataValidation'].push({ sqref: `A2:A${maxRows}`, opts: { type: 'list', formula1: '"PORPROV,NASIONAL"' } });
+        ws['!dataValidation'].push({ sqref: `C2:C${maxRows}`, opts: { type: 'list', formula1: '"Bebas,Dada,Kupu-Kupu,Punggung,Ganti"' } });
+        ws['!dataValidation'].push({ sqref: `D2:D${maxRows}`, opts: { type: 'list', formula1: '"Putra,Putri"' } });
+
+        XLSX.utils.book_append_sheet(wb, ws, "Template Rekor");
+        XLSX.writeFile(wb, "Template_Manajemen_Rekor.xlsx");
+    };
+
     const handleRecordFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -307,7 +343,10 @@ export const RecordManagementView: React.FC = () => {
                     <Card>
                         <h2 className="text-xl font-bold mb-4">Impor Massal</h2>
                         <div className="space-y-4">
-                            <p className="text-sm text-text-secondary">Unggah file Excel untuk memperbarui banyak rekor sekaligus.</p>
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                <p className="text-sm text-text-secondary">Unggah file Excel untuk memperbarui banyak rekor.</p>
+                                <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>Unduh Template</Button>
+                            </div>
                             <input type="file" id="record-upload-dedicated" accept=".xlsx, .xls" className="hidden" onChange={handleRecordFileChange} />
                             <div className="flex gap-2">
                                 <Button variant="secondary" onClick={() => document.getElementById('record-upload-dedicated')?.click()} className="flex-1">Pilih File</Button>

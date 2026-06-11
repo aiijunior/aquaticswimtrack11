@@ -151,7 +151,7 @@ const EventBaseReport = ({ events, info, records, showResults }: { events: Timed
             return (
                 <div key={event.id} className="page-break-inside-avoid border-b-2 border-gray-400 pb-4">
                     <div className="bg-gray-200 text-black border-y-2 border-black p-1 px-2 font-bold text-xs flex justify-between uppercase">
-                        <span>Acara {event.globalEventNumber} - {formatEventName(event)}</span>
+                        <span>{showResults ? 'Hasil Acara' : 'Acara'} {event.globalEventNumber} - {formatEventName(event)}</span>
                         {event.estimatedEventStartTime && !showResults && <span className="text-black">Waktu Perlombaan : {formatEST(event.estimatedEventStartTime)}</span>}
                     </div>
                     <div className="my-1 px-2 border-l-2 border-black bg-gray-50 py-1">
@@ -736,7 +736,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ events, swimmers, competit
                 break;
             case 'results':
                 processedData.detailedEvents.forEach(e => {
-                    data.push({ "PERINGKAT": `ACARA ${e.globalEventNumber} - ${formatEventName(e).toUpperCase()}` });
+                    data.push({ "PERINGKAT": `HASIL ACARA ${e.globalEventNumber} - ${formatEventName(e).toUpperCase()}` });
                     data.push({ "PERINGKAT": "RANK", "NAMA ATLET": "NAMA ATLET", "TAHUN": "THN", "TIM / KLUB": "TIM / KLUB", "WAKTU": "HASIL", "STATUS": "MEDALI" });
                     e.detailedResults?.forEach(r => data.push({
                         "PERINGKAT": r.rank || '-', 
