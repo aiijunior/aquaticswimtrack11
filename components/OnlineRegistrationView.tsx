@@ -180,22 +180,9 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
                 return;
             }
 
-            // Check Cache
-            const cached = localStorage.getItem('online_events_cache');
-            if (cached) {
-                try {
-                    const parsed = JSON.parse(cached);
-                    if (parsed && Array.isArray(parsed) && parsed.length > 0) {
-                        setLocalEvents(parsed);
-                        setIsDataLoading(false);
-                    }
-                } catch (e) {}
-            }
-
             try {
                 const onlineEvents = await getEventsForRegistration();
                 setLocalEvents(onlineEvents);
-                localStorage.setItem('online_events_cache', JSON.stringify(onlineEvents));
             } catch (err) {
                 console.error("Fetch events failed", err);
             } finally {

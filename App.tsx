@@ -78,6 +78,11 @@ const App: React.FC = () => {
   const [arduinoStatus, setArduinoStatus] = useState<ArduinoStatus>('unavailable');
 
   const refreshData = useCallback(async () => {
+    // Only show loading for the very first fetch before the app is ready
+    if (appStatus === 'loading') {
+      setIsDataLoading(true);
+    }
+
     // Priority 1: Fetch competition info and events first for registration unblocking
     try {
       const infoPromise = supabase.from('competition_info').select('*').eq('id', 1).maybeSingle();
@@ -91,10 +96,9 @@ const App: React.FC = () => {
       console.error("Priority fetch failed", e);
     }
 
-    setIsDataLoading(true);
     try {
       // Priority 2: Fetch full public data
-      const { competitionInfo: infoData, swimmers: swimmersData, events: eventsData } = await getPublicData();
+      const { swimmers: swimmersData, events: eventsData, competitionInfo: infoData } = await getPublicData();
       setSwimmers(swimmersData);
       setEvents(eventsData);
       setCompetitionInfo(infoData);
@@ -103,7 +107,7 @@ const App: React.FC = () => {
     } finally {
       setIsDataLoading(false);
     }
-  }, []);
+  }, [appStatus]);
 
   useEffect(() => {
     const checkUserAndLoadData = async () => {

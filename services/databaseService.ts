@@ -91,7 +91,8 @@ export const getPublicData = async () => {
     try {
         const [infoRes, swimmersRes, eventsRes, recordsRes] = await Promise.all([
             supabase.from('competition_info').select('*').eq('id', 1).maybeSingle(),
-            supabase.from('swimmers').select('*'),
+            // Optimization: Do NOT fetch payment_proof in large list
+            supabase.from('swimmers').select('id, name, birth_year, gender, club, age_group, payment_amount, pic_name, pic_phone'),
             supabase.from('events').select('*, event_entries(*), event_results(*)').order('session_number').order('heat_order'),
             supabase.from('records').select('*')
         ]);
@@ -118,7 +119,7 @@ export const getPublicData = async () => {
 // --- SWIMMER SERVICES ---
 
 export const getSwimmers = async (): Promise<Swimmer[]> => {
-    const { data, error } = await supabase.from('swimmers').select('*');
+    const { data, error } = await supabase.from('swimmers').select('id, name, birth_year, gender, club, age_group, payment_amount, pic_name, pic_phone');
     if (error) throw error;
     return data.map(toSwimmer);
 };
@@ -696,12 +697,25 @@ export const getUsers = async (): Promise<User[]> => {
 };
 
 export const getRegistrationLogs = async () => {
+    // Optimization: Log details are small, but proof can be large. 
+    // We fetch everything except the binary/heavy proof initially if possible, 
+    // but registration_logs proof is often visited. Let's keep it for now but reconsider if slow.
     const { data, error } = await supabase
         .from('registration_logs')
-        .select('*')
+        .select('id, created_at, registrant_name, amount, registration_type, details, proof') 
         .order('created_at', { ascending: false });
     if (error) throw error;
     return data;
+};
+
+export const getSwimmerPaymentProof = async (id: string): Promise<string | null> => {
+    const { data, error } = await supabase
+        .from('swimmers')
+        .select('payment_proof')
+        .eq('id', id)
+        .single();
+    if (error) return null;
+    return data.payment_proof;
 };
 
 export const getSwimmerEntries = async (swimmerId: string): Promise<string[]> => {
