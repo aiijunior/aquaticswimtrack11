@@ -71,7 +71,9 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         if (result.errors.length === 0 && (result.newSwimmers > 0 || result.updatedSwimmers > 0)) {
             addNotification('File pendaftaran berhasil diproses!', 'success');
         } else if (result.errors.length > 0) {
-            addNotification(`Impor selesai dengan ${result.errors.length} galat.`, 'error');
+            console.error("Import Errors:", result.errors);
+            const firstError = result.errors[0];
+            addNotification(`Impor selesai dengan ${result.errors.length} galat. Contoh galat: ${firstError}`, 'error');
         }
         if (result.newSwimmers > 0 || result.updatedSwimmers > 0) {
           onUploadSuccess(); // Trigger global data refresh

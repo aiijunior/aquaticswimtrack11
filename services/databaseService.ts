@@ -283,12 +283,25 @@ export const deleteAllEvents = async (): Promise<void> => {
 };
 
 export const registerSwimmerToEvent = async (eventId: string, swimmerId: string, seedTime: number) => {
-    const { error } = await supabase.from('event_entries').upsert({
-        event_id: eventId,
-        swimmer_id: swimmerId,
-        seed_time: seedTime
-    } as any);
-    if (error) return { success: false, message: error.message };
+    // Check if exists first to avoid upsert RLS update requirement if not needed
+    const { data: existing } = await supabase.from('event_entries')
+        .select('*')
+        .eq('event_id', eventId)
+        .eq('swimmer_id', swimmerId)
+        .single();
+
+    if (existing) {
+        const { error } = await supabase.from('event_entries')
+            .update({ seed_time: seedTime })
+            .eq('event_id', eventId)
+            .eq('swimmer_id', swimmerId);
+        if (error) return { success: false, message: `Gagal update DB (Pastikan Anda admin/login): ${error.message}` };
+    } else {
+        const { error } = await supabase.from('event_entries')
+            .insert({ event_id: eventId, swimmer_id: swimmerId, seed_time: seedTime } as any);
+        if (error) return { success: false, message: `Gagal insert DB (Pastikan RLS sesuai): ${error.message}` };
+    }
+    
     return { success: true };
 };
 
@@ -430,43 +443,65 @@ export const processParticipantUpload = async (json: any[]) => {
 
     for (const row of json) {
         try {
-            const name = toTitleCase(row["Nama Atlet"] || "");
+            const name = toTitleCase((row["Nama Atlet"] || "").trim());
             const birthYear = parseInt(row["Tahun Lahir"]);
-            const genderSymbol = row["Jenis Kelamin (L/P)"];
-            const club = toTitleCase(row["Nama Tim"] || "");
-            const ageGroup = row["KU"] || null;
-            const eventName = row["Nomor Lomba"];
-            const seedTimeStr = row["Waktu Unggulan (mm:ss.SS)"] || "99:99.99";
+            const genderSymbol = (row["Jenis Kelamin (L/P)"] || "").trim();
+            const club = toTitleCase((row["Nama Tim"] || "").trim());
+            const ageGroup = row["KU"] ? String(row["KU"]).trim() : null;
+            const eventName = (row["Nomor Lomba"] || "").trim();
+            let seedTimeStr = row["Waktu Unggulan (mm:ss.SS)"] || "99:99.99";
+            
+            if (isNaN(birthYear)) throw new Error("Tahun Lahir tidak valid atau kosong.");
+            if (typeof seedTimeStr === 'number') {
+                // If excel parsed it as number/time, it might just be a decimal. 
+                // We'll safely fallback to 99:99.99
+                seedTimeStr = "99:99.99";
+            } else if (typeof seedTimeStr !== 'string') {
+                seedTimeStr = String(seedTimeStr);
+            }
 
-            if (!name || !club || !eventName) throw new Error("Data tidak lengkap.");
+            if (!name || !club || !eventName) throw new Error("Data tidak lengkap (Nama, Tim, atau Nomor Lomba kosong).");
 
             const gender = genderSymbol === 'L' ? 'Male' : 'Female';
 
-            const { data: existingSwimmers } = await supabase.from('swimmers').select('*').ilike('name', name).eq('birth_year', birthYear).eq('gender', gender);
-            let swimmer: Swimmer;
+            const { data: existingSwimmers, error: fetchErr } = await supabase.from('swimmers').select('*').ilike('name', name).eq('birth_year', birthYear).eq('gender', gender);
+            if (fetchErr) throw new Error(`Gagal mengecek atlet: ${fetchErr.message}`);
+
+            let swimmer: Swimmer | null = null;
             if (existingSwimmers && existingSwimmers.length > 0) {
                 swimmer = toSwimmer(existingSwimmers[0]);
                 updatedSwimmers++;
             } else {
-                swimmer = await addSwimmer({ name, birthYear, gender, club, ageGroup });
-                newSwimmers++;
+                try {
+                    swimmer = await addSwimmer({ name, birthYear, gender, club, ageGroup });
+                    newSwimmers++;
+                } catch (addErr: any) {
+                    throw new Error(`Gagal menambah atlet ${name}: ${addErr.message}`);
+                }
             }
+
+            if (!swimmer) throw new Error(`Gagal memproses atlet ${name}`);
 
             const allEvents = await getEvents();
             const event = allEvents.find(e => formatEventName(e) === eventName);
-            if (!event) throw new Error(`Nomor lomba "${eventName}" tidak ditemukan.`);
+            if (!event) throw new Error(`Nomor lomba "${eventName}" tidak ditemukan dalam sistem.`);
 
             let seedTime = 0;
             if (seedTimeStr.includes(':')) {
                 const [min, rest] = seedTimeStr.split(':');
-                const [sec, centi] = rest.split('.');
+                const secParts = rest ? rest.split('.') : ['00', '00'];
+                const sec = secParts[0] || '00';
+                const centi = secParts[1] || '00';
                 seedTime = (parseInt(min) * 60000) + (parseInt(sec) * 1000) + (parseInt(centi) * 10);
             }
             if (seedTimeStr === "99:99.99") seedTime = 0;
 
-            await registerSwimmerToEvent(event.id, swimmer.id, seedTime);
+            const regResult = await registerSwimmerToEvent(event.id, swimmer.id, seedTime);
+            if (!regResult.success) {
+                throw new Error(`Gagal mendaftar ke lomba ${eventName}: ${regResult.message}`);
+            }
         } catch (e: any) {
-            errors.push(e.message);
+            errors.push(`Baris ${json.indexOf(row) + 2}: ${e.message}`);
         }
     }
     return { newSwimmers, updatedSwimmers, errors };

@@ -95,39 +95,38 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS "Public insert" ON public.registration_logs;
 END $$;
 
--- 3. Definisikan Policy Baru yang Kokoh
+-- 3. Definisikan Policy Baru yang Bebas untuk ANON
+-- CATATAN PENTING: Karena aplikasi menggunakan sistem password di sisi frontend 
+-- (VITE_ADMIN_PASSWORD) dan bukan Supabase Auth untuk Admin, maka kita harus mengizinkan 
+-- operasi baca/tulis/edit/hapus dari "anon" agar frontend bisa melakukan fungsinya.
 
--- competition_info: Publik baca, Admin (Logged in) Bebas
-CREATE POLICY "Admin full access" ON public.competition_info FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Public read access" ON public.competition_info FOR SELECT TO anon, authenticated USING (true);
+-- competition_info
+CREATE POLICY "Allow all anon" ON public.competition_info FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
--- swimmers: Publik baca & tambah, Admin (Logged in) Bebas
-CREATE POLICY "Admin full access" ON public.swimmers FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Public read access" ON public.swimmers FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY "Public insert" ON public.swimmers FOR INSERT TO anon, authenticated WITH CHECK (true);
+-- swimmers
+CREATE POLICY "Allow all anon" ON public.swimmers FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
--- events: Publik baca, Admin (Logged in) Bebas
-CREATE POLICY "Admin full access" ON public.events FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Public read access" ON public.events FOR SELECT TO anon, authenticated USING (true);
+-- events
+CREATE POLICY "Allow all anon" ON public.events FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
--- event_entries: Publik baca & tambah, Admin (Logged in) Bebas
-CREATE POLICY "Admin full access" ON public.event_entries FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Public read access" ON public.event_entries FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY "Public insert" ON public.event_entries FOR INSERT TO anon, authenticated WITH CHECK (true);
+-- event_entries
+CREATE POLICY "Allow all anon" ON public.event_entries FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
--- registration_logs: Publik baca & tambah, Admin (Logged in) Bebas
-CREATE POLICY "Admin full access" ON public.registration_logs FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Public read access" ON public.registration_logs FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY "Public insert" ON public.registration_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
+-- event_results
+CREATE POLICY "Allow all anon" ON public.event_results FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- records
+CREATE POLICY "Allow all anon" ON public.records FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- registration_logs
+CREATE POLICY "Allow all anon" ON public.registration_logs FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- 4. Berikan Izin Grant Supabase API (KRUSIAL)
 GRANT ALL ON SCHEMA public TO postgres;
 GRANT ALL ON SCHEMA public TO authenticated;
 GRANT ALL ON SCHEMA public TO service_role;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
-GRANT INSERT ON public.swimmers TO anon;
-GRANT INSERT ON public.event_entries TO anon;
-GRANT INSERT ON public.registration_logs TO anon;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 `;
