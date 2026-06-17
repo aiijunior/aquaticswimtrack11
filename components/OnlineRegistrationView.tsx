@@ -206,11 +206,10 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
 
     const isPaymentStepValid = useMemo(() => {
         if (competitionInfo?.isFree) return true;
-        const proof = regType === 'INDIVIDUAL' ? formData.paymentProof : teamFormData.paymentProof;
         const amount = regType === 'INDIVIDUAL' ? formData.paymentAmount : teamFormData.paymentAmount;
         const feePerNo = competitionInfo?.feePerEvent || 0;
-        return proof !== null && parseInt(amount) >= feePerNo;
-    }, [formData, teamFormData, regType, competitionInfo]);
+        return parseInt(amount) >= feePerNo;
+    }, [formData.paymentAmount, teamFormData.paymentAmount, regType, competitionInfo]);
 
     const isTeamInfoFilled = useMemo(() => {
         return teamFormData.clubName.trim() !== '' && 
@@ -227,7 +226,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             if (!formData.picPhone.trim()) errors.push("Nomor HP/WA belum diisi");
             
             if (!competitionInfo?.isFree) {
-                if (!formData.paymentProof) errors.push("Bukti bayar belum diunggah");
                 const amount = parseInt(formData.paymentAmount) || 0;
                 const feePerNo = competitionInfo?.feePerEvent || 0;
                 if (amount < feePerNo) errors.push("Nominal bayar belum mencukupi untuk minimal 1 nomor");
@@ -244,7 +242,6 @@ export const OnlineRegistrationView: React.FC<OnlineRegistrationViewProps> = ({
             if (!teamFormData.picPhone.trim()) errors.push("Nomor HP/WA PIC belum diisi");
             
             if (!competitionInfo?.isFree) {
-                if (!teamFormData.paymentProof) errors.push("Bukti bayar belum diunggah");
                 const amount = parseInt(teamFormData.paymentAmount) || 0;
                 if (amount <= 0) errors.push("Nominal bayar belum diisi");
             }
@@ -1133,50 +1130,24 @@ const PaymentSection: React.FC<{ info: any, data: any, onFileChange: any, onAmou
             </div>
 
             <div className="space-y-6">
-                <div className="space-y-2">
-                    <label className="block text-sm font-black text-primary uppercase">1. Pratinjau Bukti Bayar (Klik gambar untuk zoom)</label>
-                    <div className="w-full min-h-[400px] max-h-[600px] bg-background border-2 border-border rounded-xl flex items-center justify-center overflow-auto shadow-inner relative group">
-                        {data.paymentProof ? (
-                            <img 
-                                src={data.paymentProof} 
-                                alt="Bukti Transfer" 
-                                className="max-w-full h-auto object-contain cursor-zoom-in transition-transform duration-300 group-hover:scale-[1.02]" 
-                                onClick={() => window.open(data.paymentProof || '', '_blank')} 
-                            />
-                        ) : (
-                            <div className="text-center p-10">
-                                <svg className="mx-auto h-16 w-16 text-text-secondary opacity-20 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                                <p className="text-sm text-text-secondary opacity-50 font-bold uppercase tracking-widest">Silakan Unggah Bukti Bayar Dahulu</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <label className="block text-sm font-bold text-text-secondary uppercase">2. Unggah / Ganti File</label>
-                        <div className="relative border-2 border-dashed border-primary/40 rounded-xl p-6 bg-primary/5 hover:bg-primary/10 transition-all text-center">
-                            <input type="file" accept="image/*" onChange={onFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required />
-                            <p className="text-xs font-black text-primary uppercase">{data.paymentProof ? '✓ Ganti Bukti Bayar' : 'Klik Untuk Unggah Bukti'}</p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="block text-sm font-bold text-text-secondary uppercase tracking-tight">3. Masukkan Nominal Yang Ditransfer (Rp)</label>
-                        <Input 
-                            label="" 
-                            id="paymentAmount" 
-                            name="paymentAmount" 
-                            type="number" 
-                            value={data.paymentAmount} 
-                            onChange={onAmountChange} 
-                            placeholder="Ketik nominal persis sesuai bukti di atas"
-                            required 
-                            className="text-xl font-bold"
-                        />
-                        <p className="text-[10px] text-text-secondary italic">Lihat angka pada pratinjau bukti bayar di atas untuk mengisi nominal ini.</p>
+                <div className="space-y-2 p-6 bg-primary/5 rounded-2xl border border-primary/20">
+                    <label className="block text-sm font-bold text-text-secondary uppercase tracking-tight">Masukkan Nominal Yang Ditransfer (Rp)</label>
+                    <Input 
+                        label="" 
+                        id="paymentAmount" 
+                        name="paymentAmount" 
+                        type="number" 
+                        value={data.paymentAmount} 
+                        onChange={onAmountChange} 
+                        placeholder="Contoh: 75000"
+                        required 
+                        className="text-2xl font-black text-primary text-center bg-white dark:bg-slate-800"
+                    />
+                    <div className="pt-2">
+                        <p className="text-[11px] text-text-secondary font-bold uppercase flex items-center gap-1">
+                            <span className="text-red-500">⚠️</span> Aturan Penulisan:
+                        </p>
+                        <p className="text-[10px] text-text-secondary italic">Ketik nominal tanpa menggunakan titik (.) atau koma (,). Contoh: Jika transfer Rp 75.000, ketik <span className="font-bold text-primary">75000</span></p>
                     </div>
                 </div>
             </div>

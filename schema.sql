@@ -147,14 +147,21 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS "Admin full access" ON public.registration_logs;
     DROP POLICY IF EXISTS "Admin read users" ON public.users;
 
-    -- 10a. Public Read Access (Anyone can see results and competition info)
+    -- 10a. Public Read & Insert (Allow registration without login if needed, though Netlify is primary)
     CREATE POLICY "Public read access" ON public.competition_info FOR SELECT TO anon, authenticated USING (true);
     CREATE POLICY "Public read access" ON public.swimmers FOR SELECT TO anon, authenticated USING (true);
+    CREATE POLICY "Public insert" ON public.swimmers FOR INSERT TO anon, authenticated WITH CHECK (true);
+    
     CREATE POLICY "Public read access" ON public.events FOR SELECT TO anon, authenticated USING (true);
+    
     CREATE POLICY "Public read access" ON public.event_entries FOR SELECT TO anon, authenticated USING (true);
+    CREATE POLICY "Public insert" ON public.event_entries FOR INSERT TO anon, authenticated WITH CHECK (true);
+    
     CREATE POLICY "Public read access" ON public.event_results FOR SELECT TO anon, authenticated USING (true);
     CREATE POLICY "Public read access" ON public.records FOR SELECT TO anon, authenticated USING (true);
+    
     CREATE POLICY "Public read access" ON public.registration_logs FOR SELECT TO anon, authenticated USING (true);
+    CREATE POLICY "Public insert" ON public.registration_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
 
     -- 10b. Admin Full Access (Only authenticated users can modify data)
     CREATE POLICY "Admin full access" ON public.competition_info FOR ALL TO authenticated USING (true) WITH CHECK (true);

@@ -48,20 +48,54 @@ export const SqlEditorView: React.FC = () => {
     const projectRef = config.supabase.url.replace('https://', '').split('.')[0];
     const supabaseSqlEditorUrl = `https://app.supabase.com/project/${projectRef}/sql/new`;
 
-    const addCheckinFieldQuery = `-- Menambahkan kolom checked_in ke tabel pendaftaran acara
-ALTER TABLE public.event_entries ADD COLUMN IF NOT EXISTS checked_in BOOLEAN DEFAULT FALSE;
+    const addCheckinFieldQuery = `-- R.E.A.C.T Database Migration & Policy Fix
+-- Jalankan skrip ini di SQL Editor Supabase untuk memperbaiki error RLS saat tambah atlet/import.
 
--- Menambahkan kolom biaya ke tabel informasi kompetisi
-ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS is_free boolean DEFAULT true;
-ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS recipient_name text;
-ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS account_number text;
-ALTER TABLE public.competition_info ADD COLUMN IF NOT EXISTS fee_per_event integer DEFAULT 0;
+-- 1. Pastikan RLS Aktif
+ALTER TABLE public.swimmers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.event_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.event_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.registration_logs ENABLE ROW LEVEL SECURITY;
 
--- Menambahkan kolom bukti bayar dan kontak PIC ke tabel perenang
-ALTER TABLE public.swimmers ADD COLUMN IF NOT EXISTS payment_proof text;
-ALTER TABLE public.swimmers ADD COLUMN IF NOT EXISTS payment_amount integer;
-ALTER TABLE public.swimmers ADD COLUMN IF NOT EXISTS pic_name text;
-ALTER TABLE public.swimmers ADD COLUMN IF NOT EXISTS pic_phone text;`;
+-- 2. Hapus Policy Lama (untuk reset)
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Public read access" ON public.swimmers;
+    DROP POLICY IF EXISTS "Admin full access" ON public.swimmers;
+    DROP POLICY IF EXISTS "Public insert" ON public.swimmers;
+    
+    DROP POLICY IF EXISTS "Public read access" ON public.event_entries;
+    DROP POLICY IF EXISTS "Admin full access" ON public.event_entries;
+    
+    DROP POLICY IF EXISTS "Public read access" ON public.registration_logs;
+    DROP POLICY IF EXISTS "Admin full access" ON public.registration_logs;
+    DROP POLICY IF EXISTS "Public insert" ON public.registration_logs;
+END $$;
+
+-- 3. Swimmers Policies
+-- Admin bisa melakukan apa saja
+CREATE POLICY "Admin full access" ON public.swimmers FOR ALL TO authenticated USING (true) WITH CHECK (true);
+-- Publik bisa melihat data
+CREATE POLICY "Public read access" ON public.swimmers FOR SELECT TO anon, authenticated USING (true);
+-- Publik bisa mendaftar (INSERT) demi kelancaran registrasi online
+CREATE POLICY "Public insert" ON public.swimmers FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+-- 4. Event Entries Policies
+CREATE POLICY "Admin full access" ON public.event_entries FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Public read access" ON public.event_entries FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public insert" ON public.event_entries FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+-- 5. Registration Logs Policies
+CREATE POLICY "Admin full access" ON public.registration_logs FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Public read access" ON public.registration_logs FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public insert" ON public.registration_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+-- 6. Grants (Opsional tapi disarankan)
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+GRANT SELECT, INSERT ON public.swimmers TO anon;
+GRANT SELECT, INSERT ON public.event_entries TO anon;
+GRANT SELECT, INSERT ON public.registration_logs TO anon;
+`;
 
     return (
         <div>
