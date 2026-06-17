@@ -62,7 +62,16 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
       try {
         const data = new Uint8Array(e.target.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
+        
+        let sheetName = workbook.SheetNames[0];
+        if (workbook.SheetNames.includes("Template Pendaftaran")) {
+            sheetName = "Template Pendaftaran";
+        } else {
+            // Find a sheet that is not DataMaster
+            const fallback = workbook.SheetNames.find(s => s !== "DataMaster");
+            if (fallback) sheetName = fallback;
+        }
+
         const worksheet = workbook.Sheets[sheetName];
         const json = XLSX.utils.sheet_to_json(worksheet);
         
@@ -130,7 +139,8 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
             });
         }
         const wsMaster = XLSX.utils.aoa_to_sheet(masterAOA);
-        XLSX.utils.book_append_sheet(workbook, wsMaster, "DataMaster");
+        // Don't append DataMaster here, wait until template is appended so template is first
+        // XLSX.utils.book_append_sheet(workbook, wsMaster, "DataMaster");
 
         // 3. Named Ranges (Kunci untuk INDIRECT)
         const sanitize = (s: string) => 'VAL_' + s.replace(/[^a-zA-Z0-9]/g, '_');
@@ -174,6 +184,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         });
 
         XLSX.utils.book_append_sheet(workbook, wsTemplate, "Template Pendaftaran");
+        XLSX.utils.book_append_sheet(workbook, wsMaster, "DataMaster");
         XLSX.writeFile(workbook, "Template_Pendaftaran_Lomba.xlsx");
 
     } catch(error) {
