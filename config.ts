@@ -18,7 +18,7 @@ export const config = {
    */
   supabase: {
     url: "https://kcvqgbucosorfxnwtlmt.supabase.co/rest/v1/", // 👈 VITE_SUPABASE_URL
-    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjdnFnYnVjb3NvcmZ4bnd0bG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NzE3NTYsImV4cCI6MjA5NzI0Nzc1Nn0.KGf2MixhA6q_hoAvW_YUHScWWSdWZgMn_bhSSFafUQY", // 👈 VITE_SUPABASE_ANON_KEY
+    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjdnFnYnVjb3NvcmZ4bnd0bG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NzE3NTYsImV4cCI6MjA5NzI0Nzc1Nn0.KGf2MixhA6q_hoAvW_YUHScWWSdWZgMn_bhSSFafUQY",// 👈 VITE_SUPABASE_ANON_KEY
   },
 
   /**
