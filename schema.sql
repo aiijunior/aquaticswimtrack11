@@ -133,11 +133,14 @@ DO $$ BEGIN
     -- Drop existing policies to ensure clean state
     DROP POLICY IF EXISTS "Public read access" ON public.competition_info;
     DROP POLICY IF EXISTS "Public read access" ON public.swimmers;
+    DROP POLICY IF EXISTS "Public insert" ON public.swimmers;
     DROP POLICY IF EXISTS "Public read access" ON public.events;
     DROP POLICY IF EXISTS "Public read access" ON public.event_entries;
+    DROP POLICY IF EXISTS "Public insert" ON public.event_entries;
     DROP POLICY IF EXISTS "Public read access" ON public.event_results;
     DROP POLICY IF EXISTS "Public read access" ON public.records;
     DROP POLICY IF EXISTS "Public read access" ON public.registration_logs;
+    DROP POLICY IF EXISTS "Public insert" ON public.registration_logs;
     DROP POLICY IF EXISTS "Admin full access" ON public.competition_info;
     DROP POLICY IF EXISTS "Admin full access" ON public.swimmers;
     DROP POLICY IF EXISTS "Admin full access" ON public.events;

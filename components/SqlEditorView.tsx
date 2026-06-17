@@ -80,11 +80,21 @@ CREATE POLICY "Public read access" ON public.swimmers FOR SELECT TO anon, authen
 CREATE POLICY "Public insert" ON public.swimmers FOR INSERT TO anon, authenticated WITH CHECK (true);
 
 -- 4. Event Entries Policies
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Admin full access" ON public.event_entries;
+    DROP POLICY IF EXISTS "Public read access" ON public.event_entries;
+    DROP POLICY IF EXISTS "Public insert" ON public.event_entries;
+END $$;
 CREATE POLICY "Admin full access" ON public.event_entries FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Public read access" ON public.event_entries FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "Public insert" ON public.event_entries FOR INSERT TO anon, authenticated WITH CHECK (true);
 
 -- 5. Registration Logs Policies
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Admin full access" ON public.registration_logs;
+    DROP POLICY IF EXISTS "Public read access" ON public.registration_logs;
+    DROP POLICY IF EXISTS "Public insert" ON public.registration_logs;
+END $$;
 CREATE POLICY "Admin full access" ON public.registration_logs FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Public read access" ON public.registration_logs FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "Public insert" ON public.registration_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
