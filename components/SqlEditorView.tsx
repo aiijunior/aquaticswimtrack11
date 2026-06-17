@@ -48,10 +48,18 @@ export const SqlEditorView: React.FC = () => {
     const projectRef = config.supabase.url.replace('https://', '').split('.')[0];
     const supabaseSqlEditorUrl = `https://app.supabase.com/project/${projectRef}/sql/new`;
 
-    const addCheckinFieldQuery = `-- R.E.A.C.T Database Migration & Policy Fix
--- Jalankan skrip ini di SQL Editor Supabase untuk memperbaiki error RLS (Gagal menambah atlet / Gagal simpan).
+    const addCheckinFieldQuery = `-- R.E.A.C.T Database Migration & Policy FIX
+-- Jalankan skrip ini di SQL Editor Supabase untuk memperbaiki error RLS (Gagal simpan/edit/hapus).
 
--- 1. Pastikan RLS Aktif pada semua tabel utama
+-- 1. Matikan RLS sejenak lalu nyalakan lagi untuk memastikan state bersih
+ALTER TABLE public.competition_info DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.swimmers DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.events DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.event_entries DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.event_results DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.registration_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.records DISABLE ROW LEVEL SECURITY;
+
 ALTER TABLE public.competition_info ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.swimmers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
@@ -60,59 +68,68 @@ ALTER TABLE public.event_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.registration_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.records ENABLE ROW LEVEL SECURITY;
 
--- 2. Hapus Policy Lama (untuk reset bersih)
+-- 2. Hapus SEMUA policy yang mungkin menghalangi (Clean Reset)
 DO $$ BEGIN
-    -- Competition Info
+    -- competition_info
     DROP POLICY IF EXISTS "Public read access" ON public.competition_info;
     DROP POLICY IF EXISTS "Admin full access" ON public.competition_info;
+    DROP POLICY IF EXISTS "Allow all for authenticated" ON public.competition_info;
     
-    -- Swimmers
+    -- swimmers
     DROP POLICY IF EXISTS "Public read access" ON public.swimmers;
     DROP POLICY IF EXISTS "Admin full access" ON public.swimmers;
     DROP POLICY IF EXISTS "Public insert" ON public.swimmers;
+    DROP POLICY IF EXISTS "Allow all for authenticated" ON public.swimmers;
     
-    -- Events & Entries
-    DROP POLICY IF EXISTS "Public read access" ON public.events;
-    DROP POLICY IF EXISTS "Admin full access" ON public.events;
+    -- event_entries
     DROP POLICY IF EXISTS "Public read access" ON public.event_entries;
     DROP POLICY IF EXISTS "Admin full access" ON public.event_entries;
     DROP POLICY IF EXISTS "Public insert" ON public.event_entries;
-    
-    -- Logs
+    DROP POLICY IF EXISTS "Allow all for authenticated" ON public.event_entries;
+
+    -- migration for events, results, logs, etc
+    DROP POLICY IF EXISTS "Public read access" ON public.events;
+    DROP POLICY IF EXISTS "Admin full access" ON public.events;
     DROP POLICY IF EXISTS "Public read access" ON public.registration_logs;
     DROP POLICY IF EXISTS "Admin full access" ON public.registration_logs;
     DROP POLICY IF EXISTS "Public insert" ON public.registration_logs;
 END $$;
 
--- 3. Competition Info Policies
-CREATE POLICY "Public read access" ON public.competition_info FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY "Admin full access" ON public.competition_info FOR ALL TO authenticated USING (true) WITH CHECK (true);
+-- 3. Definisikan Policy Baru yang Kokoh
 
--- 4. Swimmers Policies
-CREATE POLICY "Public read access" ON public.swimmers FOR SELECT TO anon, authenticated USING (true);
+-- competition_info: Publik baca, Admin (Logged in) Bebas
+CREATE POLICY "Admin full access" ON public.competition_info FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Public read access" ON public.competition_info FOR SELECT TO anon, authenticated USING (true);
+
+-- swimmers: Publik baca & tambah, Admin (Logged in) Bebas
 CREATE POLICY "Admin full access" ON public.swimmers FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Public read access" ON public.swimmers FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "Public insert" ON public.swimmers FOR INSERT TO anon, authenticated WITH CHECK (true);
 
--- 5. Events & Entries Policies
-CREATE POLICY "Public read access" ON public.events FOR SELECT TO anon, authenticated USING (true);
+-- events: Publik baca, Admin (Logged in) Bebas
 CREATE POLICY "Admin full access" ON public.events FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Public read access" ON public.events FOR SELECT TO anon, authenticated USING (true);
 
-CREATE POLICY "Public read access" ON public.event_entries FOR SELECT TO anon, authenticated USING (true);
+-- event_entries: Publik baca & tambah, Admin (Logged in) Bebas
 CREATE POLICY "Admin full access" ON public.event_entries FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Public read access" ON public.event_entries FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "Public insert" ON public.event_entries FOR INSERT TO anon, authenticated WITH CHECK (true);
 
--- 6. Registration Logs Policies
-CREATE POLICY "Public read access" ON public.registration_logs FOR SELECT TO anon, authenticated USING (true);
+-- registration_logs: Publik baca & tambah, Admin (Logged in) Bebas
 CREATE POLICY "Admin full access" ON public.registration_logs FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Public read access" ON public.registration_logs FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "Public insert" ON public.registration_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
 
--- 7. Grant Permissions (Sangat Penting untuk Supabase API)
-GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+-- 4. Berikan Izin Grant Supabase API (KRUSIAL)
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO authenticated;
+GRANT ALL ON SCHEMA public TO service_role;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
 GRANT INSERT ON public.swimmers TO anon;
 GRANT INSERT ON public.event_entries TO anon;
 GRANT INSERT ON public.registration_logs TO anon;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 `;
 
     return (
