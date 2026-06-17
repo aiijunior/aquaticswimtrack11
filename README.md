@@ -157,7 +157,7 @@ ALTER TABLE public.event_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.records ENABLE ROW LEVEL SECURITY;
 
--- 10. Robust Policies (Consolidated)
+-- 10. Robust Policies (Consolidated & Reset)
 DO $$ BEGIN
     -- Drop existing policies to ensure clean state
     DROP POLICY IF EXISTS "Public read access" ON public.competition_info;
@@ -170,6 +170,7 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS "Public read access" ON public.records;
     DROP POLICY IF EXISTS "Public read access" ON public.registration_logs;
     DROP POLICY IF EXISTS "Public insert" ON public.registration_logs;
+    
     DROP POLICY IF EXISTS "Admin full access" ON public.competition_info;
     DROP POLICY IF EXISTS "Admin full access" ON public.swimmers;
     DROP POLICY IF EXISTS "Admin full access" ON public.events;
@@ -183,11 +184,15 @@ DO $$ BEGIN
     CREATE POLICY "Public read access" ON public.competition_info FOR SELECT TO anon, authenticated USING (true);
     CREATE POLICY "Public read access" ON public.swimmers FOR SELECT TO anon, authenticated USING (true);
     CREATE POLICY "Public insert" ON public.swimmers FOR INSERT TO anon, authenticated WITH CHECK (true);
+    
     CREATE POLICY "Public read access" ON public.events FOR SELECT TO anon, authenticated USING (true);
+    
     CREATE POLICY "Public read access" ON public.event_entries FOR SELECT TO anon, authenticated USING (true);
     CREATE POLICY "Public insert" ON public.event_entries FOR INSERT TO anon, authenticated WITH CHECK (true);
+    
     CREATE POLICY "Public read access" ON public.event_results FOR SELECT TO anon, authenticated USING (true);
     CREATE POLICY "Public read access" ON public.records FOR SELECT TO anon, authenticated USING (true);
+    
     CREATE POLICY "Public read access" ON public.registration_logs FOR SELECT TO anon, authenticated USING (true);
     CREATE POLICY "Public insert" ON public.registration_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
 

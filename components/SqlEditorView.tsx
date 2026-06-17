@@ -49,62 +49,70 @@ export const SqlEditorView: React.FC = () => {
     const supabaseSqlEditorUrl = `https://app.supabase.com/project/${projectRef}/sql/new`;
 
     const addCheckinFieldQuery = `-- R.E.A.C.T Database Migration & Policy Fix
--- Jalankan skrip ini di SQL Editor Supabase untuk memperbaiki error RLS saat tambah atlet/import.
+-- Jalankan skrip ini di SQL Editor Supabase untuk memperbaiki error RLS (Gagal menambah atlet / Gagal simpan).
 
--- 1. Pastikan RLS Aktif
+-- 1. Pastikan RLS Aktif pada semua tabel utama
+ALTER TABLE public.competition_info ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.swimmers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.registration_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.records ENABLE ROW LEVEL SECURITY;
 
--- 2. Hapus Policy Lama (untuk reset)
+-- 2. Hapus Policy Lama (untuk reset bersih)
 DO $$ BEGIN
+    -- Competition Info
+    DROP POLICY IF EXISTS "Public read access" ON public.competition_info;
+    DROP POLICY IF EXISTS "Admin full access" ON public.competition_info;
+    
+    -- Swimmers
     DROP POLICY IF EXISTS "Public read access" ON public.swimmers;
     DROP POLICY IF EXISTS "Admin full access" ON public.swimmers;
     DROP POLICY IF EXISTS "Public insert" ON public.swimmers;
     
+    -- Events & Entries
+    DROP POLICY IF EXISTS "Public read access" ON public.events;
+    DROP POLICY IF EXISTS "Admin full access" ON public.events;
     DROP POLICY IF EXISTS "Public read access" ON public.event_entries;
     DROP POLICY IF EXISTS "Admin full access" ON public.event_entries;
+    DROP POLICY IF EXISTS "Public insert" ON public.event_entries;
     
+    -- Logs
     DROP POLICY IF EXISTS "Public read access" ON public.registration_logs;
     DROP POLICY IF EXISTS "Admin full access" ON public.registration_logs;
     DROP POLICY IF EXISTS "Public insert" ON public.registration_logs;
 END $$;
 
--- 3. Swimmers Policies
--- Admin bisa melakukan apa saja
-CREATE POLICY "Admin full access" ON public.swimmers FOR ALL TO authenticated USING (true) WITH CHECK (true);
--- Publik bisa melihat data
+-- 3. Competition Info Policies
+CREATE POLICY "Public read access" ON public.competition_info FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Admin full access" ON public.competition_info FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- 4. Swimmers Policies
 CREATE POLICY "Public read access" ON public.swimmers FOR SELECT TO anon, authenticated USING (true);
--- Publik bisa mendaftar (INSERT) demi kelancaran registrasi online
+CREATE POLICY "Admin full access" ON public.swimmers FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Public insert" ON public.swimmers FOR INSERT TO anon, authenticated WITH CHECK (true);
 
--- 4. Event Entries Policies
-DO $$ BEGIN
-    DROP POLICY IF EXISTS "Admin full access" ON public.event_entries;
-    DROP POLICY IF EXISTS "Public read access" ON public.event_entries;
-    DROP POLICY IF EXISTS "Public insert" ON public.event_entries;
-END $$;
-CREATE POLICY "Admin full access" ON public.event_entries FOR ALL TO authenticated USING (true) WITH CHECK (true);
+-- 5. Events & Entries Policies
+CREATE POLICY "Public read access" ON public.events FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Admin full access" ON public.events FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
 CREATE POLICY "Public read access" ON public.event_entries FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Admin full access" ON public.event_entries FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Public insert" ON public.event_entries FOR INSERT TO anon, authenticated WITH CHECK (true);
 
--- 5. Registration Logs Policies
-DO $$ BEGIN
-    DROP POLICY IF EXISTS "Admin full access" ON public.registration_logs;
-    DROP POLICY IF EXISTS "Public read access" ON public.registration_logs;
-    DROP POLICY IF EXISTS "Public insert" ON public.registration_logs;
-END $$;
-CREATE POLICY "Admin full access" ON public.registration_logs FOR ALL TO authenticated USING (true) WITH CHECK (true);
+-- 6. Registration Logs Policies
 CREATE POLICY "Public read access" ON public.registration_logs FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Admin full access" ON public.registration_logs FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Public insert" ON public.registration_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
 
--- 6. Grants (Opsional tapi disarankan)
+-- 7. Grant Permissions (Sangat Penting untuk Supabase API)
 GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
-GRANT SELECT, INSERT ON public.swimmers TO anon;
-GRANT SELECT, INSERT ON public.event_entries TO anon;
-GRANT SELECT, INSERT ON public.registration_logs TO anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+GRANT INSERT ON public.swimmers TO anon;
+GRANT INSERT ON public.event_entries TO anon;
+GRANT INSERT ON public.registration_logs TO anon;
 `;
 
     return (
@@ -120,6 +128,9 @@ GRANT SELECT, INSERT ON public.registration_logs TO anon;
                         <h2 className="text-xl font-bold text-yellow-600 dark:text-yellow-400">Pembaruan Database Diperlukan</h2>
                         <p className="text-text-secondary mt-2">
                             Gunakan tombol di bawah untuk membuka SQL Editor di dasbor Supabase Anda, lalu salin dan jalankan perintah migrasi di bawah untuk mengaktifkan fitur **Cek-in Atlet**.
+                        </p>
+                        <p className="text-text-secondary mt-2 text-sm font-bold">
+                            ⚠️ Tips: Jika Anda menggunakan Netlify, pastikan Environment Variable <code className="bg-background px-1 rounded">SUPABASE_URL</code> sudah diset ke <code className="bg-background px-1 rounded">{config.supabase.url}</code> (tanpa /rest/v1/).
                         </p>
                     </div>
                 </div>
