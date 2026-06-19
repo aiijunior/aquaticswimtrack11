@@ -126,29 +126,27 @@ const App: React.FC = () => {
   }, [refreshData]);
 
   useEffect(() => {
-      let timeoutId: any;
-      const channel = supabase.channel('schema-db-changes');
-      
-      // Untuk menghemat Bandwidth (EGRESS) pada paket Free:
-      // 1. Kita menunda (debounce) refresh selama 2.5 detik untuk menghindari fetch berkali-kali.
-      // 2. Jika Event sangat sibuk, hapus baris `refreshData()` di bawah ini, 
-      //    jadikan Live Results hanya refresh manual.
-      channel.on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
-          clearTimeout(timeoutId);
-          timeoutId = setTimeout(() => refreshData(), 2500);
-      });
-      channel.subscribe((status, err) => {
-          if (status === 'SUBSCRIBED') {
-              setDbStatus('connected');
-              refreshData();
-          }
-          if (status === 'CHANNEL_ERROR') setDbStatus('error');
-          if (status === 'TIMED_OUT') setDbStatus('reconnecting');
-      });
-      return () => {
-          clearTimeout(timeoutId);
-          supabase.removeChannel(channel);
-      };
+    // 1. Matikan Realtime WebSockets untuk menghemat Egress dan mencegah status putus/nyambung.
+    // 2. Gunakan polling per 30 detik untuk update data secara berkala tanpa membebani server terlalu sering.
+    let isMounted = true;
+
+    const pollData = async () => {
+        if (!isMounted) return;
+        try {
+            await refreshData();
+            if (isMounted) setDbStatus('connected');
+        } catch (error) {
+            if (isMounted) setDbStatus('error');
+        }
+    };
+
+    pollData(); // Initial fetch
+    const intervalId = setInterval(pollData, 30000); // 30 detik
+
+    return () => {
+        isMounted = false;
+        clearInterval(intervalId);
+    };
   }, [refreshData]);
   
   useEffect(() => {
