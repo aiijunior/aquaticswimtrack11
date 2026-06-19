@@ -83,21 +83,8 @@ const App: React.FC = () => {
       setIsDataLoading(true);
     }
 
-    // Priority 1: Fetch competition info and events first for registration unblocking
     try {
-      const infoPromise = supabase.from('competition_info').select('*').eq('id', 1).maybeSingle();
-      const eventsPromise = supabase.from('events').select('*, event_entries(*), event_results(*)').order('session_number').order('heat_order');
-      
-      const [infoRes, eventsRes] = await Promise.all([infoPromise, eventsPromise]);
-      
-      if (infoRes.data) setCompetitionInfo(toCompetitionInfo(infoRes.data));
-      if (eventsRes.data) setEvents(eventsRes.data.map(toSwimEvent));
-    } catch (e) {
-      console.error("Priority fetch failed", e);
-    }
-
-    try {
-      // Priority 2: Fetch full public data
+      // Fetch full public data
       const { swimmers: swimmersData, events: eventsData, competitionInfo: infoData } = await getPublicData();
       setSwimmers(swimmersData);
       setEvents(eventsData);
@@ -139,9 +126,16 @@ const App: React.FC = () => {
   }, [refreshData]);
 
   useEffect(() => {
+      let timeoutId: any;
       const channel = supabase.channel('schema-db-changes');
+      
+      // Untuk menghemat Bandwidth (EGRESS) pada paket Free:
+      // 1. Kita menunda (debounce) refresh selama 2.5 detik untuk menghindari fetch berkali-kali.
+      // 2. Jika Event sangat sibuk, hapus baris `refreshData()` di bawah ini, 
+      //    jadikan Live Results hanya refresh manual.
       channel.on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
-          refreshData();
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => refreshData(), 2500);
       });
       channel.subscribe((status, err) => {
           if (status === 'SUBSCRIBED') {
@@ -152,6 +146,7 @@ const App: React.FC = () => {
           if (status === 'TIMED_OUT') setDbStatus('reconnecting');
       });
       return () => {
+          clearTimeout(timeoutId);
           supabase.removeChannel(channel);
       };
   }, [refreshData]);
