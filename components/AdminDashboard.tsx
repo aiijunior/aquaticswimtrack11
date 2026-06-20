@@ -294,11 +294,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ swimmers, events
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <StatCard icon={<UsersIcon />} label="Total Atlet" value={stats.swimmerCount} onClick={() => navigateTo(View.SWIMMERS_LIST, { genderFilter: 'All', viewMode: 'swimmerList' })} />
             <StatCard icon={<ClipboardListIcon />} label="Total Nomor Lomba" value={stats.eventCount} onClick={() => navigateTo(View.RACES)} />
             <StatCard icon={<ShieldIcon />} label="Total Tim" value={stats.clubCount} onClick={() => navigateTo(View.SWIMMERS_LIST, { viewMode: 'clubRecap' })} />
-            <StatCard icon={<DocumentTextIcon />} label="Total Pendaftaran" value={stats.totalRegistrations} onClick={() => navigateTo(View.PARTICIPANTS)} />
           </div>
 
           <Card className="mt-6">
