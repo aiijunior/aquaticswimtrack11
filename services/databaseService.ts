@@ -444,7 +444,8 @@ export const processParticipantUpload = async (json: any[]) => {
     for (const row of json) {
         try {
             const name = toTitleCase((row["Nama Atlet"] || "").trim());
-            const birthYear = parseInt(row["Tahun Lahir"]);
+            const rawBirthYear = row["Tahun Lahir"] !== undefined ? row["Tahun Lahir"] : row["tahun lahir"];
+            const birthYear = parseInt(String(rawBirthYear).trim());
             const genderSymbol = (row["Jenis Kelamin (L/P)"] || "").trim();
             const club = toTitleCase((row["Nama Tim"] || "").trim());
             const ageGroup = row["KU"] ? String(row["KU"]).trim() : null;

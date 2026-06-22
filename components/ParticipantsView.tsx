@@ -168,6 +168,8 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         const maxRows = 1000;
         if (!wsTemplate['!dataValidation']) wsTemplate['!dataValidation'] = [];
 
+        // Tahun Lahir (Whole Number)
+        wsTemplate['!dataValidation'].push({ sqref: `B2:B${maxRows}`, opts: { type: 'whole', operator: 'between', formula1: '1900', formula2: '2050', showErrorMessage: true, errorTitle: 'Invalid', error: 'Harap masukkan tahun kelahiran yang valid (contoh: 2010)' } });
         // JK
         wsTemplate['!dataValidation'].push({ sqref: `C2:C${maxRows}`, opts: { type: 'list', formula1: '"L,P"' } });
         // KU
@@ -304,10 +306,11 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
                 const swimmer: Swimmer | undefined = swimmersMap.get(entry.swimmerId);
                 if (swimmer) {
                     dataToExport.push({
-                        "Nama Atlet": swimmer.name,
-                        "Jenis Kelamin": swimmer.gender === 'Male' ? 'L' : 'P',
+                        "Nama atlet": swimmer.name,
                         "Tahun Lahir": swimmer.birthYear,
+                        "Jenis Kelamin (L/P)": swimmer.gender === 'Male' ? 'L' : 'P',
                         "Nama Tim": swimmer.club,
+                        "KU": swimmer.ageGroup || "",
                         "Nomor Lomba": formatEventName(event),
                         "Waktu Unggulan": formatTime(entry.seedTime)
                     });
@@ -318,13 +321,13 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({ swimmers, ev
         dataToExport.sort((a, b) => {
             const clubCompare = a["Nama Tim"].localeCompare(b["Nama Tim"]);
             if (clubCompare !== 0) return clubCompare;
-            const nameCompare = a["Nama Atlet"].localeCompare(b["Nama Atlet"]);
+            const nameCompare = a["Nama atlet"].localeCompare(b["Nama atlet"]);
             if (nameCompare !== 0) return nameCompare;
             return a["Nomor Lomba"].localeCompare(b["Nomor Lomba"]);
         });
 
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-        worksheet['!cols'] = [ { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 30 }, { wch: 45 }, { wch: 20 }];
+        worksheet['!cols'] = [ { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 45 }, { wch: 20 }];
 
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Pendaftaran Lengkap");
